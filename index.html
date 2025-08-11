@@ -80,10 +80,10 @@
     /* Charts */
     .charts{ display:grid; grid-template-columns:1.2fr 1fr; gap:14px }
     @media (max-width:900px){ .charts{ grid-template-columns:1fr } }
-    .chart-wrap{ padding:12px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius:14px; position:relative }
+    .chart-wrap{ padding:12px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius:14px; position:relative; min-width:0; overflow:hidden }
     .chart-wrap.enlargeable{ cursor:zoom-in }
     .chart-wrap .expand-hint{ position:absolute; right:10px; top:8px; font-size:12px; color:var(--muted) }
-    #statusPie{ min-height:260px }
+    #statusPie{ min-height:280px; width:100% }
 
     .footer{ color:var(--muted); font-size:12px; margin-top:14px }
     .hidden{ display:none }
@@ -111,7 +111,7 @@
         <span class="dot"></span>
         <div>
           <h1>Graduate Applications Tracker</h1>
-          <div class="sub">Track applications, deadlines, and progress. Visualise with a combo daily chart and a status pie. Sorting + sector delete. Ghosted included.</div>
+          <div class="sub">Daily per‑day bars + cumulative line, responsive pie, sorting & sector management. Ghosted included.</div>
         </div>
       </div>
       <div class="controls">
@@ -132,10 +132,10 @@
           <div class="charts">
             <div class="chart-wrap enlargeable" id="dailyWrap" title="Click to enlarge">
               <span class="expand-hint">Click to enlarge</span>
-              <canvas id="dailyChart" height="140" aria-label="Applications per day and cumulative"></canvas>
+              <canvas id="dailyChart" height="150" aria-label="Applications per day and cumulative"></canvas>
             </div>
-            <div class="chart-wrap">
-              <canvas id="statusPie" height="140" aria-label="Applications by status"></canvas>
+            <div class="chart-wrap" id="statusWrap">
+              <canvas id="statusPie" height="150" aria-label="Applications by status"></canvas>
             </div>
           </div>
 
@@ -188,7 +188,7 @@
               <tbody></tbody>
             </table>
           </div>
-          <div class="footer">Your data is stored locally in this browser. Use Export JSON as a backup occasionally.</div>
+          <div class="footer">Data is stored locally in this browser. Use Export JSON for backups.</div>
         </div>
       </section>
 
@@ -290,7 +290,7 @@
 
   <script>
     // --- Storage & constants ---
-    const STORAGE_KEY = 'gradAppTracker:data:v8';
+    const STORAGE_KEY = 'gradAppTracker:data:v9';
     const SECTORS_KEY = 'gradAppTracker:sectors:v3';
     const DEFAULT_SECTORS = ['Finance','Consulting','Engineering','Sales'];
     const STAGES = ['Applied','Aptitude Test','Interview','Offer','Rejected','Ghosted'];
@@ -300,8 +300,7 @@
     function loadData(){
       const raw = localStorage.getItem(STORAGE_KEY);
       if(raw) return JSON.parse(raw);
-      // migrate older versions
-      const keys = ['gradAppTracker:data:v7','gradAppTracker:data:v6','gradAppTracker:data:v5','gradAppTracker:data:v4','gradAppTracker:data:v3','gradAppTracker:data:v2'];
+      const keys = ['gradAppTracker:data:v8','gradAppTracker:data:v7','gradAppTracker:data:v6','gradAppTracker:data:v5','gradAppTracker:data:v4','gradAppTracker:data:v3','gradAppTracker:data:v2'];
       for(const k of keys){ const v = localStorage.getItem(k); if(v) return JSON.parse(v); }
       return [];
     }
@@ -340,6 +339,7 @@
     const clearFilterBtn = document.querySelector('#clearFilterBtn');
 
     const dailyWrap = document.getElementById('dailyWrap');
+    const statusWrap = document.getElementById('statusWrap');
     const dailyModal = document.getElementById('dailyModal');
     const modalBackdrop = document.getElementById('modalBackdrop');
     const modalClose = document.getElementById('modalClose');
@@ -517,18 +517,6 @@
     });
 
     // --- Charts ---
-    function chartColors(){
-      const cs = getComputedStyle(document.documentElement);
-      return {
-        Applied: cs.getPropertyValue('--applied').trim()||'#60a5fa',
-        'Aptitude Test': cs.getPropertyValue('--aptitude').trim()||'#f59e0b',
-        Interview: cs.getPropertyValue('--interview').trim()||'#34d399',
-        Offer: cs.getPropertyValue('--offer').trim()||'#a78bfa',
-        Rejected: cs.getPropertyValue('--rejected').trim()||'#ef4444',
-        Ghosted: cs.getPropertyValue('--ghosted').trim()||'#9ca3af',
-      };
-    }
-
     function buildDailySeries(){
       const dates = applications.filter(a=>a.applied).map(a=>a.applied).sort();
       if(dates.length===0){ return { labels: [], perDay: [], cumulative: [] }; }
@@ -548,19 +536,27 @@
 
     function getDailyChartConfig(){
       const s = buildDailySeries();
-      const data = {
-        labels: s.labels.map(x => new Date(x)),
-        datasets: [
-          { type:'bar', label:'Applications per day', data: s.perDay, borderWidth:0, yAxisID:'y', barPercentage:0.6, categoryPercentage:0.8 },
-          { type:'line', label:'Cumulative total', data: s.cumulative, tension:.35, fill:false, borderWidth:2, yAxisID:'y1' }
-        ]
-      };
-      const options = {
-        animation:{ duration:650, easing:'easeOutQuart' },
-        scales:{ x:{ type:'time', time:{ unit:'day' }, grid:{ display:false } }, y:{ beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'rgba(255,255,255,.06)' } }, y1:{ position:'right', beginAtZero:true, ticks:{ precision:0 }, grid:{ drawOnChartArea:false } } },
-        plugins:{ legend:{ labels:{ color:'#cfd3ff' } }, tooltip:{ mode:'index', intersect:false } }, maintainAspectRatio:false
-      };
-      return { type:'bar', data, options };
+      return {
+        type:'bar',
+        data:{
+          labels: s.labels.map(x => new Date(x)),
+          datasets: [
+            { type:'bar', label:'Applications per day', data: s.perDay, borderWidth:0, yAxisID:'y', barPercentage:0.6, categoryPercentage:0.8 },
+            { type:'line', label:'Cumulative total', data: s.cumulative, tension:.35, fill:false, borderWidth:2, yAxisID:'y1' }
+          ]
+        },
+        options:{
+          animation:{ duration:650, easing:'easeOutQuart' },
+          scales:{ x:{ type:'time', time:{ unit:'day' }, grid:{ display:false } }, y:{ beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'rgba(255,255,255,.06)' } }, y1:{ position:'right', beginAtZero:true, ticks:{ precision:0 }, grid:{ drawOnChartArea:false } } },
+          plugins:{ legend:{ labels:{ color:'#cfd3ff' } }, tooltip:{ mode:'index', intersect:false } }, maintainAspectRatio:false
+        }
+      }
+    }
+
+    function legendPos(){
+      // If the container is wide enough, put legend on the right; otherwise bottom
+      const w = statusWrap.offsetWidth || window.innerWidth;
+      return w >= 520 ? 'right' : 'bottom';
     }
 
     function renderDailyComboChart(){
@@ -574,19 +570,28 @@
     function renderStatusPie(){
       if(typeof Chart === 'undefined') { console.warn('Chart.js not loaded'); return; }
       const ctx = document.getElementById('statusPie'); if(!ctx) return;
-      const colors = chartColors();
       const byStatus = STAGES.map(s => ({ s, n: applications.filter(a => (a.status||'Applied')===s).length }));
+      const colors = { Applied:'#60a5fa','Aptitude Test':'#f59e0b',Interview:'#34d399',Offer:'#a78bfa',Rejected:'#ef4444',Ghosted:'#9ca3af' };
       const data = { labels: byStatus.map(x=>x.s), datasets:[{ data: byStatus.map(x=>x.n), backgroundColor: byStatus.map(x=>colors[x.s]) }] };
-      const options = { animation:{ duration:650, easing:'easeOutQuart' }, plugins:{ legend:{ position:'right', labels:{ color:'#cfd3ff', usePointStyle:true, boxWidth:10, boxHeight:10, padding:12, font:{ size:12 } } }, tooltip:{ callbacks:{ label:(ctx)=> `${ctx.label}: ${ctx.raw}` } } }, maintainAspectRatio:false, layout:{ padding:8 } };
-      if(statusPie){ statusPie.data=data; statusPie.options=options; statusPie.update(); } else { statusPie = new Chart(ctx,{ type:'pie', data, options }); }
+      const options = {
+        responsive:true, maintainAspectRatio:false, layout:{ padding:8 },
+        plugins:{ legend:{ position:legendPos(), labels:{ color:'#cfd3ff', usePointStyle:true, boxWidth:10, boxHeight:10, padding:12, font:{ size:12 } } }, tooltip:{ callbacks:{ label:(c)=> `${c.label}: ${c.raw}` } } }
+      };
+      if(statusPie){ statusPie.data=data; statusPie.options=options; statusPie.update(); }
+      else { statusPie = new Chart(ctx,{ type:'pie', data, options }); }
     }
 
     function renderCharts(){ renderDailyComboChart(); renderStatusPie(); }
 
+    // resize handler to keep pie legend inside on window changes
+    window.addEventListener('resize', () => {
+      if(statusPie){ statusPie.options.plugins.legend.position = legendPos(); statusPie.update(); }
+    });
+
     // --- Import/Export/Reset/Demo ---
     exportBtn.addEventListener('click', () => {
       const ts = new Date().toISOString().slice(0,10);
-      const blob = new Blob([JSON.stringify({ applications, sectors, version:'v8' }, null, 2)], { type:'application/json' });
+      const blob = new Blob([JSON.stringify({ applications, sectors, version:'v9' }, null, 2)], { type:'application/json' });
       const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`graduate-applications-backup-${ts}.json`; a.click(); URL.revokeObjectURL(url);
     });
     importBtn.addEventListener('click', () => importFile.click());
@@ -622,12 +627,10 @@
     // --- Modal enlarge behaviour ---
     function openDailyModal(){
       dailyModal.classList.add('show');
-      // create chart inside modal
       const ctx = document.getElementById('modalDailyCanvas');
       const cfg = getDailyChartConfig();
       if(modalDailyChart){ modalDailyChart.destroy(); }
       modalDailyChart = new Chart(ctx, cfg);
-      // Esc to close
       document.addEventListener('keydown', escHandler);
     }
     function closeDailyModal(){ dailyModal.classList.remove('show'); if(modalDailyChart){ modalDailyChart.destroy(); modalDailyChart=null; } document.removeEventListener('keydown', escHandler); }
@@ -636,25 +639,6 @@
     dailyWrap.addEventListener('click', openDailyModal);
     modalBackdrop.addEventListener('click', closeDailyModal);
     modalClose.addEventListener('click', closeDailyModal);
-
-    // --- Tests (optional: run with ?runTests=1) ---
-    function runTests(){
-      console.group('%cGraduate Tracker – Tests','color:#6ee7f5');
-      try{
-        const snap = [...applications];
-        applications = []; renderCharts();
-        console.assert(dailyChart, 'Daily chart should exist');
-        console.assert(statusPie, 'Status pie should exist');
-
-        // Ghosted present
-        console.assert(STAGES.includes('Ghosted'), 'Ghosted included');
-
-        applications = snap; renderTable();
-      }catch(err){ console.error(err); }
-      console.groupEnd();
-    }
-    const RUN_TESTS = /runTests=1/.test(location.search) || location.hash.includes('run-tests');
-    if(RUN_TESTS){ setTimeout(runTests, 0); }
 
     // --- Init ---
     function init(){
