@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Graduate Applications Tracker — Cloud Sync</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+
+  <!-- Firebase compat SDKs (no build tools required) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+  <style>
+    :root{
+      --bg:#0f1226; --card:#14183a; --muted:#7e88c8; --text:#e7e9ff;
+      --accent1:#6ee7f5; --accent2:#a78bfa; --shadow:0 10px 30px rgba(0,0,0,.25);
+      --radius:18px;
+      --applied:#60a5fa; --aptitude:#f59e0b; --interview:#34d399; --offer:#a78bfa; --rejected:#ef4444; --ghosted:#9ca3af;
+    }
+    *{ box-sizing:border-box } html,body{ height:100% }
+    body{ margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; color:var(--text);
+      background: radial-gradient(1200px 600px at 10% -10%, rgba(103,232,249,.12), transparent 60%),
+                  radial-gradient(900px 500px at 100% 0%, rgba(167,139,250,.15), transparent 70%),
+                  linear-gradient(180deg,#0e1124,#0f1226 30% 70%,#0c0f21); background-attachment:fixed }
+    .app{ max-width:1200px; margin:28px auto; padding:0 20px 40px }
+    header.top{ display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:20px; flex-wrap:wrap }
+    .logo{ display:flex; align-items:center; gap:14px }
+    .logo .dot{ width:12px; height:12px; border-radius:50%; background:linear-gradient(135deg,var(--accent1),var(--accent2)); box-shadow:0 0 0 6px rgba(167,139,250,.15),0 0 0 12px rgba(110,231,245,.08) }
+    h1{ font-size:clamp(22px,3vw,30px); margin:0; font-weight:800; letter-spacing:.3px }
+    .sub{ color:var(--muted); font-size:14px }
+
+    .grid{ display:grid; grid-template-columns:1.3fr .9fr; gap:18px; align-items:start }
+    @media (max-width:1050px){ .grid{ grid-template-columns:1fr } }
+
+    .card{ background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.08);
+      border-radius:var(--radius); box-shadow:var(--shadow); backdrop-filter:blur(8px); overflow:hidden; animation:fadeUp .6s ease both }
+    @keyframes fadeUp{ from{ opacity:0; transform:translateY(10px)} to{ opacity:1; transform:translateY(0)} }
+    .card header{ padding:16px 18px; border-bottom:1px solid rgba(255,255,255,.06) }
+    .card header h2{ margin:0; font-size:18px; font-weight:700 }
+    .card .content{ padding:16px 18px }
+
+    .controls{ display:flex; flex-wrap:wrap; gap:10px; align-items:center }
+    button,.btn{ background:linear-gradient(135deg,rgba(110,231,245,.15),rgba(167,139,250,.17)); border:1px solid rgba(255,255,255,.12);
+      color:var(--text); padding:10px 14px; border-radius:12px; font-weight:600; cursor:pointer; transition:transform .06s ease, box-shadow .2s ease }
+    button:hover{ transform:translateY(-1px) }
+    .btn-danger{ background:linear-gradient(135deg,rgba(239,68,68,.18),rgba(239,68,68,.10)); border-color:rgba(239,68,68,.4) }
+    .btn-ghost{ background:transparent; border-color:rgba(255,255,255,.12) }
+
+    .account{ display:flex; align-items:center; gap:10px; flex-wrap:wrap }
+    .badge{ font-size:12px; padding:6px 8px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.05); color:#cfd3ff }
+    .ok{ color:#9ae6b4; border-color:rgba(52,211,153,.45) }
+    .warn{ color:#fcd34d; border-color:rgba(245,158,11,.45) }
+
+    form{ display:grid; grid-template-columns:1fr 1fr; gap:12px } form .full{ grid-column:1/-1 }
+    label{ font-size:12px; color:var(--muted); display:block; margin-bottom:6px }
+    input,select,textarea{ width:100%; padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.03); color:var(--text) }
+    input:focus,select:focus,textarea:focus{ border-color:rgba(110,231,245,.55); box-shadow:0 8px 28px rgba(110,231,245,.14) }
+    textarea{ min-height:90px; resize:vertical }
+
+    .pill{ display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; font-size:12px; font-weight:600; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.04) }
+
+    .table-toolbar{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:10px }
+    .table-toolbar select{ min-width:160px }
+    table{ width:100%; border-collapse:separate; border-spacing:0 10px }
+    thead th{ text-align:left; font-size:12px; color:var(--muted); font-weight:700; padding:0 10px; user-select:none; cursor:pointer }
+    thead th.sortable:hover{ color:#fff }
+    thead th .arrow{ opacity:.6; font-size:10px; margin-left:6px }
+    tbody tr{ background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.08);
+      border-radius:12px; box-shadow:var(--shadow); transition:transform .12s ease }
+    tbody tr:hover{ transform:translateY(-2px) }
+    tbody td{ padding:14px 10px; vertical-align:top }
+    tbody td:first-child{ border-top-left-radius:12px; border-bottom-left-radius:12px }
+    tbody td:last-child{ border-top-right-radius:12px; border-bottom-right-radius:12px }
+
+    .row-status-Applied{ box-shadow: inset 4px 0 0 var(--applied), var(--shadow) }
+    .row-status-Aptitude-Test{ box-shadow: inset 4px 0 0 var(--aptitude), var(--shadow) }
+    .row-status-Interview{ box-shadow: inset 4px 0 0 var(--interview), var(--shadow) }
+    .row-status-Offer{ box-shadow: inset 4px 0 0 var(--offer), var(--shadow) }
+    .row-status-Rejected{ box-shadow: inset 4px 0 0 var(--rejected), var(--shadow) }
+    .row-status-Ghosted{ box-shadow: inset 4px 0 0 var(--ghosted), var(--shadow) }
+
+    .row-actions{ display:flex; gap:8px }
+
+    .charts{ display:grid; grid-template-columns:1.2fr 1fr; gap:14px }
+    @media (max-width:900px){ .charts{ grid-template-columns:1fr } }
+    .chart-wrap{ padding:12px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius:14px; position:relative; min-width:0; overflow:hidden }
+    .chart-wrap.enlargeable{ cursor:zoom-in }
+    .chart-wrap .expand-hint{ position:absolute; right:10px; top:8px; font-size:12px; color:var(--muted) }
+    #statusPie{ min-height:280px; width:100% }
+
+    .footer{ color:var(--muted); font-size:12px; margin-top:14px }
+    .hidden{ display:none }
+    a.link{ color:var(--accent1); text-decoration:none } a.link:hover{ text-decoration:underline }
+
+    .sector-chip{ display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12) }
+    .sector-chip .del{ background:transparent; border:none; color:#fca5a5; cursor:pointer; font-weight:800; line-height:1 }
+
+    .modal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:50 }
+    .modal.show{ display:flex }
+    .backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.55) }
+    .modal-card{ position:relative; width:min(1100px,92vw); height:min(72vh,720px); background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.03)); border:1px solid rgba(255,255,255,.12); border-radius:16px; box-shadow:0 20px 50px rgba(0,0,0,.45); overflow:hidden }
+    .modal-card header{ display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid rgba(255,255,255,.08) }
+    .modal-card h3{ margin:0; font-size:16px }
+    .modal-card .close{ background:transparent; border:1px solid rgba(255,255,255,.22); color:#fff; padding:6px 10px; border-radius:10px; cursor:pointer }
+    .modal-card .body{ padding:12px; height:calc(100% - 48px) }
+    #modalDailyCanvas{ width:100%; height:100% }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="top">
+      <div class="logo">
+        <span class="dot"></span>
+        <div>
+          <h1>Graduate Applications Tracker</h1>
+          <div class="sub">Daily bars + cumulative line • responsive pie • sorting • sector management • Ghosted • <strong>Cloud sync</strong></div>
+        </div>
+      </div>
+      <div class="controls">
+        <button id="exportJsonBtn" title="Export your data as JSON" type="button">Export JSON</button>
+        <button id="importJsonBtn" class="btn-ghost" title="Import data from a JSON file" type="button">Import JSON</button>
+        <input type="file" id="importFile" accept="application/json" class="hidden" />
+        <button id="demoBtn" class="btn-ghost" title="Load some demo data to play with" type="button">Load Demo Data</button>
+        <button id="resetBtn" class="btn-danger" title="Clear everything" type="button">Reset</button>
+        <div class="account">
+          <span id="userBadge" class="badge warn">Signed out</span>
+          <span id="syncBadge" class="badge">Sync: idle</span>
+          <button id="signinBtn" type="button">Sign in with Google</button>
+          <button id="signoutBtn" class="hidden" type="button">Sign out</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="grid">
+      <section class="card">
+        <header><h2>Applications</h2></header>
+        <div class="content">
+          <div class="charts">
+            <div class="chart-wrap enlargeable" id="dailyWrap" title="Click to enlarge">
+              <span class="expand-hint">Click to enlarge</span>
+              <canvas id="dailyChart" height="150" aria-label="Applications per day and cumulative"></canvas>
+            </div>
+            <div class="chart-wrap" id="statusWrap">
+              <canvas id="statusPie" height="150" aria-label="Applications by status"></canvas>
+            </div>
+          </div>
+
+          <div class="table-toolbar">
+            <div>
+              <label for="sectorFilter" style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;">Filter by sector</label>
+              <select id="sectorFilter"></select>
+            </div>
+            <div>
+              <label for="sortKey" style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;">Sort by</label>
+              <select id="sortKey">
+                <option value="applied">Applied date</option>
+                <option value="company">Company</option>
+                <option value="location">Location</option>
+                <option value="sector">Sector</option>
+                <option value="closing">Closing date</option>
+                <option value="start">Start date</option>
+              </select>
+            </div>
+            <div>
+              <label for="sortDir" style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;">Direction</label>
+              <select id="sortDir">
+                <option value="desc">Descending</option>
+                <option value="asc">Ascending</option>
+              </select>
+            </div>
+            <div style="align-self:end; padding-bottom:2px">
+              <button id="applySortBtn" class="btn-ghost" type="button">Apply</button>
+              <button id="clearFilterBtn" class="btn-ghost" type="button">Clear</button>
+            </div>
+          </div>
+
+          <div style="overflow:auto">
+            <table id="appsTable">
+              <thead>
+                <tr>
+                  <th class="sortable" data-key="company">Company <span class="arrow" id="arrow-company"></span></th>
+                  <th class="sortable" data-key="role">Role <span class="arrow" id="arrow-role"></span></th>
+                  <th class="sortable" data-key="sector">Sector <span class="arrow" id="arrow-sector"></span></th>
+                  <th>Status</th>
+                  <th class="sortable" data-key="applied">Applied <span class="arrow" id="arrow-applied"></span></th>
+                  <th class="sortable" data-key="closing">Closing <span class="arrow" id="arrow-closing"></span></th>
+                  <th class="sortable" data-key="start">Start <span class="arrow" id="arrow-start"></span></th>
+                  <th class="sortable" data-key="location">Location <span class="arrow" id="arrow-location"></span></th>
+                  <th>Link</th>
+                  <th>Description</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="footer">Data is stored locally and synced to your private Firestore when signed in. Still export JSON occasionally for your own backup.</div>
+        </div>
+      </section>
+
+      <aside class="card">
+        <header><h2 id="formTitle">Add Application</h2></header>
+        <div class="content">
+          <form id="appForm">
+            <input type="hidden" id="appId" />
+
+            <div>
+              <label for="company">Company</label>
+              <input id="company" required placeholder="e.g., Acme Corp" />
+            </div>
+            <div>
+              <label for="role">Role Title</label>
+              <input id="role" required placeholder="e.g., Graduate Analyst" />
+            </div>
+
+            <div>
+              <label for="sector">Sector</label>
+              <select id="sector" required></select>
+            </div>
+            <div>
+              <label for="status">Status</label>
+              <select id="status" required>
+                <option>Applied</option>
+                <option>Aptitude Test</option>
+                <option>Interview</option>
+                <option>Offer</option>
+                <option>Rejected</option>
+                <option>Ghosted</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="applied">Applied Date</label>
+              <input id="applied" type="date" required />
+            </div>
+            <div>
+              <label for="closing">Closing Date</label>
+              <input id="closing" type="date" />
+            </div>
+
+            <div>
+              <label for="start">Start Date</label>
+              <input id="start" type="date" />
+            </div>
+            <div>
+              <label for="location">Location</label>
+              <input id="location" placeholder="e.g., London" />
+            </div>
+
+            <div class="full">
+              <label for="url">Job Link (optional)</label>
+              <input id="url" type="url" placeholder="https://company.com/graduate-role" />
+            </div>
+
+            <div class="full">
+              <label for="description">Role Description</label>
+              <textarea id="description" placeholder="Short summary or notes"></textarea>
+            </div>
+
+            <div class="full" style="display:flex; gap:10px; margin-top:4px">
+              <button type="submit" id="saveBtn">Save</button>
+              <button type="button" id="cancelEditBtn" class="btn-ghost hidden">Cancel Edit</button>
+            </div>
+          </form>
+
+          <hr style="border:none; border-top:1px solid rgba(255,255,255,.08); margin:18px 0">
+
+          <div>
+            <h3 style="margin:0 0 8px; font-size:14px">Manage Sectors</h3>
+            <div class="controls" style="gap:8px">
+              <input id="newSector" placeholder="Add sector (e.g., Finance)"/>
+              <button id="addSectorBtn" type="button">Add</button>
+            </div>
+            <div id="sectorsList" style="margin-top:10px; display:flex; flex-wrap:wrap; gap:8px"></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Modal for enlarged Daily chart -->
+  <div class="modal" id="dailyModal" aria-hidden="true">
+    <div class="backdrop" id="modalBackdrop"></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <header>
+        <h3 id="modalTitle">Applications per Day (Cumulative)</h3>
+        <button class="close" id="modalClose" type="button">Close ✕</button>
+      </header>
+      <div class="body">
+        <canvas id="modalDailyCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ---------------- Local storage & app state ----------------
+    const STORAGE_KEY = 'gradAppTracker:data:v10';
+    const SECTORS_KEY = 'gradAppTracker:sectors:v4';
+    const DEFAULT_SECTORS = ['Finance','Consulting','Engineering','Sales'];
+    const STAGES = ['Applied','Aptitude Test','Interview','Offer','Rejected','Ghosted'];
+
+    function uuid(){ return crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36)+Math.random().toString(36).slice(2,8)) }
+    function nowIso(){ return new Date().toISOString(); }
+
+    function loadData(){
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw) return JSON.parse(raw);
+      const old = ['gradAppTracker:data:v9','gradAppTracker:data:v8','gradAppTracker:data:v7','gradAppTracker:data:v6','gradAppTracker:data:v5','gradAppTracker:data:v4','gradAppTracker:data:v3','gradAppTracker:data:v2'];
+      for(const k of old){ const v = localStorage.getItem(k); if(v) return JSON.parse(v); }
+      return [];
+    }
+    function saveData(data){ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); if(allowCloudPush) scheduleCloudPush(); }
+
+    function loadSectors(){
+      const raw = localStorage.getItem(SECTORS_KEY);
+      if(raw) return JSON.parse(raw);
+      const old = ['gradAppTracker:sectors:v3','gradAppTracker:sectors:v2','gradAppTracker:sectors:v1'];
+      for(const k of old){ const v = localStorage.getItem(k); if(v) return JSON.parse(v); }
+      return [...DEFAULT_SECTORS];
+    }
+    function saveSectors(secs){ localStorage.setItem(SECTORS_KEY, JSON.stringify([...new Set(secs)].filter(Boolean))); if(allowCloudPush) scheduleCloudPush(); }
+
+    let applications = loadData();
+    let sectors = loadSectors();
+
+    // ---------------- UI refs ----------------
+    const appsTableBody = document.querySelector('#appsTable tbody');
+    const sectorSelect = document.querySelector('#sector');
+    const sectorsList = document.querySelector('#sectorsList');
+    const sectorFilter = document.querySelector('#sectorFilter');
+    const form = document.querySelector('#appForm');
+    const formTitle = document.querySelector('#formTitle');
+    const cancelEditBtn = document.querySelector('#cancelEditBtn');
+
+    const exportBtn = document.querySelector('#exportJsonBtn');
+    const importBtn = document.querySelector('#importJsonBtn');
+    const importFile = document.querySelector('#importFile');
+    const demoBtn = document.querySelector('#demoBtn');
+    const resetBtn = document.querySelector('#resetBtn');
+
+    const sortKeySel = document.querySelector('#sortKey');
+    const sortDirSel = document.querySelector('#sortDir');
+    const applySortBtn = document.querySelector('#applySortBtn');
+    const clearFilterBtn = document.querySelector('#clearFilterBtn');
+
+    const dailyWrap = document.getElementById('dailyWrap');
+    const statusWrap = document.getElementById('statusWrap');
+    const dailyModal = document.getElementById('dailyModal');
+    const modalBackdrop = document.getElementById('modalBackdrop');
+    const modalClose = document.getElementById('modalClose');
+
+    const signinBtn = document.getElementById('signinBtn');
+    const signoutBtn = document.getElementById('signoutBtn');
+    const userBadge = document.getElementById('userBadge');
+    const syncBadge = document.getElementById('syncBadge');
+
+    let dailyChart, statusPie, modalDailyChart;
+    let currentSort = { key: 'applied', dir: 'desc' };
+
+    function escapeHtml(str){ return (str||'').replace(/[&<>\"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c])); }
+    function formatDate(d){ if(!d) return ''; try{ const x = new Date(d + 'T00:00:00'); return x.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'2-digit'}); } catch { return d } }
+    function normalizeStatusForClass(status){ return (status||'Applied').replace(/\\s+/g,'-'); }
+    function renderLink(u){ if(!u) return ''; const safe = escapeHtml(u); return `<a class="link" href="${safe}" target="_blank" rel="noopener">Open</a>` }
+
+    // ---------------- Sector management ----------------
+    function renderSectorOptions(){
+      sectorSelect.innerHTML = sectors.map(s => `<option>${escapeHtml(s)}</option>`).join('');
+      sectorFilter.innerHTML = `<option value="">All sectors</option>` + sectors.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+    }
+    function renderSectorsPills(){
+      sectorsList.innerHTML = '';
+      sectors.forEach(s => {
+        const chip = document.createElement('span');
+        chip.className = 'sector-chip';
+        const lbl = document.createElement('span'); lbl.textContent = `🏷️ ${s}`;
+        const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'del'; btn.textContent = '×'; btn.title = `Delete ${s}`; btn.dataset.name = s;
+        chip.append(lbl, btn); sectorsList.appendChild(chip);
+      });
+    }
+    sectorsList.addEventListener('click', (e) => {
+      const btn = e.target.closest('button.del');
+      if(!btn) return; const name = btn.dataset.name; if(!name) return; deleteSectorFlow(name);
+    });
+
+    function ensureOtherSector(){ if(!sectors.includes('Other')) { sectors.push('Other'); saveSectors(sectors); } }
+    function deleteSectorFlow(name){
+      const count = applications.filter(a => a.sector===name).length;
+      const proceed = confirm(`Delete sector "${name}"?${count?`\\n\\n${count} application(s) currently use this sector. They will be reassigned to "Other".`:''}`);
+      if(!proceed) return;
+      if(count){ ensureOtherSector(); applications = applications.map(a => a.sector===name ? { ...a, sector:'Other', updatedAt: nowIso() } : a); saveData(applications); }
+      sectors = sectors.filter(s => s!==name); saveSectors(sectors);
+      renderSectorOptions(); renderSectorsPills(); renderTable(); renderCharts();
+    }
+
+    document.getElementById('addSectorBtn').addEventListener('click', () => {
+      const inp = document.getElementById('newSector');
+      const val = inp.value.trim(); if(!val) return;
+      if(sectors.includes(val)) { alert('Sector already exists.'); return; }
+      sectors.push(val); saveSectors(sectors); inp.value=''; renderSectorOptions(); renderSectorsPills();
+    });
+
+    // ---------------- Sorting & filtering ----------------
+    function cmp(a,b){ return a<b?-1:a>b?1:0; }
+    function dateCmp(da,db){ if(!da&&!db) return 0; if(!da) return -1; if(!db) return 1; return cmp(da,db); }
+
+    function applySortAndFilter(rows){
+      const fSector = sectorFilter.value;
+      let arr = fSector ? rows.filter(r => r.sector===fSector) : [...rows];
+      const { key, dir } = currentSort; const sgn = dir==='asc'?1:-1;
+      arr.sort((x,y)=>{ if(['applied','closing','start'].includes(key)) return sgn*dateCmp(x[key]||'', y[key]||''); return sgn*cmp((x[key]||'').toLowerCase(), (y[key]||'').toLowerCase()); });
+      return arr;
+    }
+
+    function updateHeaderArrows(){ document.querySelectorAll('thead th .arrow').forEach(el => el.textContent=''); const arr = document.getElementById('arrow-' + currentSort.key); if(arr) arr.textContent = currentSort.dir==='asc' ? '▲' : '▼'; }
+
+    document.querySelectorAll('#appsTable thead th.sortable').forEach(th => {
+      th.addEventListener('click', () => {
+        const key = th.getAttribute('data-key');
+        if(currentSort.key===key){ currentSort.dir = currentSort.dir==='asc'?'desc':'asc'; } else { currentSort.key = key; currentSort.dir = key==='applied'?'desc':'asc'; }
+        sortKeySel.value = currentSort.key; sortDirSel.value = currentSort.dir; renderTable();
+      });
+    });
+
+    applySortBtn.addEventListener('click', () => { currentSort.key = sortKeySel.value; currentSort.dir = sortDirSel.value; renderTable(); });
+    clearFilterBtn.addEventListener('click', () => { sectorFilter.value=''; renderTable(); });
+
+    // ---------------- Table render & row actions ----------------
+    function renderTable(){
+      appsTableBody.innerHTML = '';
+      const frag = document.createDocumentFragment();
+      updateHeaderArrows();
+      const rows = applySortAndFilter(applications);
+
+      rows.forEach(app => {
+        const tr = document.createElement('tr');
+        tr.className = 'row-status-' + normalizeStatusForClass(app.status);
+        tr.innerHTML = `
+          <td><strong>${escapeHtml(app.company)}</strong></td>
+          <td>${escapeHtml(app.role)}</td>
+          <td><span class="pill">${escapeHtml(app.sector)}</span></td>
+          <td>
+            <select data-id="${app.id}" class="statusSelect">
+              ${STAGES.map(s => `<option ${s===app.status?'selected':''}>${s}</option>`).join('')}
+            </select>
+          </td>
+          <td>${formatDate(app.applied)}</td>
+          <td>${formatDate(app.closing)}</td>
+          <td>${formatDate(app.start)}</td>
+          <td>${escapeHtml(app.location||'')}</td>
+          <td>${renderLink(app.url)}</td>
+          <td style="max-width:260px">${escapeHtml(app.description||'')}</td>
+          <td>
+            <div class="row-actions">
+              <button class="btn-ghost" data-action="edit" data-id="${app.id}" type="button">Edit</button>
+              <button class="btn-danger" data-action="delete" data-id="${app.id}" type="button">Delete</button>
+            </div>
+          </td>`;
+        frag.appendChild(tr);
+      });
+
+      appsTableBody.appendChild(frag);
+      appsTableBody.querySelectorAll('button[data-action]').forEach(btn => btn.addEventListener('click', onRowAction));
+      appsTableBody.querySelectorAll('select.statusSelect').forEach(sel => sel.addEventListener('change', onStatusChange));
+      renderCharts();
+    }
+
+    function onRowAction(e){
+      const id = e.currentTarget.getAttribute('data-id');
+      const action = e.currentTarget.getAttribute('data-action');
+      if(action==='delete'){
+        if(!confirm('Delete this application?')) return;
+        applications = applications.filter(a => a.id!==id);
+        saveData(applications); renderTable();
+      }
+      if(action==='edit'){
+        const app = applications.find(a => a.id===id); if(!app) return;
+        document.getElementById('appId').value = app.id;
+        document.getElementById('company').value = app.company;
+        document.getElementById('role').value = app.role;
+        document.getElementById('sector').value = app.sector;
+        document.getElementById('status').value = app.status;
+        document.getElementById('applied').value = app.applied || '';
+        document.getElementById('closing').value = app.closing || '';
+        document.getElementById('start').value = app.start || '';
+        document.getElementById('location').value = app.location || '';
+        document.getElementById('description').value = app.description || '';
+        document.getElementById('url').value = app.url || '';
+        formTitle.textContent = 'Edit Application';
+        cancelEditBtn.classList.remove('hidden');
+        document.getElementById('company').focus();
+      }
+    }
+
+    function onStatusChange(e){
+      const id = e.currentTarget.getAttribute('data-id');
+      const app = applications.find(a => a.id===id); if(!app) return;
+      app.status = e.currentTarget.value; app.updatedAt = nowIso(); saveData(applications); renderTable();
+    }
+
+    cancelEditBtn.addEventListener('click', () => {
+      form.reset(); document.getElementById('appId').value=''; formTitle.textContent='Add Application'; cancelEditBtn.classList.add('hidden');
+    });
+
+    // ---------------- Form submit ----------------
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const id = document.getElementById('appId').value || uuid();
+      const rawUrl = document.getElementById('url').value.trim();
+      const safeUrl = rawUrl && !/^https?:\/\//i.test(rawUrl) ? 'https://' + rawUrl : rawUrl;
+      const app = {
+        id,
+        company: document.getElementById('company').value.trim(),
+        role: document.getElementById('role').value.trim(),
+        sector: document.getElementById('sector').value,
+        status: document.getElementById('status').value,
+        applied: document.getElementById('applied').value,
+        closing: document.getElementById('closing').value,
+        start: document.getElementById('start').value,
+        location: document.getElementById('location').value.trim(),
+        description: document.getElementById('description').value.trim(),
+        url: safeUrl,
+        updatedAt: nowIso()
+      };
+      const exists = applications.some(a => a.id===id);
+      if(exists){ applications = applications.map(a => a.id===id ? app : a); } else { applications.push(app); }
+      saveData(applications); renderTable(); form.reset(); document.getElementById('appId').value=''; formTitle.textContent='Add Application'; cancelEditBtn.classList.add('hidden');
+    });
+
+    // ---------------- Charts ----------------
+    function buildDailySeries(){
+      const dates = applications.filter(a=>a.applied).map(a=>a.applied).sort();
+      if(dates.length===0){ return { labels: [], perDay: [], cumulative: [] }; }
+      const min = new Date(dates[0]);
+      const today = new Date();
+      const max = new Date(Math.max(new Date(dates[dates.length-1]).getTime(), new Date(today.toISOString().slice(0,10)).getTime()));
+      const labels = [];
+      const counts = new Map();
+      applications.forEach(a=>{ if(!a.applied) return; counts.set(a.applied, (counts.get(a.applied)||0)+1); });
+      const d = new Date(min); d.setHours(0,0,0,0);
+      const end = new Date(max); end.setHours(0,0,0,0);
+      while(d<=end){ labels.push(d.toISOString().slice(0,10)); d.setDate(d.getDate()+1); }
+      const perDay = labels.map(key => counts.get(key)||0);
+      const cumulative = []; let run = 0; perDay.forEach(n => { run += n; cumulative.push(run); });
+      return { labels, perDay, cumulative };
+    }
+
+    function getDailyChartConfig(){
+      const s = buildDailySeries();
+      return {
+        type:'bar',
+        data:{
+          labels: s.labels.map(x => new Date(x)),
+          datasets: [
+            { type:'bar', label:'Applications per day', data: s.perDay, borderWidth:0, yAxisID:'y', barPercentage:0.6, categoryPercentage:0.8 },
+            { type:'line', label:'Cumulative total', data: s.cumulative, tension:.35, fill:false, borderWidth:2, yAxisID:'y1' }
+          ]
+        },
+        options:{
+          animation:{ duration:650, easing:'easeOutQuart' },
+          scales:{ x:{ type:'time', time:{ unit:'day' }, grid:{ display:false } }, y:{ beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'rgba(255,255,255,.06)' } }, y1:{ position:'right', beginAtZero:true, ticks:{ precision:0 }, grid:{ drawOnChartArea:false } } },
+          plugins:{ legend:{ labels:{ color:'#cfd3ff' } }, tooltip:{ mode:'index', intersect:false } }, maintainAspectRatio:false
+        }
+      }
+    }
+
+    function legendPos(){ const w = statusWrap.offsetWidth || window.innerWidth; return w >= 520 ? 'right' : 'bottom'; }
+
+    function renderDailyComboChart(){
+      if(typeof Chart === 'undefined') { console.warn('Chart.js not loaded'); return; }
+      const ctx = document.getElementById('dailyChart'); if(!ctx) return;
+      const cfg = getDailyChartConfig();
+      if(dailyChart){ dailyChart.data = cfg.data; dailyChart.options = cfg.options; dailyChart.update(); }
+      else { dailyChart = new Chart(ctx, cfg); }
+    }
+
+    function renderStatusPie(){
+      if(typeof Chart === 'undefined') { console.warn('Chart.js not loaded'); return; }
+      const ctx = document.getElementById('statusPie'); if(!ctx) return;
+      const byStatus = STAGES.map(s => ({ s, n: applications.filter(a => (a.status||'Applied')===s).length }));
+      const colors = { Applied:'#60a5fa','Aptitude Test':'#f59e0b',Interview:'#34d399',Offer:'#a78bfa',Rejected:'#ef4444',Ghosted:'#9ca3af' };
+      const data = { labels: byStatus.map(x=>x.s), datasets:[{ data: byStatus.map(x=>x.n), backgroundColor: byStatus.map(x=>colors[x.s]) }] };
+      const options = { responsive:true, maintainAspectRatio:false, layout:{ padding:8 }, plugins:{ legend:{ position:legendPos(), labels:{ color:'#cfd3ff', usePointStyle:true, boxWidth:10, boxHeight:10, padding:12, font:{ size:12 } } }, tooltip:{ callbacks:{ label:(c)=> `${c.label}: ${c.raw}` } } } };
+      if(statusPie){ statusPie.data=data; statusPie.options=options; statusPie.update(); }
+      else { statusPie = new Chart(ctx,{ type:'pie', data, options }); }
+    }
+
+    function renderCharts(){ renderDailyComboChart(); renderStatusPie(); }
+    window.addEventListener('resize', () => { if(statusPie){ statusPie.options.plugins.legend.position = legendPos(); statusPie.update(); } });
+
+    // ---------------- Import/Export/Reset/Demo ----------------
+    exportBtn.addEventListener('click', () => {
+      const ts = new Date().toISOString().slice(0,10);
+      const blob = new Blob([JSON.stringify({ applications, sectors, version:'v10' }, null, 2)], { type:'application/json' });
+      const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`graduate-applications-backup-${ts}.json`; a.click(); URL.revokeObjectURL(url);
+    });
+    importBtn.addEventListener('click', () => importFile.click());
+    importFile.addEventListener('change', async (e) => {
+      const file = e.target.files[0]; if(!file) return; const text = await file.text();
+      try{ const parsed = JSON.parse(text); if(Array.isArray(parsed.applications)) applications = parsed.applications; else if(Array.isArray(parsed)) applications = parsed; if(Array.isArray(parsed.sectors)) sectors = parsed.sectors; saveData(applications); saveSectors(sectors); renderSectorOptions(); renderSectorsPills(); renderTable(); }
+      catch(err){ alert('Invalid JSON file.'); }
+      importFile.value='';
+    });
+    resetBtn.addEventListener('click', () => {
+      if(!confirm('This will clear all data. Continue?')) return; applications=[]; sectors=[...DEFAULT_SECTORS]; saveData(applications); saveSectors(sectors); renderSectorOptions(); renderSectorsPills(); renderTable(); form.reset();
+    });
+
+    demoBtn.addEventListener('click', () => {
+      if(!confirm('Load demo data? This will overwrite your current data.')) return;
+      const today = new Date(); const daysAgo = n => { const d=new Date(today); d.setDate(d.getDate()-n); return d.toISOString().slice(0,10) };
+      applications = [
+        { id:uuid(), company:'Helios Bank', role:'Graduate Risk Analyst', sector:'Finance', status:'Aptitude Test', applied:daysAgo(14), closing:daysAgo(7), start:'2026-09-01', location:'London', url:'https://helios.example/grad-risk', description:'Quant risk rotation.', updatedAt: nowIso() },
+        { id:uuid(), company:'North & Co', role:'Strategy Analyst', sector:'Consulting', status:'Interview', applied:daysAgo(12), closing:daysAgo(4), start:'2026-09-01', location:'Manchester', url:'https://northco.example/strategy-analyst', description:'Commercial strategy.', updatedAt: nowIso() },
+        { id:uuid(), company:'Orbital Dynamics', role:'Graduate Engineer', sector:'Engineering', status:'Applied', applied:daysAgo(10), closing:daysAgo(2), start:'2026-01-15', location:'Bristol', url:'https://orbital.example/grad-eng', description:'R&D rotations.', updatedAt: nowIso() },
+        { id:uuid(), company:'Veridian', role:'Sales Associate (Grad)', sector:'Sales', status:'Rejected', applied:daysAgo(9), closing:'', start:'', location:'Remote', url:'https://veridian.example/grad-sales', description:'SaaS sales track.', updatedAt: nowIso() },
+        { id:uuid(), company:'Atlas Advisory', role:'Consulting Analyst', sector:'Consulting', status:'Offer', applied:daysAgo(8), closing:'', start:'2026-09-01', location:'London', url:'https://atlas.example/consulting-analyst', description:'Public sector focus.', updatedAt: nowIso() },
+        { id:uuid(), company:'Fintrex', role:'Data Analyst (Grad)', sector:'Finance', status:'Ghosted', applied:daysAgo(6), closing:daysAgo(1), start:'2026-06-01', location:'Leeds', url:'https://fintrex.example/data-analyst-grad', description:'', updatedAt: nowIso() },
+        { id:uuid(), company:'Aether Systems', role:'Software Engineer (Grad)', sector:'Engineering', status:'Interview', applied:daysAgo(5), closing:'', start:'2026-02-01', location:'London', url:'https://aether.example/se-grad', description:'Platform team.', updatedAt: nowIso() },
+        { id:uuid(), company:'Quanta Health', role:'Operations Graduate', sector:'Engineering', status:'Applied', applied:daysAgo(3), closing:'', start:'', location:'Birmingham', url:'https://quanta.example/ops-grad', description:'', updatedAt: nowIso() },
+        { id:uuid(), company:'Lumina', role:'Market Analyst', sector:'Finance', status:'Applied', applied:daysAgo(2), closing:'', start:'', location:'London', url:'https://lumina.example/market-analyst-grad', description:'', updatedAt: nowIso() },
+        { id:uuid(), company:'Blue Ridge', role:'Graduate Consultant', sector:'Consulting', status:'Aptitude Test', applied:daysAgo(1), closing:'', start:'', location:'Edinburgh', url:'https://blueridge.example/grad-consultant', description:'', updatedAt: nowIso() },
+      ];
+      sectors = [...new Set([...sectors, 'Finance','Consulting','Engineering','Sales'])];
+      saveData(applications); saveSectors(sectors); renderSectorOptions(); renderSectorsPills(); renderTable();
+    });
+
+    // ---------------- Modal (enlarge daily chart) ----------------
+    function openDailyModal(){ dailyModal.classList.add('show'); const ctx = document.getElementById('modalDailyCanvas'); const cfg = getDailyChartConfig(); if(modalDailyChart){ modalDailyChart.destroy(); } modalDailyChart = new Chart(ctx, cfg); document.addEventListener('keydown', escHandler); }
+    function closeDailyModal(){ dailyModal.classList.remove('show'); if(modalDailyChart){ modalDailyChart.destroy(); modalDailyChart=null; } document.removeEventListener('keydown', escHandler); }
+    function escHandler(e){ if(e.key==='Escape') closeDailyModal(); }
+    dailyWrap.addEventListener('click', openDailyModal); modalBackdrop.addEventListener('click', closeDailyModal); modalClose.addEventListener('click', closeDailyModal);
+
+    // ---------------- Firebase Cloud Sync ----------------
+    // Config from you:
+    const firebaseConfig = {
+      apiKey: "AIzaSyA6U3E6qocjEr1Nx1wAI1d4PGIGKOFm8rc",
+      authDomain: "grad-tracker-2b268.firebaseapp.com",
+      projectId: "grad-tracker-2b268",
+      storageBucket: "grad-tracker-2b268.firebasestorage.app",
+      messagingSenderId: "118189138960",
+      appId: "1:118189138960:web:3660eb38050e7730329695"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // Enable offline cache for Firestore
+    db.enableIndexedDbPersistence().catch(() => {/* ignore */});
+
+    let user = null; let uid = null; let unsubApps = null;
+    let allowCloudPush = false; // becomes true after initial sync is done
+    let pushTimer = null;
+
+    function setSync(text, cls){ syncBadge.textContent = `Sync: ${text}`; syncBadge.classList.remove('ok','warn'); if(cls) syncBadge.classList.add(cls); }
+    function setUserBadge(){ if(user){ userBadge.textContent = `Signed in as ${user.email}`; userBadge.classList.remove('warn'); userBadge.classList.add('ok'); signinBtn.classList.add('hidden'); signoutBtn.classList.remove('hidden'); } else { userBadge.textContent = 'Signed out'; userBadge.classList.add('warn'); userBadge.classList.remove('ok'); signinBtn.classList.remove('hidden'); signoutBtn.classList.add('hidden'); } }
+
+    // Sign in/out handlers
+    signinBtn.addEventListener('click', async () => {
+      try{
+        const provider = new firebase.auth.GoogleAuthProvider();
+        setSync('signing in…');
+        await auth.signInWithPopup(provider);
+      }catch(err){ alert('Sign-in failed: ' + err.message); setSync('idle'); }
+    });
+    signoutBtn.addEventListener('click', async () => {
+      try{ setSync('signing out…'); await auth.signOut(); }catch(err){ alert('Sign-out failed: ' + err.message); } finally { setSync('idle'); }
+    });
+
+    function scheduleCloudPush(){
+      if(!allowCloudPush || !uid) return;
+      clearTimeout(pushTimer);
+      pushTimer = setTimeout(pushAllToCloud, 800);
+      setSync('pending…', 'warn');
+    }
+
+    async function pushAllToCloud(){
+      if(!uid) return;
+      try{
+        setSync('uploading…', 'warn');
+        const userRef = db.collection('users').doc(uid);
+        const appsCol = userRef.collection('applications');
+
+        // Fetch remote ids to delete removed ones
+        const snap = await appsCol.get();
+        const remoteIds = new Set(); snap.forEach(d => remoteIds.add(d.id));
+
+        // Batch writes (limit 500 per batch)
+        let batch = db.batch(); let ops = 0;
+        for(const a of applications){
+          const docRef = appsCol.doc(a.id);
+          batch.set(docRef, a, { merge: true });
+          remoteIds.delete(a.id);
+          ops++;
+          if(ops >= 450){ await batch.commit(); batch = db.batch(); ops = 0; }
+        }
+        // Deletes
+        for(const id of remoteIds){
+          batch.delete(appsCol.doc(id)); ops++;
+          if(ops >= 450){ await batch.commit(); batch = db.batch(); ops = 0; }
+        }
+        // Save sectors
+        batch.set(userRef, { sectors, lastUpdated: nowIso() }, { merge: true });
+        await batch.commit();
+        setSync('up to date', 'ok');
+      }catch(err){
+        console.error(err);
+        setSync('error');
+      }
+    }
+
+    auth.onAuthStateChanged(async (u) => {
+      user = u; uid = u ? u.uid : null; setUserBadge();
+      if(!u){ if(unsubApps) { unsubApps(); unsubApps=null; } allowCloudPush = false; setSync('idle'); return; }
+      setSync('connecting…', 'warn');
+      const userRef = db.collection('users').doc(uid);
+      const appsCol = userRef.collection('applications');
+
+      // Fetch remote sectors
+      const userSnap = await userRef.get();
+      const remoteSectors = userSnap.exists ? (userSnap.data().sectors || null) : null;
+
+      // Fetch remote apps
+      const appsSnap = await appsCol.get();
+      const remote = []; appsSnap.forEach(d => remote.push(d.data()));
+
+      // Merge strategy: union by id, prefer newest updatedAt if both exist
+      const byId = new Map();
+      for(const r of remote){ byId.set(r.id, r); }
+      for(const l of applications){
+        if(!byId.has(l.id)) byId.set(l.id, l);
+        else {
+          const r = byId.get(l.id);
+          const lu = l.updatedAt || ''; const ru = r.updatedAt || '';
+          if(lu > ru) byId.set(l.id, l); // keep newer
+        }
+      }
+      applications = Array.from(byId.values());
+      saveData(applications);
+
+      // Sectors: prefer remote if present
+      if(remoteSectors && Array.isArray(remoteSectors)) { sectors = remoteSectors; saveSectors(sectors); }
+
+      renderSectorOptions(); renderSectorsPills(); renderTable();
+
+      // Push everything so both sides are aligned, then enable live sync & pushes
+      await pushAllToCloud();
+
+      // Live subscription to remote changes
+      if(unsubApps) unsubApps();
+      unsubApps = appsCol.onSnapshot(snap => {
+        // Replace local with remote snapshot
+        const arr = []; snap.forEach(d => arr.push(d.data()));
+        allowCloudPush = false;
+        applications = arr; saveData(applications); // saveData won't push because allowCloudPush=false
+        allowCloudPush = true;
+        renderTable();
+      });
+
+      allowCloudPush = true;
+      setSync('up to date', 'ok');
+    });
+
+    // ---------------- Init ----------------
+    function init(){
+      renderSectorOptions(); renderSectorsPills();
+      sortKeySel.value = currentSort.key; sortDirSel.value = currentSort.dir; sectorFilter.value='';
+      renderTable(); renderCharts();
+      const today = new Date().toISOString().slice(0,10); document.getElementById('applied').value = today;
+    }
+    init();
+  </script>
+</body>
+</html>
