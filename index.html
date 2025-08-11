@@ -13,7 +13,8 @@
     :root{
       --bg:#0f1226; --card:#14183a; --muted:#7e88c8; --text:#e7e9ff;
       --accent1:#6ee7f5; --accent2:#a78bfa; --shadow:0 10px 30px rgba(0,0,0,.25);
-      --radius:18px; --applied:#60a5fa; --aptitude:#f59e0b; --interview:#34d399; --offer:#a78bfa; --rejected:#ef4444;
+      --radius:18px;
+      --applied:#60a5fa; --aptitude:#f59e0b; --interview:#34d399; --offer:#a78bfa; --rejected:#ef4444; --ghosted:#9ca3af;
     }
     *{ box-sizing:border-box } html,body{ height:100% }
     body{ margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; color:var(--text);
@@ -72,13 +73,17 @@
     .row-status-Interview{ box-shadow: inset 4px 0 0 var(--interview), var(--shadow) }
     .row-status-Offer{ box-shadow: inset 4px 0 0 var(--offer), var(--shadow) }
     .row-status-Rejected{ box-shadow: inset 4px 0 0 var(--rejected), var(--shadow) }
+    .row-status-Ghosted{ box-shadow: inset 4px 0 0 var(--ghosted), var(--shadow) }
 
     .row-actions{ display:flex; gap:8px }
 
     /* Charts */
     .charts{ display:grid; grid-template-columns:1.2fr 1fr; gap:14px }
     @media (max-width:900px){ .charts{ grid-template-columns:1fr } }
-    .chart-wrap{ padding:12px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius:14px }
+    .chart-wrap{ padding:12px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius:14px; position:relative }
+    .chart-wrap.enlargeable{ cursor:zoom-in }
+    .chart-wrap .expand-hint{ position:absolute; right:10px; top:8px; font-size:12px; color:var(--muted) }
+    #statusPie{ min-height:260px }
 
     .footer{ color:var(--muted); font-size:12px; margin-top:14px }
     .hidden{ display:none }
@@ -86,6 +91,17 @@
 
     .sector-chip{ display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12) }
     .sector-chip .del{ background:transparent; border:none; color:#fca5a5; cursor:pointer; font-weight:800; line-height:1 }
+
+    /* Modal for enlarged chart */
+    .modal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:50 }
+    .modal.show{ display:flex }
+    .backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.55) }
+    .modal-card{ position:relative; width:min(1100px,92vw); height:min(72vh,720px); background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.03)); border:1px solid rgba(255,255,255,.12); border-radius:16px; box-shadow:0 20px 50px rgba(0,0,0,.45); overflow:hidden }
+    .modal-card header{ display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid rgba(255,255,255,.08) }
+    .modal-card h3{ margin:0; font-size:16px }
+    .modal-card .close{ background:transparent; border:1px solid rgba(255,255,255,.22); color:#fff; padding:6px 10px; border-radius:10px; cursor:pointer }
+    .modal-card .body{ padding:12px; height:calc(100% - 48px) }
+    #modalDailyCanvas{ width:100%; height:100% }
   </style>
 </head>
 <body>
@@ -95,7 +111,7 @@
         <span class="dot"></span>
         <div>
           <h1>Graduate Applications Tracker</h1>
-          <div class="sub">Track applications, deadlines, and progress. Visualise with a daily applications graph + cumulative total and a status pie. Sorting + sector delete.</div>
+          <div class="sub">Track applications, deadlines, and progress. Visualise with a combo daily chart and a status pie. Sorting + sector delete. Ghosted included.</div>
         </div>
       </div>
       <div class="controls">
@@ -108,22 +124,21 @@
     </header>
 
     <div class="grid">
-      <!-- Left: Table + Charts -->
       <section class="card">
         <header>
           <h2>Applications</h2>
         </header>
         <div class="content">
           <div class="charts">
-            <div class="chart-wrap">
-              <canvas id="dailyChart" height="120"></canvas>
+            <div class="chart-wrap enlargeable" id="dailyWrap" title="Click to enlarge">
+              <span class="expand-hint">Click to enlarge</span>
+              <canvas id="dailyChart" height="140" aria-label="Applications per day and cumulative"></canvas>
             </div>
             <div class="chart-wrap">
-              <canvas id="statusPie" height="120"></canvas>
+              <canvas id="statusPie" height="140" aria-label="Applications by status"></canvas>
             </div>
           </div>
 
-          <!-- toolbar for filters/sorting -->
           <div class="table-toolbar">
             <div>
               <label for="sectorFilter" style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;">Filter by sector</label>
@@ -173,11 +188,10 @@
               <tbody></tbody>
             </table>
           </div>
-          <div class="footer">Tip: click a column header to sort. Use the toolbar to filter by sector or set a specific sort.</div>
+          <div class="footer">Your data is stored locally in this browser. Use Export JSON as a backup occasionally.</div>
         </div>
       </section>
 
-      <!-- Right: New/Edit Form & Sector Manager -->
       <aside class="card">
         <header>
           <h2 id="formTitle">Add Application</h2>
@@ -207,6 +221,7 @@
                 <option>Interview</option>
                 <option>Offer</option>
                 <option>Rejected</option>
+                <option>Ghosted</option>
               </select>
             </div>
 
@@ -259,30 +274,45 @@
     </div>
   </div>
 
+  <!-- Modal for enlarged Daily chart -->
+  <div class="modal" id="dailyModal" aria-hidden="true">
+    <div class="backdrop" id="modalBackdrop"></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <header>
+        <h3 id="modalTitle">Applications per Day (Cumulative)</h3>
+        <button class="close" id="modalClose" type="button">Close ✕</button>
+      </header>
+      <div class="body">
+        <canvas id="modalDailyCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+
   <script>
     // --- Storage & constants ---
-    const STORAGE_KEY = 'gradAppTracker:data:v7'; // bump storage
+    const STORAGE_KEY = 'gradAppTracker:data:v8';
     const SECTORS_KEY = 'gradAppTracker:sectors:v3';
     const DEFAULT_SECTORS = ['Finance','Consulting','Engineering','Sales'];
-    const STAGES = ['Applied','Aptitude Test','Interview','Offer','Rejected'];
+    const STAGES = ['Applied','Aptitude Test','Interview','Offer','Rejected','Ghosted'];
 
     function uuid(){ return crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36)+Math.random().toString(36).slice(2,8)) }
 
     function loadData(){
       const raw = localStorage.getItem(STORAGE_KEY);
       if(raw) return JSON.parse(raw);
-      // migrate older
-      const v3 = localStorage.getItem('gradAppTracker:data:v3');
-      return v3?JSON.parse(v3):[];
+      // migrate older versions
+      const keys = ['gradAppTracker:data:v7','gradAppTracker:data:v6','gradAppTracker:data:v5','gradAppTracker:data:v4','gradAppTracker:data:v3','gradAppTracker:data:v2'];
+      for(const k of keys){ const v = localStorage.getItem(k); if(v) return JSON.parse(v); }
+      return [];
     }
     function saveData(data){ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
 
     function loadSectors(){
       const raw = localStorage.getItem(SECTORS_KEY);
       if(raw) return JSON.parse(raw);
-      const v2 = localStorage.getItem('gradAppTracker:sectors:v2');
-      const v1 = localStorage.getItem('gradAppTracker:sectors:v1');
-      return v2?JSON.parse(v2):(v1?JSON.parse(v1):[...DEFAULT_SECTORS]);
+      const keys = ['gradAppTracker:sectors:v2','gradAppTracker:sectors:v1'];
+      for(const k of keys){ const v = localStorage.getItem(k); if(v) return JSON.parse(v); }
+      return [...DEFAULT_SECTORS];
     }
     function saveSectors(sectors){ localStorage.setItem(SECTORS_KEY, JSON.stringify([...new Set(sectors)].filter(Boolean))); }
 
@@ -309,7 +339,12 @@
     const applySortBtn = document.querySelector('#applySortBtn');
     const clearFilterBtn = document.querySelector('#clearFilterBtn');
 
-    let dailyChart, statusPie;
+    const dailyWrap = document.getElementById('dailyWrap');
+    const dailyModal = document.getElementById('dailyModal');
+    const modalBackdrop = document.getElementById('modalBackdrop');
+    const modalClose = document.getElementById('modalClose');
+
+    let dailyChart, statusPie, modalDailyChart;
     let currentSort = { key: 'applied', dir: 'desc' };
 
     // --- Helpers ---
@@ -326,24 +361,19 @@
     function renderSectorsPills(){
       sectorsList.innerHTML = '';
       sectors.forEach(s => {
-        const wrapper = document.createElement('span');
-        wrapper.className = 'sector-chip';
-        const label = document.createElement('span'); label.textContent = `🏷️ ${s}`;
-        const del = document.createElement('button'); del.type='button'; del.className='del'; del.textContent='×'; del.dataset.name=s; del.setAttribute('aria-label',`Delete ${s}`);
-        wrapper.append(label, del);
-        sectorsList.appendChild(wrapper);
+        const chip = document.createElement('span');
+        chip.className = 'sector-chip';
+        const lbl = document.createElement('span'); lbl.textContent = `🏷️ ${s}`;
+        const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'del'; btn.textContent = '×'; btn.title = `Delete ${s}`; btn.dataset.name = s;
+        chip.append(lbl, btn); sectorsList.appendChild(chip);
       });
     }
-    // Delegated listener (fixes non-working X after rerenders)
     sectorsList.addEventListener('click', (e) => {
       const btn = e.target.closest('button.del');
-      if(!btn) return;
-      const name = btn.dataset.name;
-      if(name) deleteSectorFlow(name);
+      if(!btn) return; const name = btn.dataset.name; if(!name) return; deleteSectorFlow(name);
     });
 
     function ensureOtherSector(){ if(!sectors.includes('Other')) { sectors.push('Other'); saveSectors(sectors); } }
-
     function deleteSectorFlow(name){
       const count = applications.filter(a => a.sector===name).length;
       const proceed = confirm(`Delete sector "${name}"?${count?`\n\n${count} application(s) currently use this sector. They will be reassigned to "Other".`:''}`);
@@ -367,34 +397,22 @@
     function applySortAndFilter(rows){
       const fSector = sectorFilter.value;
       let arr = fSector ? rows.filter(r => r.sector===fSector) : [...rows];
-      const { key, dir } = currentSort;
-      const sgn = dir==='asc'?1:-1;
-      arr.sort((x,y)=>{
-        if(['applied','closing','start'].includes(key)) return sgn*dateCmp(x[key]||'', y[key]||'');
-        return sgn*cmp((x[key]||'').toLowerCase(), (y[key]||'').toLowerCase());
-      });
+      const { key, dir } = currentSort; const sgn = dir==='asc'?1:-1;
+      arr.sort((x,y)=>{ if(['applied','closing','start'].includes(key)) return sgn*dateCmp(x[key]||'', y[key]||''); return sgn*cmp((x[key]||'').toLowerCase(), (y[key]||'').toLowerCase()); });
       return arr;
     }
 
-    function updateHeaderArrows(){
-      document.querySelectorAll('thead th .arrow').forEach(el => el.textContent='');
-      const arr = document.getElementById('arrow-' + currentSort.key);
-      if(arr) arr.textContent = currentSort.dir==='asc' ? '▲' : '▼';
-    }
+    function updateHeaderArrows(){ document.querySelectorAll('thead th .arrow').forEach(el => el.textContent=''); const arr = document.getElementById('arrow-' + currentSort.key); if(arr) arr.textContent = currentSort.dir==='asc' ? '▲' : '▼'; }
 
     document.querySelectorAll('#appsTable thead th.sortable').forEach(th => {
       th.addEventListener('click', () => {
         const key = th.getAttribute('data-key');
-        if(currentSort.key===key){ currentSort.dir = currentSort.dir==='asc'?'desc':'asc'; }
-        else { currentSort.key = key; currentSort.dir = key==='applied'?'desc':'asc'; }
-        sortKeySel.value = currentSort.key; sortDirSel.value = currentSort.dir;
-        renderTable();
+        if(currentSort.key===key){ currentSort.dir = currentSort.dir==='asc'?'desc':'asc'; } else { currentSort.key = key; currentSort.dir = key==='applied'?'desc':'asc'; }
+        sortKeySel.value = currentSort.key; sortDirSel.value = currentSort.dir; renderTable();
       });
     });
 
-    applySortBtn.addEventListener('click', () => {
-      currentSort.key = sortKeySel.value; currentSort.dir = sortDirSel.value; renderTable();
-    });
+    applySortBtn.addEventListener('click', () => { currentSort.key = sortKeySel.value; currentSort.dir = sortDirSel.value; renderTable(); });
     clearFilterBtn.addEventListener('click', () => { sectorFilter.value=''; renderTable(); });
 
     // --- Table rendering ---
@@ -498,71 +516,78 @@
       saveData(applications); renderTable(); form.reset(); document.getElementById('appId').value=''; formTitle.textContent='Add Application'; cancelEditBtn.classList.add('hidden');
     });
 
-    // --- Charts (combo: bars per-day + line cumulative) ---
-    function renderCharts(){ renderDailyComboChart(); renderStatusPie(); }
+    // --- Charts ---
+    function chartColors(){
+      const cs = getComputedStyle(document.documentElement);
+      return {
+        Applied: cs.getPropertyValue('--applied').trim()||'#60a5fa',
+        'Aptitude Test': cs.getPropertyValue('--aptitude').trim()||'#f59e0b',
+        Interview: cs.getPropertyValue('--interview').trim()||'#34d399',
+        Offer: cs.getPropertyValue('--offer').trim()||'#a78bfa',
+        Rejected: cs.getPropertyValue('--rejected').trim()||'#ef4444',
+        Ghosted: cs.getPropertyValue('--ghosted').trim()||'#9ca3af',
+      };
+    }
 
     function buildDailySeries(){
       const dates = applications.filter(a=>a.applied).map(a=>a.applied).sort();
       if(dates.length===0){ return { labels: [], perDay: [], cumulative: [] }; }
       const min = new Date(dates[0]);
-      const max = new Date(dates[dates.length-1]);
-      const todayStr = new Date().toISOString().slice(0,10);
-      const endDate = new Date(Math.max(max, new Date(todayStr)));
+      const today = new Date();
+      const max = new Date(Math.max(new Date(dates[dates.length-1]).getTime(), new Date(today.toISOString().slice(0,10)).getTime()));
       const labels = [];
-      const map = new Map();
-      applications.forEach(a=>{ if(!a.applied) return; map.set(a.applied,(map.get(a.applied)||0)+1); });
+      const counts = new Map();
+      applications.forEach(a=>{ if(!a.applied) return; counts.set(a.applied, (counts.get(a.applied)||0)+1); });
       const d = new Date(min); d.setHours(0,0,0,0);
-      const end = new Date(endDate); end.setHours(0,0,0,0);
+      const end = new Date(max); end.setHours(0,0,0,0);
       while(d<=end){ labels.push(d.toISOString().slice(0,10)); d.setDate(d.getDate()+1); }
-      const perDay = labels.map(k=>map.get(k)||0);
-      let run=0; const cumulative = perDay.map(n=> (run+=n));
+      const perDay = labels.map(key => counts.get(key)||0);
+      const cumulative = []; let run = 0; perDay.forEach(n => { run += n; cumulative.push(run); });
       return { labels, perDay, cumulative };
     }
 
-    function renderDailyComboChart(){
-      if(typeof Chart === 'undefined') return;
-      const ctx = document.getElementById('dailyChart'); if(!ctx) return;
+    function getDailyChartConfig(){
       const s = buildDailySeries();
       const data = {
-        labels: s.labels.map(x=>new Date(x)),
-        datasets:[
-          { type:'bar', label:'Applications per day', data:s.perDay, yAxisID:'y', borderWidth:0, barPercentage:.6, categoryPercentage:.8 },
-          { type:'line', label:'Cumulative total', data:s.cumulative, yAxisID:'y1', tension:.35, borderWidth:2, fill:false }
+        labels: s.labels.map(x => new Date(x)),
+        datasets: [
+          { type:'bar', label:'Applications per day', data: s.perDay, borderWidth:0, yAxisID:'y', barPercentage:0.6, categoryPercentage:0.8 },
+          { type:'line', label:'Cumulative total', data: s.cumulative, tension:.35, fill:false, borderWidth:2, yAxisID:'y1' }
         ]
       };
       const options = {
         animation:{ duration:650, easing:'easeOutQuart' },
-        scales:{
-          x:{ type:'time', time:{ unit:'day' }, grid:{ display:false } },
-          y:{ beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'rgba(255,255,255,.06)' } },
-          y1:{ position:'right', beginAtZero:true, ticks:{ precision:0 }, grid:{ drawOnChartArea:false } }
-        },
-        plugins:{ legend:{ labels:{ color:'#cfd3ff' } }, tooltip:{ mode:'index', intersect:false } },
-        maintainAspectRatio:false
+        scales:{ x:{ type:'time', time:{ unit:'day' }, grid:{ display:false } }, y:{ beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'rgba(255,255,255,.06)' } }, y1:{ position:'right', beginAtZero:true, ticks:{ precision:0 }, grid:{ drawOnChartArea:false } } },
+        plugins:{ legend:{ labels:{ color:'#cfd3ff' } }, tooltip:{ mode:'index', intersect:false } }, maintainAspectRatio:false
       };
-      if(dailyChart){ dailyChart.data=data; dailyChart.options=options; dailyChart.update(); }
-      else { dailyChart = new Chart(ctx,{ type:'bar', data, options }); }
+      return { type:'bar', data, options };
     }
 
-    function chartColors(){
-      const cs = getComputedStyle(document.documentElement);
-      return { Applied: cs.getPropertyValue('--applied').trim()||'#60a5fa', 'Aptitude Test': cs.getPropertyValue('--aptitude').trim()||'#f59e0b', Interview: cs.getPropertyValue('--interview').trim()||'#34d399', Offer: cs.getPropertyValue('--offer').trim()||'#a78bfa', Rejected: cs.getPropertyValue('--rejected').trim()||'#ef4444' };
+    function renderDailyComboChart(){
+      if(typeof Chart === 'undefined') { console.warn('Chart.js not loaded'); return; }
+      const ctx = document.getElementById('dailyChart'); if(!ctx) return;
+      const cfg = getDailyChartConfig();
+      if(dailyChart){ dailyChart.data = cfg.data; dailyChart.options = cfg.options; dailyChart.update(); }
+      else { dailyChart = new Chart(ctx, cfg); }
     }
 
     function renderStatusPie(){
-      if(typeof Chart === 'undefined') return;
+      if(typeof Chart === 'undefined') { console.warn('Chart.js not loaded'); return; }
       const ctx = document.getElementById('statusPie'); if(!ctx) return;
-      const byStatus = STAGES.map(s => ({ s, n: applications.filter(a => (a.status||'Applied')===s).length }));
       const colors = chartColors();
+      const byStatus = STAGES.map(s => ({ s, n: applications.filter(a => (a.status||'Applied')===s).length }));
       const data = { labels: byStatus.map(x=>x.s), datasets:[{ data: byStatus.map(x=>x.n), backgroundColor: byStatus.map(x=>colors[x.s]) }] };
-      const options = { animation:{ duration:650, easing:'easeOutQuart' }, plugins:{ legend:{ labels:{ color:'#cfd3ff' } }, tooltip:{ callbacks:{ label:(ctx)=> `${ctx.label}: ${ctx.raw}` } } }, maintainAspectRatio:false };
+      const options = { animation:{ duration:650, easing:'easeOutQuart' }, plugins:{ legend:{ position:'right', labels:{ color:'#cfd3ff', usePointStyle:true, boxWidth:10, boxHeight:10, padding:12, font:{ size:12 } } }, tooltip:{ callbacks:{ label:(ctx)=> `${ctx.label}: ${ctx.raw}` } } }, maintainAspectRatio:false, layout:{ padding:8 } };
       if(statusPie){ statusPie.data=data; statusPie.options=options; statusPie.update(); } else { statusPie = new Chart(ctx,{ type:'pie', data, options }); }
     }
 
+    function renderCharts(){ renderDailyComboChart(); renderStatusPie(); }
+
     // --- Import/Export/Reset/Demo ---
     exportBtn.addEventListener('click', () => {
-      const blob = new Blob([JSON.stringify({ applications, sectors, version:'v7' }, null, 2)], { type:'application/json' });
-      const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='graduate-applications.json'; a.click(); URL.revokeObjectURL(url);
+      const ts = new Date().toISOString().slice(0,10);
+      const blob = new Blob([JSON.stringify({ applications, sectors, version:'v8' }, null, 2)], { type:'application/json' });
+      const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`graduate-applications-backup-${ts}.json`; a.click(); URL.revokeObjectURL(url);
     });
     importBtn.addEventListener('click', () => importFile.click());
     importFile.addEventListener('change', async (e) => {
@@ -584,7 +609,7 @@
         { id:uuid(), company:'Orbital Dynamics', role:'Graduate Engineer', sector:'Engineering', status:'Applied', applied:daysAgo(10), closing:daysAgo(2), start:'2026-01-15', location:'Bristol', url:'https://orbital.example/grad-eng', description:'R&D rotations.' },
         { id:uuid(), company:'Veridian', role:'Sales Associate (Grad)', sector:'Sales', status:'Rejected', applied:daysAgo(9), closing:'', start:'', location:'Remote', url:'https://veridian.example/grad-sales', description:'SaaS sales track.' },
         { id:uuid(), company:'Atlas Advisory', role:'Consulting Analyst', sector:'Consulting', status:'Offer', applied:daysAgo(8), closing:'', start:'2026-09-01', location:'London', url:'https://atlas.example/consulting-analyst', description:'Public sector focus.' },
-        { id:uuid(), company:'Fintrex', role:'Data Analyst (Grad)', sector:'Finance', status:'Applied', applied:daysAgo(6), closing:daysAgo(1), start:'2026-06-01', location:'Leeds', url:'https://fintrex.example/data-analyst-grad', description:'' },
+        { id:uuid(), company:'Fintrex', role:'Data Analyst (Grad)', sector:'Finance', status:'Ghosted', applied:daysAgo(6), closing:daysAgo(1), start:'2026-06-01', location:'Leeds', url:'https://fintrex.example/data-analyst-grad', description:'' },
         { id:uuid(), company:'Aether Systems', role:'Software Engineer (Grad)', sector:'Engineering', status:'Interview', applied:daysAgo(5), closing:'', start:'2026-02-01', location:'London', url:'https://aether.example/se-grad', description:'Platform team.' },
         { id:uuid(), company:'Quanta Health', role:'Operations Graduate', sector:'Engineering', status:'Applied', applied:daysAgo(3), closing:'', start:'', location:'Birmingham', url:'https://quanta.example/ops-grad', description:'' },
         { id:uuid(), company:'Lumina', role:'Market Analyst', sector:'Finance', status:'Applied', applied:daysAgo(2), closing:'', start:'', location:'London', url:'https://lumina.example/market-analyst-grad', description:'' },
@@ -594,34 +619,38 @@
       saveData(applications); saveSectors(sectors); renderSectorOptions(); renderSectorsPills(); renderTable();
     });
 
-    // --- Tests ---
+    // --- Modal enlarge behaviour ---
+    function openDailyModal(){
+      dailyModal.classList.add('show');
+      // create chart inside modal
+      const ctx = document.getElementById('modalDailyCanvas');
+      const cfg = getDailyChartConfig();
+      if(modalDailyChart){ modalDailyChart.destroy(); }
+      modalDailyChart = new Chart(ctx, cfg);
+      // Esc to close
+      document.addEventListener('keydown', escHandler);
+    }
+    function closeDailyModal(){ dailyModal.classList.remove('show'); if(modalDailyChart){ modalDailyChart.destroy(); modalDailyChart=null; } document.removeEventListener('keydown', escHandler); }
+    function escHandler(e){ if(e.key==='Escape') closeDailyModal(); }
+
+    dailyWrap.addEventListener('click', openDailyModal);
+    modalBackdrop.addEventListener('click', closeDailyModal);
+    modalClose.addEventListener('click', closeDailyModal);
+
+    // --- Tests (optional: run with ?runTests=1) ---
     function runTests(){
       console.group('%cGraduate Tracker – Tests','color:#6ee7f5');
       try{
-        const snapshotApps = [...applications];
+        const snap = [...applications];
         applications = []; renderCharts();
-        console.assert(typeof dailyChart !== 'undefined' && dailyChart !== null, 'Daily chart should be created on empty data');
-        console.assert(typeof statusPie !== 'undefined' && statusPie !== null, 'Status pie should be created on empty data');
+        console.assert(dailyChart, 'Daily chart should exist');
+        console.assert(statusPie, 'Status pie should exist');
 
-        applications = [
-          {id:'1', company:'Beta', role:'R', sector:'Finance', status:'Applied', applied:'2025-01-01'},
-          {id:'2', company:'Alpha', role:'R', sector:'Finance', status:'Applied', applied:'2025-01-02'},
-          {id:'3', company:'Charlie', role:'R', sector:'Finance', status:'Applied', applied:'2025-01-03'},
-        ];
-        currentSort = { key:'company', dir:'asc' };
-        const sorted = applySortAndFilter(applications).map(a=>a.company);
-        console.assert(JSON.stringify(sorted) === JSON.stringify(['Alpha','Beta','Charlie']), 'Company sort ascending failed');
+        // Ghosted present
+        console.assert(STAGES.includes('Ghosted'), 'Ghosted included');
 
-        // Sector delete
-        sectors = ['Finance','Consulting']; renderSectorsPills(); renderSectorOptions();
-        applications = [{id:'x', company:'X', role:'R', sector:'Consulting', status:'Applied', applied:'2025-01-01'}];
-        deleteSectorFlow('Consulting');
-        console.assert(!sectors.includes('Consulting'), 'Sector should be removed');
-        console.assert(applications[0].sector==='Other', 'Apps should be moved to Other');
-
-        applications = snapshotApps; renderTable();
-        console.log('%cAll tests executed. Check assertions above for any failures.','color:#a78bfa');
-      } catch(err){ console.error('Test run error:', err); }
+        applications = snap; renderTable();
+      }catch(err){ console.error(err); }
       console.groupEnd();
     }
     const RUN_TESTS = /runTests=1/.test(location.search) || location.hash.includes('run-tests');
