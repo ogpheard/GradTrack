@@ -144,6 +144,21 @@
     .footerNote{ color:var(--muted); font-size:12px }
     .hidden { display: none !important; }
   </style>
+
+  <!-- ✅ New block goes here, outside the old one -->
+  <style>
+    /* ==== Layout override: stack cards, same width ==== */
+    .grid {
+      grid-template-columns: 1fr !important;
+    }
+
+    .grid > aside.card {
+      order: 1;
+    }
+    .grid > section.card {
+      order: 2;
+    }
+  </style>
 </head>
 <body>
   <div class="app" id="app">
