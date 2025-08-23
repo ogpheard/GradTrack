@@ -142,6 +142,7 @@
     .stars .off{ color:#e5e7eb }
 
     .footerNote{ color:var(--muted); font-size:12px }
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
@@ -1038,7 +1039,7 @@ importFile.addEventListener('change', async (e)=>{
 });
 
 /* --- Modal enlarge behaviour --- */
-let modalDailyChart=null;
+modalDailyChart=null;
 function getDailyChartConfigForModal(){ return dailyChart ? { type: dailyChart.config.type, data: dailyChart.data, options: dailyChart.options } : null; }
 function openDailyModal(){
   dailyModal.classList.add('show');
