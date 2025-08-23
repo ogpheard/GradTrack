@@ -472,7 +472,10 @@ function todayYMD(){ return toYMDLocal(new Date()); }
 
 /* --- Utils --- */
 function uuid(){ return crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36)+Math.random().toString(36).slice(2,8)); }
-function escapeHtml(str){ return (str||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]); }
+function escapeHtml(str){
+  const map = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'};
+  return String(str || '').replace(/[&<>"]/g, c => map[c]);
+}
 function formatDate(ymd){ if(!ymd) return ''; try{ return parseYMDLocal(ymd).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'2-digit'});}catch{return ymd} }
 function normalizeStatusForClass(s){ return (s||'Applied').replace(/\s+/g,'-'); }
 function renderLink(u){ if(!u) return ''; const safe = escapeHtml(u); return `<a class="link" href="${safe}" target="_blank" rel="noopener">Open</a>` }
