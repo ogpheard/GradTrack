@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Graduate Applications Tracker — Cloud Backup</title>
+  <title>Graduate Applications Tracker — Cloud Backup (v11)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -15,65 +15,60 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <style>
     :root{
-      --bg:#0f1226; --card:#14183a; --muted:#7e88c8; --text:#e7e9ff;
-      --accent1:#6ee7f5; --accent2:#a78bfa; --shadow:0 10px 30px rgba(0,0,0,.25);
-      --radius:18px;
-      --applied:#60a5fa; --aptitude:#f59e0b; --interview:#34d399; --offer:#a78bfa; --rejected:#ef4444; --ghosted:#9ca3af;
+      /* Light theme palette */
+      --bg:#f7f7fb; --card:#ffffff; --muted:#64748b; --text:#0f172a;
+      --accent1:#4f46e5; --accent2:#06b6d4; --shadow:0 6px 18px rgba(15,23,42,.08);
+      --radius:16px;
+      --applied:#2563eb; --aptitude:#d97706; --interview:#16a34a; --offer:#7c3aed; --rejected:#dc2626; --ghosted:#6b7280;
+      --border:#e5e7eb; --border-strong:#d1d5db; --chip:#f1f5f9;
     }
     *{ box-sizing:border-box } html,body{ height:100% }
-    body{ margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; color:var(--text);
-      background: radial-gradient(1200px 600px at 10% -10%, rgba(103,232,249,.12), transparent 60%),
-                  radial-gradient(900px 500px at 100% 0%, rgba(167,139,250,.15), transparent 70%),
-                  linear-gradient(180deg,#0e1124,#0f1226 30% 70%,#0c0f21); background-attachment:fixed }
+    body{ margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; color:var(--text); background:var(--bg) }
     .app{ max-width:1200px; margin:28px auto; padding:0 20px 40px }
-    header{ display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:20px }
+    header.appbar{ display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:20px }
     .logo{ display:flex; align-items:center; gap:14px }
-    .logo .dot{ width:12px; height:12px; border-radius:50%; background:linear-gradient(135deg,var(--accent1),var(--accent2)); box-shadow:0 0 0 6px rgba(167,139,250,.15),0 0 0 12px rgba(110,231,245,.08) }
+    .logo .dot{ width:12px; height:12px; border-radius:50%; background:linear-gradient(135deg,var(--accent1),var(--accent2)); box-shadow:0 0 0 6px rgba(79,70,229,.10),0 0 0 12px rgba(6,182,212,.08) }
     h1{ font-size:clamp(22px,3vw,30px); margin:0; font-weight:800; letter-spacing:.3px }
     .sub{ color:var(--muted); font-size:14px }
 
     .controls{ display:flex; flex-wrap:wrap; gap:10px; align-items:center }
-    button,.btn{ background:linear-gradient(135deg,rgba(110,231,245,.15),rgba(167,139,250,.17)); border:1px solid rgba(255,255,255,.12);
-      color:var(--text); padding:10px 14px; border-radius:12px; font-weight:600; cursor:pointer; transition:transform .06s ease, box-shadow .2s ease }
-    button:hover{ transform:translateY(-1px) }
-    .btn-danger{ background:linear-gradient(135deg,rgba(239,68,68,.18),rgba(239,68,68,.10)); border-color:rgba(239,68,68,.4) }
-    .btn-ghost{ background:transparent; border-color:rgba(255,255,255,.12) }
-
-    .badge{ display:inline-flex; align-items:center; gap:6px; padding:8px 10px; border-radius:999px; font-size:12px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.04) }
-    .badge.ok{ border-color:rgba(34,197,94,.5) }
-    .badge.warn{ border-color:rgba(234,179,8,.5) }
-    .badge.off{ border-color:rgba(239,68,68,.5) }
+    button,.btn{ background:linear-gradient(135deg,#ffffff,#f8fafc); border:1px solid var(--border);
+      color:var(--text); padding:10px 14px; border-radius:12px; font-weight:600; cursor:pointer; transition:transform .06s ease, box-shadow .2s ease, border-color .2s ease; box-shadow:0 2px 0 rgba(15,23,42,.03) }
+    button:hover{ transform:translateY(-1px); border-color:var(--border-strong) }
+    .btn-danger{ background:linear-gradient(135deg,#fee2e2,#fff1f2); border-color:#fecaca; color:#991b1b }
+    .btn-ghost{ background:#ffffff; border-color:var(--border) }
+    input,select,textarea{ width:100%; padding:12px; border-radius:12px; border:1px solid var(--border); background:#fff; color:var(--text) }
+    input:focus,select:focus,textarea:focus{ border-color:#94a3b8; outline:none; box-shadow:0 0 0 4px rgba(148,163,184,.2) }
 
     .grid{ display:grid; grid-template-columns:1.3fr .9fr; gap:18px; align-items:start }
     @media (max-width:1050px){ .grid{ grid-template-columns:1fr } }
 
-    .card{ background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.08);
-      border-radius:var(--radius); box-shadow:var(--shadow); backdrop-filter:blur(8px); overflow:hidden; animation:fadeUp .6s ease both }
+    .card{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; animation:fadeUp .6s ease both }
     @keyframes fadeUp{ from{ opacity:0; transform:translateY(10px)} to{ opacity:1; transform:translateY(0)} }
-    .card header{ padding:16px 18px; border-bottom:1px solid rgba(255,255,255,.06) }
+    .card header{ padding:14px 16px; border-bottom:1px solid var(--border) }
     .card header h2{ margin:0; font-size:18px; font-weight:700 }
-    .card .content{ padding:16px 18px }
+    .card .content{ padding:16px }
 
-    form{ display:grid; grid-template-columns:1fr 1fr; gap:12px } form .full{ grid-column:1/-1 }
-    label{ font-size:12px; color:var(--muted); display:block; margin-bottom:6px }
-    input,select,textarea{ width:100%; padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.03); color:var(--text) }
-    input:focus,select:focus,textarea:focus{ border-color:rgba(110,231,245,.55); box-shadow:0 8px 28px rgba(110,231,245,.14) }
-    textarea{ min-height:90px; resize:vertical }
+    .badge{ display:inline-flex; align-items:center; gap:6px; padding:8px 10px; border-radius:999px; font-size:12px; border:1px solid var(--border); background:#fff }
+    .badge.ok{ border-color:#bbf7d0; background:#f0fdf4; color:#166534 }
+    .badge.warn{ border-color:#fde68a; background:#fffbeb; color:#92400e }
+    .badge.off{ border-color:#fecaca; background:#fff1f2; color:#991b1b }
 
     /* Table */
-    .table-toolbar{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:10px }
-    .table-toolbar select{ min-width:160px }
-    table{ width:100%; border-collapse:separate; border-spacing:0 10px }
+    .table-toolbar{ display:flex; flex-wrap:wrap; gap:10px; align-items:end; margin-bottom:10px }
+    .table-toolbar .field{ display:flex; flex-direction:column; gap:6px }
+    .table-toolbar label{ font-size:12px; color:var(--muted) }
+    table{ width:100%; border-collapse:separate; border-spacing:0 8px }
     thead th{ text-align:left; font-size:12px; color:var(--muted); font-weight:700; padding:0 10px; user-select:none; cursor:pointer }
-    thead th.sortable:hover{ color:#fff }
+    thead th.sortable:hover{ color:#0f172a }
     thead th .arrow{ opacity:.6; font-size:10px; margin-left:6px }
-    tbody tr{ background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.08);
-      border-radius:12px; box-shadow:var(--shadow); transition:transform .12s ease }
+    tbody tr{ background:#fff; border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow); transition:transform .12s ease }
     tbody tr:hover{ transform:translateY(-2px) }
-    tbody td{ padding:14px 10px; vertical-align:top }
+    tbody td{ padding:12px 10px; vertical-align:top }
     tbody td:first-child{ border-top-left-radius:12px; border-bottom-left-radius:12px }
     tbody td:last-child{ border-top-right-radius:12px; border-bottom-right-radius:12px }
 
+    /* Left accent by status */
     .row-status-Applied{ box-shadow: inset 4px 0 0 var(--applied), var(--shadow) }
     .row-status-Aptitude-Test{ box-shadow: inset 4px 0 0 var(--aptitude), var(--shadow) }
     .row-status-Interview{ box-shadow: inset 4px 0 0 var(--interview), var(--shadow) }
@@ -81,44 +76,47 @@
     .row-status-Rejected{ box-shadow: inset 4px 0 0 var(--rejected), var(--shadow) }
     .row-status-Ghosted{ box-shadow: inset 4px 0 0 var(--ghosted), var(--shadow) }
 
+    .row-actions{ display:flex; gap:8px }
+
     /* Charts */
     .charts{ display:grid; grid-template-columns:1.2fr 1fr; gap:14px }
     @media (max-width:900px){ .charts{ grid-template-columns:1fr } }
-    .chart-wrap{ padding:12px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius:14px; position:relative; min-width:0; overflow:hidden }
+    .chart-wrap{ padding:12px; background:#fff; border:1px solid var(--border); border-radius:14px; position:relative; min-width:0; overflow:hidden }
     .chart-wrap.enlargeable{ cursor:zoom-in }
     .chart-wrap .expand-hint{ position:absolute; right:10px; top:8px; font-size:12px; color:var(--muted) }
     #statusPie{ min-height:280px; width:100% }
 
-    .hidden{ display:none }
     a.link{ color:var(--accent1); text-decoration:none } a.link:hover{ text-decoration:underline }
 
-    .sector-chip{ display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12) }
-    .sector-chip .del{ background:transparent; border:none; color:#fca5a5; cursor:pointer; font-weight:800; line-height:1 }
+    .sector-chip{ display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; background:var(--chip); border:1px solid var(--border) }
+    .sector-chip .del{ background:transparent; border:none; color:#ef4444; cursor:pointer; font-weight:800; line-height:1 }
 
     /* Modal */
     .modal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:50 }
     .modal.show{ display:flex }
-    .backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.55) }
-    .modal-card{ position:relative; width:min(1100px,92vw); height:min(72vh,720px); background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.03)); border:1px solid rgba(255,255,255,.12); border-radius:16px; box-shadow:0 20px 50px rgba(0,0,0,.45); overflow:hidden }
-    .modal-card header{ display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid rgba(255,255,255,.08) }
+    .backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.3) }
+    .modal-card{ position:relative; width:min(1100px,92vw); height:min(72vh,720px); background:#fff; border:1px solid var(--border); border-radius:16px; box-shadow:0 20px 50px rgba(0,0,0,.15); overflow:hidden }
+    .modal-card header{ display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid var(--border) }
     .modal-card h3{ margin:0; font-size:16px }
-    .modal-card .close{ background:transparent; border:1px solid rgba(255,255,255,.22); color:#fff; padding:6px 10px; border-radius:10px; cursor:pointer }
+    .modal-card .close{ background:#fff; border:1px solid var(--border); color:#0f172a; padding:6px 10px; border-radius:10px; cursor:pointer }
     .modal-card .body{ padding:12px; height:calc(100% - 48px) }
 
-    .top-right{ display:flex; align-items:center; gap:8px }
+    /* Range controls */
+    .rangebar{ display:flex; gap:8px; align-items:end; flex-wrap:wrap; margin-bottom:10px }
+    .rangebar .field{ display:flex; flex-direction:column; gap:6px }
   </style>
 </head>
 <body>
   <div class="app" id="app">
-    <header>
+    <header class="appbar">
       <div class="logo">
         <span class="dot"></span>
         <div>
           <h1>Graduate Applications Tracker</h1>
-          <div class="sub">Auto cloud backup (Firebase) + local fallback. Click the daily chart to enlarge. "Ghosted" status included.</div>
+          <div class="sub">Light theme • Date range on daily chart • Search • Role type • Cloud backup</div>
         </div>
       </div>
-      <div class="controls top-right">
+      <div class="controls">
         <span id="syncBadge" class="badge off" title="Cloud sync status">Offline</span>
         <button id="signinBtn" type="button">Sign in with Google</button>
         <button id="signoutBtn" class="btn-ghost hidden" type="button">Sign out</button>
@@ -134,6 +132,33 @@
           <h2>Applications</h2>
         </header>
         <div class="content">
+
+          <div class="rangebar">
+            <div class="field">
+              <label for="rangeSelect">Chart range</label>
+              <select id="rangeSelect">
+                <option value="7d">Last 7 days</option>
+                <option value="30d" selected>Last 30 days</option>
+                <option value="90d">Last 90 days</option>
+                <option value="ytd">Year to date</option>
+                <option value="all">All time</option>
+                <option value="custom">Custom…</option>
+              </select>
+            </div>
+            <div id="customRangeFields" class="field" style="display:none">
+              <label>Custom range</label>
+              <div style="display:flex; gap:8px">
+                <input type="date" id="rangeFrom">
+                <input type="date" id="rangeTo">
+                <button id="applyRangeBtn" type="button">Apply</button>
+              </div>
+            </div>
+            <div class="field" style="margin-left:auto">
+              <label for="searchInput">Search (company or role)</label>
+              <input id="searchInput" placeholder="e.g., Barclays or Analyst" />
+            </div>
+          </div>
+
           <div class="charts">
             <div class="chart-wrap enlargeable" id="dailyWrap" title="Click to enlarge">
               <span class="expand-hint">Click to enlarge</span>
@@ -145,23 +170,29 @@
           </div>
 
           <div class="table-toolbar">
-            <div>
-              <label for="sectorFilter" style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;">Filter by sector</label>
+            <div class="field">
+              <label for="sectorFilter">Filter by sector</label>
               <select id="sectorFilter"></select>
             </div>
-            <div>
-              <label for="sortKey" style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;">Sort by</label>
+            <div class="field">
+              <label for="typeFilter">Filter by role type</label>
+              <select id="typeFilter"></select>
+            </div>
+            <div class="field">
+              <label for="sortKey">Sort by</label>
               <select id="sortKey">
                 <option value="applied">Applied date</option>
                 <option value="company">Company</option>
+                <option value="role">Role</option>
                 <option value="location">Location</option>
                 <option value="sector">Sector</option>
+                <option value="type">Type</option>
                 <option value="closing">Closing date</option>
                 <option value="start">Start date</option>
               </select>
             </div>
-            <div>
-              <label for="sortDir" style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;">Direction</label>
+            <div class="field">
+              <label for="sortDir">Direction</label>
               <select id="sortDir">
                 <option value="desc">Descending</option>
                 <option value="asc">Ascending</option>
@@ -179,6 +210,7 @@
                 <tr>
                   <th class="sortable" data-key="company">Company <span class="arrow" id="arrow-company"></span></th>
                   <th class="sortable" data-key="role">Role <span class="arrow" id="arrow-role"></span></th>
+                  <th class="sortable" data-key="type">Type <span class="arrow" id="arrow-type"></span></th>
                   <th class="sortable" data-key="sector">Sector <span class="arrow" id="arrow-sector"></span></th>
                   <th>Status</th>
                   <th class="sortable" data-key="applied">Applied <span class="arrow" id="arrow-applied"></span></th>
@@ -217,9 +249,14 @@
             </div>
 
             <div>
+              <label for="type">Role Type</label>
+              <select id="type" required></select>
+            </div>
+            <div>
               <label for="sector">Sector</label>
               <select id="sector" required></select>
             </div>
+
             <div>
               <label for="status">Status</label>
               <select id="status" required>
@@ -266,7 +303,7 @@
             </div>
           </form>
 
-          <hr style="border:none; border-top:1px solid rgba(255,255,255,.08); margin:18px 0">
+          <hr style="border:none; border-top:1px solid var(--border); margin:18px 0">
 
           <div>
             <h3 style="margin:0 0 8px; font-size:14px">Manage Sectors</h3>
@@ -297,19 +334,29 @@
 
   <script>
     // ============================
-    // Local storage + UI (from v9)
+    // Local storage + UI + new features (v11)
     // ============================
-    const STORAGE_KEY = 'gradAppTracker:data:v10';
+    const STORAGE_KEY = 'gradAppTracker:data:v11';
     const SECTORS_KEY = 'gradAppTracker:sectors:v3';
+    const TYPES_KEY = 'gradAppTracker:types:v1';
     const DEFAULT_SECTORS = ['Finance','Consulting','Engineering','Sales'];
+    const DEFAULT_TYPES = ['Graduate Job','Internship','Placement','Apprenticeship','Job','Other'];
     const STAGES = ['Applied','Aptitude Test','Interview','Offer','Rejected','Ghosted'];
+
+    // --- Date helpers (use LOCAL dates so "today" shows correctly in UK time) ---
+    const toYMDLocal = (d)=>{
+      const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const y = x.getFullYear(), m = String(x.getMonth()+1).padStart(2,'0'), da = String(x.getDate()).padStart(2,'0');
+      return `${y}-${m}-${da}`;
+    }
+    const parseYMDLocal = (ymd)=> new Date(ymd+'T00:00:00');
 
     function uuid(){ return crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36)+Math.random().toString(36).slice(2,8)) }
 
     function loadData(){
       const raw = localStorage.getItem(STORAGE_KEY);
       if(raw) return JSON.parse(raw);
-      const keys = ['gradAppTracker:data:v9','gradAppTracker:data:v8','gradAppTracker:data:v7'];
+      const keys = ['gradAppTracker:data:v10','gradAppTracker:data:v9','gradAppTracker:data:v8'];
       for(const k of keys){ const v = localStorage.getItem(k); if(v) return JSON.parse(v); }
       return [];
     }
@@ -324,14 +371,22 @@
     }
     function saveSectors(sectors){ localStorage.setItem(SECTORS_KEY, JSON.stringify([...new Set(sectors)].filter(Boolean))); queueCloudSave(); }
 
+    function loadTypes(){ const raw = localStorage.getItem(TYPES_KEY); return raw?JSON.parse(raw):[...DEFAULT_TYPES]; }
+    function saveTypes(types){ localStorage.setItem(TYPES_KEY, JSON.stringify([...new Set(types)].filter(Boolean))); queueCloudSave(); }
+
     let applications = loadData();
     let sectors = loadSectors();
+    let roleTypes = loadTypes();
 
-    // UI refs
+    // --- UI refs ---
     const appsTableBody = document.querySelector('#appsTable tbody');
     const sectorSelect = document.querySelector('#sector');
+    const typeSelect = document.querySelector('#type');
     const sectorsList = document.querySelector('#sectorsList');
     const sectorFilter = document.querySelector('#sectorFilter');
+    const typeFilter = document.querySelector('#typeFilter');
+    const searchInput = document.querySelector('#searchInput');
+
     const form = document.querySelector('#appForm');
     const formTitle = document.querySelector('#formTitle');
     const cancelEditBtn = document.querySelector('#cancelEditBtn');
@@ -351,6 +406,12 @@
     const modalBackdrop = document.getElementById('modalBackdrop');
     const modalClose = document.getElementById('modalClose');
 
+    const rangeSelect = document.getElementById('rangeSelect');
+    const customRangeFields = document.getElementById('customRangeFields');
+    const rangeFromInp = document.getElementById('rangeFrom');
+    const rangeToInp = document.getElementById('rangeTo');
+    const applyRangeBtn = document.getElementById('applyRangeBtn');
+
     const signinBtn = document.getElementById('signinBtn');
     const signoutBtn = document.getElementById('signoutBtn');
     const syncBadge = document.getElementById('syncBadge');
@@ -359,28 +420,39 @@
     let dailyChart, statusPie, modalDailyChart;
     let currentSort = { key: 'applied', dir: 'desc' };
 
+    // Range state
+    let rangeMode = '30d';
+    let rangeFrom = null; // 'YYYY-MM-DD' when custom
+    let rangeTo = null;
+
     function escapeHtml(str){ return (str||'').replace(/[&<>\"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c])); }
-    function formatDate(d){ if(!d) return ''; try{ const x = new Date(d + 'T00:00:00'); return x.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'2-digit'}); } catch { return d } }
+    function formatDate(d){ if(!d) return ''; try{ const x = parseYMDLocal(d); return x.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'2-digit'}); } catch { return d } }
     function normalizeStatusForClass(status){ return (status||'Applied').replace(/\s+/g,'-'); }
     function renderLink(u){ if(!u) return ''; const safe = escapeHtml(u); return `<a class="link" href="${safe}" target="_blank" rel="noopener">Open</a>` }
 
+    // --- Sector & type management ---
     function renderSectorOptions(){
       sectorSelect.innerHTML = sectors.map(s => `<option>${escapeHtml(s)}</option>`).join('');
       sectorFilter.innerHTML = `<option value="">All sectors</option>` + sectors.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
     }
+    function renderTypeOptions(){
+      typeSelect.innerHTML = roleTypes.map(t => `<option>${escapeHtml(t)}</option>`).join('');
+      typeFilter.innerHTML = `<option value="">All types</option>` + roleTypes.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+    }
     function renderSectorsPills(){
       sectorsList.innerHTML = '';
       sectors.forEach(s => {
-        const chip = document.createElement('span'); chip.className = 'sector-chip';
+        const chip = document.createElement('span');
+        chip.className = 'sector-chip';
         const lbl = document.createElement('span'); lbl.textContent = `🏷️ ${s}`;
-        const btn = document.createElement('button'); btn.type='button'; btn.className='del'; btn.textContent='×'; btn.title=`Delete ${s}`; btn.dataset.name=s;
+        const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'del'; btn.textContent = '×'; btn.title = `Delete ${s}`; btn.dataset.name = s;
         chip.append(lbl, btn); sectorsList.appendChild(chip);
       });
     }
     sectorsList.addEventListener('click', (e) => {
-      const btn = e.target.closest('button.del'); if(!btn) return; const name = btn.dataset.name; if(!name) return; deleteSectorFlow(name);
+      const btn = e.target.closest('button.del');
+      if(!btn) return; const name = btn.dataset.name; if(!name) return; deleteSectorFlow(name);
     });
-
     function ensureOtherSector(){ if(!sectors.includes('Other')) { sectors.push('Other'); saveSectors(sectors); } }
     function deleteSectorFlow(name){
       const count = applications.filter(a => a.sector===name).length;
@@ -390,7 +462,6 @@
       sectors = sectors.filter(s => s!==name); saveSectors(sectors);
       renderSectorOptions(); renderSectorsPills(); renderTable(); renderCharts();
     }
-
     document.getElementById('addSectorBtn').addEventListener('click', () => {
       const inp = document.getElementById('newSector');
       const val = inp.value.trim(); if(!val) return;
@@ -398,13 +469,23 @@
       sectors.push(val); saveSectors(sectors); inp.value=''; renderSectorOptions(); renderSectorsPills();
     });
 
+    // --- Sorting & filtering ---
     function cmp(a,b){ return a<b?-1:a>b?1:0; }
     function dateCmp(da,db){ if(!da&&!db) return 0; if(!da) return -1; if(!db) return 1; return cmp(da,db); }
 
     function applySortAndFilter(rows){
-      const fSector = sectorFilter.value; let arr = fSector ? rows.filter(r => r.sector===fSector) : [...rows];
+      const fSector = sectorFilter.value;
+      const fType = typeFilter.value;
+      const term = searchInput.value.trim().toLowerCase();
+      let arr = [...rows];
+      if(fSector) arr = arr.filter(r => r.sector===fSector);
+      if(fType) arr = arr.filter(r => (r.type||'')===fType);
+      if(term) arr = arr.filter(r => (r.company||'').toLowerCase().includes(term) || (r.role||'').toLowerCase().includes(term));
       const { key, dir } = currentSort; const sgn = dir==='asc'?1:-1;
-      arr.sort((x,y)=>{ if(['applied','closing','start'].includes(key)) return sgn*dateCmp(x[key]||'', y[key]||''); return sgn*cmp((x[key]||'').toLowerCase(), (y[key]||'').toLowerCase()); });
+      arr.sort((x,y)=>{
+        if(['applied','closing','start'].includes(key)) return sgn*dateCmp(x[key]||'', y[key]||'');
+        return sgn*cmp((x[key]||'').toLowerCase(), (y[key]||'').toLowerCase());
+      });
       return arr;
     }
 
@@ -418,19 +499,24 @@
       });
     });
 
+    ;['input','change'].forEach(ev => searchInput.addEventListener(ev, ()=> renderTable()));
     applySortBtn.addEventListener('click', () => { currentSort.key = sortKeySel.value; currentSort.dir = sortDirSel.value; renderTable(); });
-    clearFilterBtn.addEventListener('click', () => { sectorFilter.value=''; renderTable(); });
+    clearFilterBtn.addEventListener('click', () => { sectorFilter.value=''; typeFilter.value=''; searchInput.value=''; renderTable(); });
 
+    // --- Table rendering ---
     function renderTable(){
       appsTableBody.innerHTML = '';
-      const frag = document.createDocumentFragment(); updateHeaderArrows();
+      const frag = document.createDocumentFragment();
+      updateHeaderArrows();
       const rows = applySortAndFilter(applications);
 
       rows.forEach(app => {
-        const tr = document.createElement('tr'); tr.className = 'row-status-' + normalizeStatusForClass(app.status);
+        const tr = document.createElement('tr');
+        tr.className = 'row-status-' + normalizeStatusForClass(app.status);
         tr.innerHTML = `
           <td><strong>${escapeHtml(app.company)}</strong></td>
           <td>${escapeHtml(app.role)}</td>
+          <td>${escapeHtml(app.type||'')}</td>
           <td><span class="pill">${escapeHtml(app.sector)}</span></td>
           <td>
             <select data-id="${app.id}" class="statusSelect">
@@ -471,6 +557,7 @@
         document.getElementById('appId').value = app.id;
         document.getElementById('company').value = app.company;
         document.getElementById('role').value = app.role;
+        document.getElementById('type').value = app.type || roleTypes[0];
         document.getElementById('sector').value = app.sector;
         document.getElementById('status').value = app.status;
         document.getElementById('applied').value = app.applied || '';
@@ -495,6 +582,7 @@
       form.reset(); document.getElementById('appId').value=''; formTitle.textContent='Add Application'; cancelEditBtn.classList.add('hidden');
     });
 
+    // --- Form submit ---
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       const id = document.getElementById('appId').value || uuid();
@@ -504,6 +592,7 @@
         id,
         company: document.getElementById('company').value.trim(),
         role: document.getElementById('role').value.trim(),
+        type: document.getElementById('type').value,
         sector: document.getElementById('sector').value,
         status: document.getElementById('status').value,
         applied: document.getElementById('applied').value,
@@ -518,16 +607,34 @@
       saveData(applications); renderTable(); form.reset(); document.getElementById('appId').value=''; formTitle.textContent='Add Application'; cancelEditBtn.classList.add('hidden');
     });
 
+    // --- Charts with range ---
     function buildDailySeries(){
-      const dates = applications.filter(a=>a.applied).map(a=>a.applied).sort();
-      if(dates.length===0){ return { labels: [], perDay: [], cumulative: [] }; }
-      const min = new Date(dates[0]);
-      const today = new Date();
-      const max = new Date(Math.max(new Date(dates[dates.length-1]).getTime(), new Date(today.toISOString().slice(0,10)).getTime()));
-      const labels = []; const counts = new Map();
-      applications.forEach(a=>{ if(!a.applied) return; counts.set(a.applied, (counts.get(a.applied)||0)+1); });
-      const d = new Date(min); d.setHours(0,0,0,0); const end = new Date(max); end.setHours(0,0,0,0);
-      while(d<=end){ labels.push(d.toISOString().slice(0,10)); d.setDate(d.getDate()+1); }
+      const allDates = applications.filter(a=>a.applied).map(a=>a.applied).sort();
+      const todayYMD = toYMDLocal(new Date());
+      const maxYMD = allDates.length? allDates[allDates.length-1] : todayYMD;
+      const endYMD = maxYMD < todayYMD ? todayYMD : maxYMD; // include today even if no apps
+
+      let startYMD = allDates.length ? allDates[0] : todayYMD;
+      let from = null, to = null;
+
+      if(rangeMode==='all'){
+        from = startYMD; to = endYMD;
+      } else if(rangeMode==='ytd'){
+        const y = new Date().getFullYear(); from = `${y}-01-01`; to = endYMD;
+      } else if(['7d','30d','90d'].includes(rangeMode)){
+        const days = { '7d':7, '30d':30, '90d':90 }[rangeMode];
+        const toDate = parseYMDLocal(endYMD);
+        const fromDate = new Date(toDate); fromDate.setDate(fromDate.getDate() - (days - 1));
+        from = toYMDLocal(fromDate); to = endYMD;
+      } else if(rangeMode==='custom'){
+        from = rangeFrom || startYMD; to = rangeTo || endYMD;
+      }
+
+      const labels = [];
+      const counts = new Map();
+      applications.forEach(a=>{ if(!a.applied) return; if(a.applied>=from && a.applied<=to){ counts.set(a.applied, (counts.get(a.applied)||0)+1); } });
+      let d = parseYMDLocal(from); const end = parseYMDLocal(to);
+      while(d<=end){ labels.push(toYMDLocal(d)); d = new Date(d.getFullYear(), d.getMonth(), d.getDate()+1); }
       const perDay = labels.map(key => counts.get(key)||0);
       const cumulative = []; let run = 0; perDay.forEach(n => { run += n; cumulative.push(run); });
       return { labels, perDay, cumulative };
@@ -538,16 +645,16 @@
       return {
         type:'bar',
         data:{
-          labels: s.labels.map(x => new Date(x)),
+          labels: s.labels.map(x => parseYMDLocal(x)),
           datasets: [
             { type:'bar', label:'Applications per day', data: s.perDay, borderWidth:0, yAxisID:'y', barPercentage:0.6, categoryPercentage:0.8 },
             { type:'line', label:'Cumulative total', data: s.cumulative, tension:.35, fill:false, borderWidth:2, yAxisID:'y1' }
           ]
         },
         options:{
-          animation:{ duration:650, easing:'easeOutQuart' },
-          scales:{ x:{ type:'time', time:{ unit:'day' }, grid:{ display:false } }, y:{ beginAtZero:true, ticks:{ precision:0 }, grid:{ color:'rgba(255,255,255,.06)' } }, y1:{ position:'right', beginAtZero:true, ticks:{ precision:0 }, grid:{ drawOnChartArea:false } } },
-          plugins:{ legend:{ labels:{ color:'#cfd3ff' } }, tooltip:{ mode:'index', intersect:false } }, maintainAspectRatio:false
+          animation:{ duration:500, easing:'easeOutQuart' },
+          scales:{ x:{ type:'time', time:{ unit:'day' }, grid:{ display:false }, ticks:{ color:'#475569' } }, y:{ beginAtZero:true, ticks:{ precision:0, color:'#475569' }, grid:{ color:'#e2e8f0' } }, y1:{ position:'right', beginAtZero:true, ticks:{ precision:0, color:'#475569' }, grid:{ drawOnChartArea:false } } },
+          plugins:{ legend:{ labels:{ color:'#334155' } }, tooltip:{ mode:'index', intersect:false } }, maintainAspectRatio:false
         }
       }
     }
@@ -556,52 +663,67 @@
 
     function renderDailyComboChart(){ if(typeof Chart === 'undefined') return; const ctx = document.getElementById('dailyChart'); if(!ctx) return; const cfg = getDailyChartConfig(); if(dailyChart){ dailyChart.data = cfg.data; dailyChart.options = cfg.options; dailyChart.update(); } else { dailyChart = new Chart(ctx, cfg); } }
 
-    function renderStatusPie(){ if(typeof Chart === 'undefined') return; const ctx = document.getElementById('statusPie'); if(!ctx) return; const byStatus = STAGES.map(s => ({ s, n: applications.filter(a => (a.status||'Applied')===s).length })); const colors = { Applied:'#60a5fa','Aptitude Test':'#f59e0b',Interview:'#34d399',Offer:'#a78bfa',Rejected:'#ef4444',Ghosted:'#9ca3af' }; const data = { labels: byStatus.map(x=>x.s), datasets:[{ data: byStatus.map(x=>x.n), backgroundColor: byStatus.map(x=>colors[x.s]) }] }; const options = { responsive:true, maintainAspectRatio:false, layout:{ padding:8 }, plugins:{ legend:{ position:legendPos(), labels:{ color:'#cfd3ff', usePointStyle:true, boxWidth:10, boxHeight:10, padding:12, font:{ size:12 } } }, tooltip:{ callbacks:{ label:(c)=> `${c.label}: ${c.raw}` } } } }; if(statusPie){ statusPie.data=data; statusPie.options=options; statusPie.update(); } else { statusPie = new Chart(ctx,{ type:'pie', data, options }); } }
+    function renderStatusPie(){ if(typeof Chart === 'undefined') return; const ctx = document.getElementById('statusPie'); if(!ctx) return; const byStatus = STAGES.map(s => ({ s, n: applications.filter(a => (a.status||'Applied')===s).length })); const colors = { Applied:'var(--applied)','Aptitude Test':'var(--aptitude)',Interview:'var(--interview)',Offer:'var(--offer)',Rejected:'var(--rejected)',Ghosted:'var(--ghosted)' }; const data = { labels: byStatus.map(x=>x.s), datasets:[{ data: byStatus.map(x=>x.n), backgroundColor: byStatus.map(x=>colors[x.s]) }] }; const options = { responsive:true, maintainAspectRatio:false, layout:{ padding:8 }, plugins:{ legend:{ position:legendPos(), labels:{ color:'#334155', usePointStyle:true, boxWidth:10, boxHeight:10, padding:12, font:{ size:12 } } }, tooltip:{ callbacks:{ label:(c)=> `${c.label}: ${c.raw}` } } } }; if(statusPie){ statusPie.data=data; statusPie.options=options; statusPie.update(); } else { statusPie = new Chart(ctx,{ type:'pie', data, options }); } }
 
     function renderCharts(){ renderDailyComboChart(); renderStatusPie(); }
     window.addEventListener('resize', () => { if(statusPie){ statusPie.options.plugins.legend.position = legendPos(); statusPie.update(); } });
 
-    exportBtn.addEventListener('click', () => { const ts = new Date().toISOString().slice(0,10); const blob = new Blob([JSON.stringify({ applications, sectors, version:'v10' }, null, 2)], { type:'application/json' }); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`graduate-applications-backup-${ts}.json`; a.click(); URL.revokeObjectURL(url); });
-    importBtn.addEventListener('click', () => importFile.click());
-    importFile.addEventListener('change', async (e) => { const file = e.target.files[0]; if(!file) return; const text = await file.text(); try{ const parsed = JSON.parse(text); if(Array.isArray(parsed.applications)) applications = parsed.applications; else if(Array.isArray(parsed)) applications = parsed; if(Array.isArray(parsed.sectors)) sectors = parsed.sectors; saveData(applications); saveSectors(sectors); renderSectorOptions(); renderSectorsPills(); renderTable(); } catch(err){ alert('Invalid JSON file.'); } importFile.value=''; });
+    // Range UI actions
+    rangeSelect.addEventListener('change', () => {
+      rangeMode = rangeSelect.value;
+      const showCustom = rangeMode==='custom';
+      customRangeFields.style.display = showCustom ? '' : 'none';
+      if(!showCustom){ renderCharts(); }
+    });
+    applyRangeBtn.addEventListener('click', () => {
+      rangeFrom = rangeFromInp.value || null; rangeTo = rangeToInp.value || null; if(rangeFrom && rangeTo && rangeFrom>rangeTo){ const t=rangeFrom; rangeFrom=rangeTo; rangeTo=t; rangeFromInp.value=rangeFrom; rangeToInp.value=rangeTo; }
+      renderCharts();
+    });
 
+    // Import/Export
+    exportBtn.addEventListener('click', () => { const ts = toYMDLocal(new Date()); const blob = new Blob([JSON.stringify({ applications, sectors, roleTypes, version:'v11' }, null, 2)], { type:'application/json' }); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`graduate-applications-backup-${ts}.json`; a.click(); URL.revokeObjectURL(url); });
+    importBtn.addEventListener('click', () => importFile.click());
+    importFile.addEventListener('change', async (e) => { const file = e.target.files[0]; if(!file) return; const text = await file.text(); try{ const parsed = JSON.parse(text); if(Array.isArray(parsed.applications)) applications = parsed.applications; else if(Array.isArray(parsed)) applications = parsed; if(Array.isArray(parsed.sectors)) sectors = parsed.sectors; if(Array.isArray(parsed.roleTypes)) roleTypes = parsed.roleTypes; saveData(applications); saveSectors(sectors); saveTypes(roleTypes); renderSectorOptions(); renderTypeOptions(); renderSectorsPills(); renderTable(); } catch(err){ alert('Invalid JSON file.'); } importFile.value=''; });
+
+    // Modal enlarge behaviour
     function openDailyModal(){ dailyModal.classList.add('show'); const ctx = document.getElementById('modalDailyCanvas'); const cfg = getDailyChartConfig(); if(modalDailyChart){ modalDailyChart.destroy(); } modalDailyChart = new Chart(ctx, cfg); document.addEventListener('keydown', escHandler); }
     function closeDailyModal(){ dailyModal.classList.remove('show'); if(modalDailyChart){ modalDailyChart.destroy(); modalDailyChart=null; } document.removeEventListener('keydown', escHandler); }
     function escHandler(e){ if(e.key==='Escape') closeDailyModal(); }
     dailyWrap.addEventListener('click', openDailyModal); modalBackdrop.addEventListener('click', closeDailyModal); modalClose.addEventListener('click', closeDailyModal);
 
-    function init(){ renderSectorOptions(); renderSectorsPills(); sortKeySel.value = currentSort.key; sortDirSel.value = currentSort.dir; sectorFilter.value=''; renderTable(); renderCharts(); const today = new Date().toISOString().slice(0,10); document.getElementById('applied').value = today; }
+    // Init
+    function init(){
+      renderSectorOptions(); renderTypeOptions(); renderSectorsPills();
+      sortKeySel.value = currentSort.key; sortDirSel.value = currentSort.dir; sectorFilter.value=''; typeFilter.value='';
+      renderTable(); renderCharts();
+      const today = toYMDLocal(new Date()); document.getElementById('applied').value = today; rangeToInp.value=today;
+    }
     init();
 
     // ============================
-    // Cloud sync (Firebase)
+    // Cloud sync (Firebase) – unchanged API, now also stores roleTypes
     // ============================
     const firebaseConfig = {
-      apiKey: "AIzaSyA6U3E6qocjEr1Nx1wAI1d4PGIGKOFm8rc",
-      authDomain: "grad-tracker-2b268.firebaseapp.com",
-      projectId: "grad-tracker-2b268",
-      storageBucket: "grad-tracker-2b268.firebasestorage.app",
-      messagingSenderId: "118189138960",
-      appId: "1:118189138960:web:3660eb38050e7730329695"
+      apiKey: "PASTE_HERE",
+      authDomain: "PASTE_HERE",
+      projectId: "PASTE_HERE",
+      storageBucket: "PASTE_HERE",
+      messagingSenderId: "PASTE_HERE",
+      appId: "PASTE_HERE"
     };
 
     let auth=null, db=null, cloudReady=false, saveTimer=null;
 
     function configLooksFilled(){ return Object.values(firebaseConfig).every(v => v && !/PASTE_HERE/i.test(String(v))); }
-
     function setBadge(text, cls){ syncBadge.textContent = text; syncBadge.className = 'badge ' + cls; }
-
     function updateLastBackup(ts){ if(!ts){ lastBackupEl.textContent = 'No cloud backup yet'; lastBackupEl.className='badge warn'; return; } const d = ts.toLocaleString?.() || ts; lastBackupEl.textContent = 'Last cloud backup: ' + d; lastBackupEl.className='badge ok'; }
+    function queueCloudSave(){ if(!cloudReady || !auth?.currentUser) return; clearTimeout(saveTimer); saveTimer = setTimeout(pushToCloud, 600); }
 
-    function queueCloudSave(){ if(!cloudReady || !auth.currentUser) return; clearTimeout(saveTimer); saveTimer = setTimeout(pushToCloud, 800); }
+    async function pushToCloud(){ if(!cloudReady || !auth.currentUser) return; try{ const ref = db.collection('users').doc(auth.currentUser.uid).collection('tracker').doc('state'); await ref.set({ applications, sectors, roleTypes, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true }); setBadge('Synced', 'ok'); await autoDailyBackup(); } catch(err){ console.warn('Cloud save failed', err); setBadge('Sync error', 'warn'); } }
+    async function autoDailyBackup(){ if(!auth.currentUser) return; const ymd = toYMDLocal(new Date()); const bref = db.collection('users').doc(auth.currentUser.uid).collection('backups').doc(ymd); await bref.set({ applications, sectors, roleTypes, ts: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true }); updateLastBackup(new Date()); }
+    async function loadFromCloud(){ try{ const ref = db.collection('users').doc(auth.currentUser.uid).collection('tracker').doc('state'); const snap = await ref.get(); if(snap.exists){ const d = snap.data(); if(Array.isArray(d.applications)) applications = d.applications; if(Array.isArray(d.sectors)) sectors = d.sectors; if(Array.isArray(d.roleTypes)) roleTypes = d.roleTypes; saveData(applications); saveSectors(sectors); saveTypes(roleTypes); renderSectorOptions(); renderTypeOptions(); renderSectorsPills(); renderTable(); setBadge('Loaded from cloud', 'ok'); } else { await ref.set({ applications, sectors, roleTypes, createdAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true }); setBadge('Initialised cloud', 'ok'); } await autoDailyBackup(); } catch(err){ console.warn('Load from cloud failed', err); setBadge('Cloud unavailable', 'warn'); } }
 
-    async function pushToCloud(){ if(!cloudReady || !auth.currentUser) return; try{ const ref = db.collection('users').doc(auth.currentUser.uid).collection('tracker').doc('state'); await ref.set({ applications, sectors, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true }); setBadge('Synced', 'ok'); await autoDailyBackup(); } catch(err){ console.warn('Cloud save failed', err); setBadge('Sync error', 'warn'); } }
-
-    async function autoDailyBackup(){ if(!auth.currentUser) return; const ymd = new Date().toISOString().slice(0,10); const bref = db.collection('users').doc(auth.currentUser.uid).collection('backups').doc(ymd); await bref.set({ applications, sectors, ts: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true }); updateLastBackup(new Date()); }
-
-    async function loadFromCloud(){ try{ const ref = db.collection('users').doc(auth.currentUser.uid).collection('tracker').doc('state'); const snap = await ref.get(); if(snap.exists){ const d = snap.data(); if(Array.isArray(d.applications)) applications = d.applications; if(Array.isArray(d.sectors)) sectors = d.sectors; saveData(applications); saveSectors(sectors); renderSectorOptions(); renderSectorsPills(); renderTable(); setBadge('Loaded from cloud', 'ok'); } else { await ref.set({ applications, sectors, createdAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true }); setBadge('Initialised cloud', 'ok'); } await autoDailyBackup(); } catch(err){ console.warn('Load from cloud failed', err); setBadge('Cloud unavailable', 'warn'); } }
-
-    function setupAuth(){ const provider = new firebase.auth.GoogleAuthProvider(); signinBtn.onclick = () => auth.signInWithPopup(provider).catch(err => alert('Sign-in failed: ' + err.message)); signoutBtn.onclick = () => auth.signOut(); auth.onAuthStateChanged(async (u) => { if(u){ signinBtn.classList.add('hidden'); signoutBtn.classList.remove('hidden'); setBadge('Signed in', 'ok'); await loadFromCloud(); } else { signinBtn.classList.remove('hidden'); signoutBtn.classList.add('hidden'); setBadge('Offline', 'off'); updateLastBackup(null); } }); }
+    function setupAuth(){ const provider = new firebase.auth.GoogleAuthProvider(); signinBtn.onclick = () => auth.signInWithPopup(provider).catch(err => alert('Sign-in failed: ' + err.message)); signoutBtn.onclick = () => auth.signOut(); auth.onAuthStateChanged(async (u) => { if(u){ document.getElementById('signinBtn').classList.add('hidden'); document.getElementById('signoutBtn').classList.remove('hidden'); setBadge('Signed in', 'ok'); await loadFromCloud(); } else { document.getElementById('signinBtn').classList.remove('hidden'); document.getElementById('signoutBtn').classList.add('hidden'); setBadge('Offline', 'off'); updateLastBackup(null); } }); }
 
     (function initFirebase(){ if(!window.firebase) return; if(!configLooksFilled()){ setBadge('Offline (add Firebase config)', 'off'); return; } try{ firebase.initializeApp(firebaseConfig); auth = firebase.auth(); db = firebase.firestore(); db.enablePersistence().catch(()=>{}); cloudReady = true; setBadge('Ready (not signed in)', 'warn'); setupAuth(); } catch(err){ console.warn('Firebase init failed', err); setBadge('Cloud off', 'off'); } })();
   </script>
