@@ -145,34 +145,19 @@
     .hidden { display: none !important; }
   </style>
 
-  <!-- === Overrides for your requested layout + compact table === -->
+  <!-- ✅ New block goes here, outside the old one -->
   <style>
-    /* Stack the two cards and make them same width:
-       Add Application (aside) on top, Applications (section) underneath */
-    .grid { grid-template-columns: 1fr !important; }
-    .grid > aside.card { order: 1; }
-    .grid > section.card { order: 2; }
-
-    /* Keep everything readable without horizontal scroll */
-    #appsTable { table-layout: fixed; }
-    #appsTable th, #appsTable td { padding: 8px 8px; font-size: 13px; }
-
-    /* Column widths (only set what we need) */
-    #appsTable .col-status { width: 230px; }         /* wider Status */
-    #appsTable .col-age { width: 100px; white-space: nowrap; }
-    #appsTable .col-location { width: 90px; }        /* slimmer Location */
-    #appsTable .col-actions { width: 90px; }         /* smaller action space */
-    #appsTable .col-desc { width: 220px; white-space: normal; }
-
-    /* Smaller action buttons */
-    #appsTable .row-actions .btn-ghost,
-    #appsTable .row-actions .btn-danger {
-      padding: 6px 8px;
-      font-size: 12px;
+    /* ==== Layout override: stack cards, same width ==== */
+    .grid {
+      grid-template-columns: 1fr !important;
     }
 
-    /* Wrap long text gracefully */
-    #appsTable td { overflow: hidden; text-overflow: ellipsis; word-wrap: break-word; }
+    .grid > aside.card {
+      order: 1;
+    }
+    .grid > section.card {
+      order: 2;
+    }
   </style>
 </head>
 <body>
@@ -252,9 +237,7 @@
       </div>
     </section>
 
-    <!-- Grid now stacks because of the CSS override above -->
     <div class="grid" style="margin-top:18px">
-      <!-- Applications table (will render UNDER the form due to order rules) -->
       <section class="card">
         <header>
           <h2>Applications</h2>
@@ -287,6 +270,7 @@
                 <option value="company">Company</option>
                 <option value="role">Role</option>
                 <option value="type">Type</option>
+                <option value="location">Location</option>
                 <option value="sector">Sector</option>
                 <option value="closing">Closing date</option>
                 <option value="start">Start date</option>
@@ -309,23 +293,19 @@
             <table id="appsTable">
               <thead>
                 <tr>
-                  <th class="sortable col-company" data-key="company">Company <span class="arrow" id="arrow-company"></span></th>
-                  <th class="sortable col-role" data-key="role">Role <span class="arrow" id="arrow-role"></span></th>
-                  <th class="sortable col-type" data-key="type">Type <span class="arrow" id="arrow-type"></span></th>
-                  <th class="sortable col-sector" data-key="sector">Sector <span class="arrow" id="arrow-sector"></span></th>
-
-                  <!-- split: Status + Stage age -->
-                  <th class="col-status">Status</th>
-                  <th class="sortable col-age" data-key="stageAge">Stage age <span class="arrow" id="arrow-stageAge"></span></th>
-
-                  <th class="sortable col-chance" data-key="chance">Chance <span class="arrow" id="arrow-chance"></span></th>
-                  <th class="sortable col-applied" data-key="applied">Applied <span class="arrow" id="arrow-applied"></span></th>
-                  <th class="sortable col-closing" data-key="closing">Closing <span class="arrow" id="arrow-closing"></span></th>
-                  <th class="sortable col-start" data-key="start">Start <span class="arrow" id="arrow-start"></span></th>
-                  <th class="sortable col-location" data-key="location">Location <span class="arrow" id="arrow-location"></span></th>
-                  <th class="col-link">Link</th>
-                  <th class="col-desc">Description</th>
-                  <th class="col-actions">Actions</th>
+                  <th class="sortable" data-key="company">Company <span class="arrow" id="arrow-company"></span></th>
+                  <th class="sortable" data-key="role">Role <span class="arrow" id="arrow-role"></span></th>
+                  <th class="sortable" data-key="type">Type <span class="arrow" id="arrow-type"></span></th>
+                  <th class="sortable" data-key="sector">Sector <span class="arrow" id="arrow-sector"></span></th>
+                  <th>Status / Stage age</th>
+                  <th class="sortable" data-key="chance">Chance <span class="arrow" id="arrow-chance"></span></th>
+                  <th class="sortable" data-key="applied">Applied <span class="arrow" id="arrow-applied"></span></th>
+                  <th class="sortable" data-key="closing">Closing <span class="arrow" id="arrow-closing"></span></th>
+                  <th class="sortable" data-key="start">Start <span class="arrow" id="arrow-start"></span></th>
+                  <th class="sortable" data-key="location">Location <span class="arrow" id="arrow-location"></span></th>
+                  <th>Link</th>
+                  <th>Description</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -337,7 +317,6 @@
         </div>
       </section>
 
-      <!-- Add Application form (ordered ABOVE the table by CSS) -->
       <aside class="card">
         <header>
           <h2 id="formTitle">Add Application</h2>
@@ -447,7 +426,21 @@
     </div>
   </div>
 
-  <!-- PART 2/2 (scripts) will start right after this line -->
+  <!-- Modal for enlarged Daily chart -->
+  <div class="modal" id="dailyModal" aria-hidden="true">
+    <div class="backdrop" id="modalBackdrop"></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <header>
+        <h3 id="modalTitle">Applications per Day (Cumulative)</h3>
+        <button class="close" id="modalClose" type="button">Close ✕</button>
+      </header>
+      <div class="body">
+        <canvas id="modalDailyCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- === PART 2/3 (scripts) will start right below this line === -->
 <script>
 /* ========= v12 Core (Data + UI + Charts + Analytics) ========= */
 
@@ -458,7 +451,7 @@ const TYPES_KEY     = 'gradAppTracker:types:v1';
 const DEFAULT_SECTORS = ['Finance','Consulting','Engineering','Sales'];
 const DEFAULT_TYPES   = ['Graduate Job','Internship','Placement','Apprenticeship','Job','Other'];
 
-/* Advanced stages */
+/* Advanced stages (requested) */
 const STAGES = [
   'Applied',
   'Online Assessment',
@@ -478,7 +471,7 @@ const CHANCES = ['Very Low','Low','Medium','High','Very High'];
 const WARN_DAYS = 14;
 const GHOST_DAYS = 21;
 
-/* --- Date helpers (LOCAL/UK) --- */
+/* --- Date helpers (LOCAL, so “today” matches your UK day) --- */
 const toYMDLocal = d => {
   const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const y = x.getFullYear(), m = String(x.getMonth()+1).padStart(2,'0'), da = String(x.getDate()).padStart(2,'0');
@@ -514,6 +507,7 @@ function loadLocal(key, def){ try{ const raw = localStorage.getItem(key); return
 function saveLocal(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
 
 let applications = (()=>{
+  // migrate from older versions if present
   const now = loadLocal(STORAGE_KEY, null);
   if(now) return now;
   const fallbacks = ['gradAppTracker:data:v11','gradAppTracker:data:v10','gradAppTracker:data:v9'];
@@ -526,10 +520,10 @@ let applications = (()=>{
 let sectors   = loadLocal(SECTORS_KEY, [...DEFAULT_SECTORS]);
 let roleTypes = loadLocal(TYPES_KEY,   [...DEFAULT_TYPES]);
 
-/* Placeholder – replaced in Firebase section */
+/* Placeholder – will be replaced in PART 3 with cloud sync */
 function queueCloudSave(){ /* no-op until Firebase init */ }
 
-/* --- DOM refs --- */
+/* --- DOM refs (must match PART 1) --- */
 const sectorSelect   = document.querySelector('#sector');
 const typeSelect     = document.querySelector('#type');
 const sectorFilter   = document.querySelector('#sectorFilter');
@@ -567,6 +561,8 @@ const applyRangeBtn  = document.getElementById('applyRangeBtn');
 
 const lastBackupEl   = document.getElementById('lastBackup');
 const syncBadge      = document.getElementById('syncBadge');
+const signinBtn      = document.getElementById('signinBtn');
+const signoutBtn     = document.getElementById('signoutBtn');
 
 /* --- Render selects --- */
 function renderSectorOptions(){
@@ -641,7 +637,6 @@ function applySortAndFilter(rows){
   arr.sort((x,y)=>{
     if(['applied','closing','start'].includes(key)) return sgn*dateCmp(x[key]||'',y[key]||'');
     if(key==='chance') return sgn*(chanceToValue(x.chance||'Medium') - chanceToValue(y.chance||'Medium'));
-    if(key==='stageAge') return sgn*(stageAge(x) - stageAge(y));      // NEW: sort by stage age
     return sgn*cmp((x[key]||'').toLowerCase(), (y[key]||'').toLowerCase());
   });
   return arr;
@@ -693,6 +688,7 @@ function timelineTooltip(app){
   return items.join(' → ');
 }
 function firstResponseDays(app){
+  // days from applied to first status change after Applied
   ensureHistory(app);
   if(!app.applied) return null;
   if(app.history.length<=1) return null;
@@ -708,11 +704,16 @@ function isGhosting(app){
 
 /* --- Table render --- */
 function rowStatusCell(app){
-  ensureHistory(app);
+  const age = stageAge(app);
+  const cls = age>=GHOST_DAYS ? 'stage-age bad' : age>=WARN_DAYS ? 'stage-age warn' : 'stage-age';
+  const warn = isGhosting(app) ? ' ⚠️' : '';
   const select = `<select data-id="${app.id}" class="statusSelect">
     ${STAGES.map(s=>`<option ${s===(app.status||'Applied')?'selected':''}>${s}</option>`).join('')}
   </select>`;
-  return `<div title="${escapeHtml(timelineTooltip(app))}">${select}</div>`;
+  return `<div title="${escapeHtml(timelineTooltip(app))}">
+    ${select}
+    <div class="${cls}" style="margin-top:6px">${age} day(s) in stage${warn}</div>
+  </div>`;
 }
 
 function renderTable(){
@@ -722,30 +723,24 @@ function renderTable(){
 
   const frag = document.createDocumentFragment();
   rows.forEach(app=>{
-    const age = stageAge(app);
-    const ageCls = age>=GHOST_DAYS ? 'stage-age bad' : age>=WARN_DAYS ? 'stage-age warn' : 'stage-age';
-
     const tr = document.createElement('tr'); tr.className = 'row-status-' + normalizeStatusForClass(app.status);
     tr.innerHTML = `
-      <td class="col-company"><strong>${escapeHtml(app.company)}</strong></td>
-      <td class="col-role">${escapeHtml(app.role||'')}</td>
-      <td class="col-type">${escapeHtml(app.type||'')}</td>
-      <td class="col-sector"><span class="pill">${escapeHtml(app.sector||'')}</span></td>
-
-      <td class="col-status">${rowStatusCell(app)}</td>
-      <td class="col-age" data-sort="${age}"><div class="${ageCls}">${age} day(s)</div></td>
-
-      <td class="col-chance" data-sort="${chanceToValue(app.chance||'Medium')}">${stars(app.chance||'Medium')}</td>
-      <td class="col-applied">${formatDate(app.applied)}</td>
-      <td class="col-closing">${formatDate(app.closing)}</td>
-      <td class="col-start">${formatDate(app.start)}</td>
-      <td class="col-location">${escapeHtml(app.location||'')}</td>
-      <td class="col-link">${renderLink(app.url)}</td>
-      <td class="col-desc">${escapeHtml(app.description||'')}</td>
-      <td class="col-actions">
+      <td><strong>${escapeHtml(app.company)}</strong></td>
+      <td>${escapeHtml(app.role||'')}</td>
+      <td>${escapeHtml(app.type||'')}</td>
+      <td><span class="pill">${escapeHtml(app.sector||'')}</span></td>
+      <td>${rowStatusCell(app)}</td>
+      <td data-sort="${chanceToValue(app.chance||'Medium')}">${stars(app.chance||'Medium')}</td>
+      <td>${formatDate(app.applied)}</td>
+      <td>${formatDate(app.closing)}</td>
+      <td>${formatDate(app.start)}</td>
+      <td>${escapeHtml(app.location||'')}</td>
+      <td>${renderLink(app.url)}</td>
+      <td style="max-width:260px">${escapeHtml(app.description||'')}</td>
+      <td>
         <div class="row-actions">
-          <button class="btn-ghost" data-action="edit" data-id="${app.id}" type="button" title="Edit">✏️</button>
-          <button class="btn-danger" data-action="delete" data-id="${app.id}" type="button" title="Delete">🗑️</button>
+          <button class="btn-ghost" data-action="edit" data-id="${app.id}" type="button">Edit</button>
+          <button class="btn-danger" data-action="delete" data-id="${app.id}" type="button">Delete</button>
         </div>
       </td>`;
     frag.appendChild(tr);
@@ -853,19 +848,25 @@ form.addEventListener('submit', (e)=>{
     chance: document.getElementById('chance').value
   };
 
+  // migrate/initialise history
   const existing = applications.find(a=>a.id===id);
   if(existing){
     ensureHistory(existing);
     if(existing.status !== newApp.status){
+      // status changed during edit
       existing.history.push({ status:newApp.status, date: todayYMD() });
     }
+    // merge update
     const merged = { ...existing, ...newApp, history: existing.history };
+    // duplicate check only if changing company/role
     const dups = possibleDuplicates(merged);
     if(dups.length && !confirm(`Possible duplicate(s) found:\n\n${dups.map(d=>`• ${d.company} — ${d.role}`).join('\n')}\n\nSave anyway?`)) return;
 
     applications = applications.map(a=>a.id===id?merged:a);
   } else {
+    // brand-new
     newApp.history = [{ status:newApp.status||'Applied', date: newApp.applied || todayYMD() }];
+    // duplicate warning
     const dups = possibleDuplicates(newApp);
     if(dups.length && !confirm(`Possible duplicate(s) found:\n\n${dups.map(d=>`• ${d.company} — ${d.role}`).join('\n')}\n\nAdd anyway?`)) return;
 
@@ -1056,7 +1057,8 @@ importFile.addEventListener('change', async (e)=>{
 });
 
 /* --- Modal enlarge behaviour --- */
-let modalDailyChart=null;
+modalDailyChart=null;
+function getDailyChartConfigForModal(){ return dailyChart ? { type: dailyChart.config.type, data: dailyChart.data, options: dailyChart.options } : null; }
 function openDailyModal(){
   dailyModal.classList.add('show');
   const ctx = document.getElementById('modalDailyCanvas');
@@ -1095,14 +1097,12 @@ function init(){
   if(!document.getElementById('applied').value) document.getElementById('applied').value = todayYMD();
   rangeToInp.value = todayYMD();
   renderTable(); renderCharts();
-  const syncBadgeEl = document.getElementById('syncBadge');
-  if(syncBadgeEl){ syncBadgeEl.textContent = 'Offline'; syncBadgeEl.className = 'badge off'; }
+  syncBadge.textContent = 'Offline'; syncBadge.className = 'badge off';
 }
 init();
 
-/* In Firebase section we’ll attach cloud sync and override queueCloudSave() */
+/* In PART 3/3 we’ll attach Firebase, live sync, and override queueCloudSave() */
 </script>
-
 <script>
 /* ========= v12 Firebase Cloud Sync (overrides queueCloudSave) ========= */
 const firebaseConfig = {
@@ -1132,7 +1132,7 @@ function updateLastBackup(ts){
   lastBackupEl.className='badge ok';
 }
 
-/* Debounced saver */
+/* Debounced saver (replaces the no-op from PART 2) */
 function queueCloudSave(){
   if(!cloudReady || !auth?.currentUser) return;
   clearTimeout(saveTimer);
@@ -1193,7 +1193,7 @@ async function loadFromCloud(){
   }
 }
 
-/* First-sign-in conflict resolver */
+/* Safer first-sign-in flow: let user choose cloud vs local if both exist */
 async function resolveCloudConflict(){
   const ref = db.collection('users').doc(auth.currentUser.uid).collection('tracker').doc('state');
   const snap = await ref.get();
@@ -1222,6 +1222,7 @@ async function resolveCloudConflict(){
         await pushToCloud();
       }
     } else if(cloudApps.length){
+      // Cloud present (local empty or identical) → load
       applications = cloudApps;
       if(Array.isArray(d.sectors))   sectors = d.sectors;
       if(Array.isArray(d.roleTypes)) roleTypes = d.roleTypes;
@@ -1232,6 +1233,7 @@ async function resolveCloudConflict(){
       setBadge('Loaded from cloud','ok');
       await autoDailyBackup();
     } else {
+      // Cloud empty → upload local
       await pushToCloud();
       setBadge('Initialised cloud','ok');
     }
@@ -1243,8 +1245,8 @@ async function resolveCloudConflict(){
 
 function setupAuth(){
   const provider = new firebase.auth.GoogleAuthProvider();
-  document.getElementById('signinBtn').onclick  = () => auth.signInWithPopup(provider).catch(err => alert('Sign-in failed: ' + err.message));
-  document.getElementById('signoutBtn').onclick = () => auth.signOut();
+  signinBtn.onclick  = () => auth.signInWithPopup(provider).catch(err => alert('Sign-in failed: ' + err.message));
+  signoutBtn.onclick = () => auth.signOut();
 
   auth.onAuthStateChanged(async (u)=>{
     if(u){
