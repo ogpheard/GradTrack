@@ -3,375 +3,159 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Grad Tracker · Analyse a Job</title>
-
-  <!-- Inter font (fast + high-quality); safe to remove if you prefer system font -->
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
+  <title>Grad Tracker – Analyse a Job</title>
   <style>
-    :root{
-      --bg: #0b1020;
-      --bg-card: rgba(255,255,255,.08);
-      --border: rgba(255,255,255,.12);
-      --text: #e6eaf2;
-      --muted: #a7b0c3;
-      --accent: #7c9cff;
-      --accent-2: #22c55e;
-      --warn: #f59e0b;
-      --danger: #ef4444;
-      --pill: rgba(124,156,255,.18);
-      --shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 10px 30px rgba(0,0,0,.35);
-      --radius: 16px;
-      --radius-sm: 12px;
-      --grad-1: radial-gradient(1200px 400px at 20% -10%, #3652ff33, transparent 50%),
-                radial-gradient(1000px 300px at 100% -20%, #22c55e22, transparent 50%),
-                radial-gradient(800px 200px at 50% -10%, #f59e0b22, transparent 40%);
-    }
-    @media (prefers-color-scheme: light) {
-      :root{
-        --bg:#f6f7fb; --bg-card:#ffffff; --border:#e7e9f2; --text:#0c1222; --muted:#4b5568;
-        --pill:#eef2ff; --shadow:0 6px 24px rgba(16,24,40,.06);
-      }
-    }
-
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0; font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background: var(--bg); color: var(--text);
-      background-image: var(--grad-1);
-      background-attachment: fixed;
-    }
-
-    .wrap{max-width: 1040px; margin: 40px auto; padding: 0 20px;}
-    header{
-      display:flex; align-items:center; justify-content:space-between; margin-bottom: 18px;
-    }
-    .logo{display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.2px}
-    .logo .dot{width:12px; height:12px; border-radius:50%; background: linear-gradient(135deg, var(--accent), #60a5fa)}
-    .nav a{color:var(--muted); text-decoration:none; font-weight:500}
-    .nav a:hover{color:var(--text)}
-
-    .hero{
-      border:1px solid var(--border); border-radius: var(--radius); padding: 22px;
-      background: var(--bg-card); box-shadow: var(--shadow); backdrop-filter: blur(6px);
-    }
-    h1{margin:0 0 8px;font-size: clamp(22px, 2.2vw, 28px)}
-    .sub{color:var(--muted); margin:0 0 16px}
-
-    .input-row{display:flex; gap:10px; flex-wrap:wrap}
-    input[type="url"]{
-      flex:1; padding:14px 14px; font-size:16px; background:transparent; color:var(--text);
-      border:1px solid var(--border); border-radius: var(--radius-sm); outline:none;
-      transition: border .15s ease, box-shadow .15s ease;
-    }
-    input[type="url"]::placeholder{color:var(--muted)}
-    input[type="url"]:focus{border-color:var(--accent); box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 20%, transparent)}
-
-    .btn{
-      appearance:none; border:0; border-radius: var(--radius-sm); padding: 12px 14px; font-weight:600;
-      cursor:pointer; transition: transform .04s ease, filter .15s ease; white-space:nowrap;
-    }
-    .btn:active{transform: translateY(1px)}
-    .btn.primary{background: linear-gradient(180deg, var(--accent), #5b7aff); color:white}
-    .btn.ghost{background: transparent; border:1px solid var(--border); color:var(--text)}
-    .btn.mono{background:#0f172a; color:#fff; border:1px solid #0b1229}
-
-    .spinner{
-      width:18px; height:18px; border:3px solid color-mix(in oklab, var(--text) 15%, transparent);
-      border-top-color:#fff; border-radius:50%; display:inline-block; vertical-align:-3px;
-      animation:spin .9s linear infinite; margin-left:8px; opacity:0; transform:scale(.7); transition:.2s;
-    }
-    .spinner.show{opacity:1; transform:scale(1)}
-    @keyframes spin{to{transform:rotate(360deg)}}
-
-    .result{margin-top:20px; display:none}
-    .card{
-      border:1px solid var(--border); border-radius: var(--radius);
-      background: var(--bg-card); box-shadow: var(--shadow);
-    }
-    .card .head{padding:18px 18px 0}
-    .title{font-size: clamp(18px, 2vw, 22px); margin:0}
-    .meta{color:var(--muted); margin-top:6px}
-    .chips{margin:10px 0 0; display:flex; flex-wrap:wrap; gap:8px}
-    .chip{padding:6px 10px; background: var(--pill); color: color-mix(in oklab, var(--accent) 70%, white 30%);
-      border:1px solid color-mix(in oklab, var(--accent) 60%, transparent); border-radius:999px; font-size:12px; font-weight:600}
-
-    .body{padding:18px}
-    .grid{display:grid; grid-template-columns: 1.2fr .8fr; gap:16px}
-    @media (max-width: 860px){ .grid{grid-template-columns: 1fr} }
-
-    .section{border:1px dashed var(--border); border-radius: var(--radius-sm); padding:14px}
-    .section h3{margin:0 0 8px; font-size:15px}
-    .muted{color:var(--muted)}
-    .pill{display:inline-block; padding:6px 10px; background:var(--pill); border-radius:999px; margin: 4px 6px 0 0; font-size:12px}
-
-    .list{margin:6px 0 0 18px; line-height:1.5}
-    .actions{display:flex; gap:10px; flex-wrap:wrap; padding: 12px 18px 18px}
-
-    .gauge{
-      width: 126px; aspect-ratio: 1 / 1; border-radius: 50%;
-      background: conic-gradient(var(--accent-2) var(--angle), color-mix(in oklab, var(--muted) 30%, transparent) 0deg);
-      display:grid; place-items:center; border:1px solid var(--border);
-    }
-    .gauge .inside{
-      width: 92px; height: 92px; border-radius: 50%; display:grid; place-items:center;
-      background: var(--bg-card); border:1px solid var(--border);
-    }
-    .gauge .val{font-weight:700; font-size:22px}
-    .gauge small{color:var(--muted); margin-top:4px}
-
-    .skeleton{
-      display:block; width:100%; height:14px; border-radius: 8px;
-      background: linear-gradient(90deg, #0000, color-mix(in oklab, var(--text) 8%, transparent), #0000) , color-mix(in oklab, var(--text) 8%, transparent);
-      background-size: 140px 100%, cover; animation: shimmer 1.2s infinite linear;
-    }
-    @keyframes shimmer{to{background-position: 140px 0, 0 0}}
-
-    details.summary { margin-top: 8px }
-    details > summary {cursor:pointer; color: var(--accent); }
-    .toast{
-      position: fixed; inset:auto 0 18px 0; display:flex; justify-content:center; pointer-events:none;
-    }
-    .toast .t{
-      pointer-events:auto; background: var(--bg-card); border:1px solid var(--border); padding:10px 14px; border-radius: 12px;
-      color:var(--text); box-shadow: var(--shadow);
-    }
-    .ok{color:var(--accent-2)} .warn{color:var(--warn)} .error{color:var(--danger)}
-    .small{font-size:12px}
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; max-width: 820px; margin: 32px auto; padding: 0 16px; }
+    h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+    .row { display: flex; gap: 8px; margin-bottom: 12px; }
+    input[type="url"] { flex: 1; padding: 10px 12px; border: 1px solid #ccc; border-radius: 10px; }
+    button { padding: 10px 14px; border: 0; border-radius: 10px; cursor: pointer; }
+    button.primary { background: #111827; color: #fff; }
+    button.ghost { background: #f3f4f6; }
+    .muted { color: #6b7280; font-size: 0.9rem; }
+    .card { border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px; margin-top: 16px; }
+    .spinner { display: none; margin-left: 8px; width: 18px; height: 18px; border: 3px solid #e5e7eb; border-top-color: #111827; border-radius: 50%; animation: spin 0.9s linear infinite; }
+    .spinner.show { display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    ul { margin: 8px 0 0 18px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .pill { display: inline-block; padding: 4px 8px; font-size: 12px; background: #f3f4f6; border-radius: 999px; margin-right: 6px; margin-bottom: 6px; }
+    .actions { display: flex; gap: 8px; margin-top: 12px; }
+    .ok { color: #065f46; }
+    .warn { color: #92400e; }
+    .error { color: #991b1b; }
+    pre { white-space: pre-wrap; word-break: break-word; }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div class="logo"><span class="dot"></span> Grad Tracker</div>
-      <nav class="nav">
-        <a href="https://ogpheard.github.io/grad-tracker/" aria-label="Home">Home</a>
-      </nav>
-    </header>
+  <h1>Analyse a Job</h1>
+  <p class="muted">Paste a job posting URL and click Analyse. We’ll run your n8n workflow and show a concise summary.</p>
 
-    <section class="hero">
-      <h1>Analyse a job posting</h1>
-      <p class="sub">Paste a job URL. We’ll fetch the page via n8n, extract a concise summary, score fit/alignment, and show key requirements.</p>
-      <div class="input-row">
-        <input id="jobUrl" type="url" placeholder="https://example.com/job-posting" autocomplete="on" inputmode="url" />
-        <button id="pasteBtn" class="btn ghost" title="Paste from clipboard">Paste</button>
-        <button id="analyseBtn" class="btn primary">Analyse <span id="spin" class="spinner"></span></button>
-      </div>
-      <div id="status" class="small muted" style="margin-top:10px"></div>
-    </section>
-
-    <section id="result" class="result">
-      <!-- Result card will be injected here -->
-    </section>
+  <div class="row">
+    <input id="jobUrl" type="url" placeholder="https://example.com/job-posting" />
+    <button id="analyseBtn" class="primary">Analyse <span id="spin" class="spinner"></span></button>
   </div>
 
-  <div id="toast" class="toast" aria-live="polite" aria-atomic="true" style="display:none"></div>
+  <div id="status" class="muted"></div>
+
+  <div id="result" class="card" style="display:none"></div>
 
   <script>
-    // ============================
-    // 1) CONFIG — set your webhook
-    // ============================
-    const WEBHOOK_URL = "WEBHOOK_URL_HERE"; // <-- put your n8n webhook URL here (test or production)
+    const WEBHOOK_URL = "WEBHOOK_URL_HERE"; // <-- put your n8n webhook URL here
 
-    // UI handles
-    const $ = (q) => document.querySelector(q);
     const el = {
-      url: $('#jobUrl'), pasteBtn: $('#pasteBtn'), btn: $('#analyseBtn'),
-      spin: $('#spin'), status: $('#status'), result: $('#result'), toast: $('#toast')
+      url: document.getElementById('jobUrl'),
+      btn: document.getElementById('analyseBtn'),
+      spin: document.getElementById('spin'),
+      status: document.getElementById('status'),
+      result: document.getElementById('result'),
     };
 
-    // Helpers
-    const setLoading = (on) => {
-      el.btn.disabled = on; el.pasteBtn.disabled = on;
+    function setLoading(on) {
+      el.btn.disabled = on;
       el.spin.classList.toggle('show', on);
-      el.status.textContent = on ? "Analysing… usually takes a short moment." : "";
-    };
-    const toast = (msg, cls=''){ el.toast.innerHTML = `<div class="t ${cls}">${msg}</div>`; el.toast.style.display='flex'; setTimeout(()=>el.toast.style.display='none', 2200); };
-    const asArray = v => Array.isArray(v) ? v : (v ? [v] : []);
-    const safe = s => (s ?? "").toString();
-    const clamp = n => Math.max(0, Math.min(100, Math.round(Number(n)||0)));
+      el.status.textContent = on ? "Analysing… this can take a moment." : "";
+    }
 
-    // Persist last URL
-    el.url.value = localStorage.getItem('lastUrl') || '';
-    el.url.addEventListener('change', () => localStorage.setItem('lastUrl', el.url.value));
+    function fmtSalary(s) {
+      if (!s) return "";
+      const parts = [s.salary_raw || ""].filter(Boolean);
+      return parts.join(" ");
+    }
 
-    // Paste button
-    el.pasteBtn.addEventListener('click', async () => {
-      try { const t = await navigator.clipboard.readText(); if(t){ el.url.value = t.trim(); el.url.dispatchEvent(new Event('change')); } }
-      catch { toast("Clipboard blocked by browser", "warn"); }
-    });
+    function pillList(arr) {
+      if (!Array.isArray(arr)) return "";
+      return arr.map(x => `<span class="pill">${String(x)}</span>`).join(" ");
+    }
 
-    // Render circular gauge using CSS conic-gradient
-    const gauge = (score, label) => {
-      const s = clamp(score);
-      const angle = `${(s/100)*360}deg`;
-      return `
-        <div class="gauge" style="--angle:${angle}" role="img" aria-label="${label} ${s} out of 100">
-          <div class="inside">
-            <div class="val">${s}</div>
-            <small>${label}</small>
-          </div>
-        </div>`;
-    };
-
-    // Skeleton card while loading
-    const showSkeleton = () => {
-      el.result.style.display = "block";
-      el.result.innerHTML = `
-        <div class="card">
-          <div class="head">
-            <div class="skeleton" style="width:60%; height:18px"></div>
-            <div class="skeleton" style="width:40%; margin-top:10px"></div>
-            <div class="chips" style="margin-top:12px">
-              <span class="skeleton" style="width:90px; height:22px"></span>
-              <span class="skeleton" style="width:120px; height:22px"></span>
-              <span class="skeleton" style="width:60px; height:22px"></span>
-            </div>
-          </div>
-          <div class="body">
-            <div class="grid">
-              <div class="section"><div class="skeleton" style="height:14px"></div><div class="skeleton" style="height:14px; margin-top:10px"></div><div class="skeleton" style="height:14px; margin-top:10px; width:70%"></div></div>
-              <div class="section" style="display:flex; gap:12px; justify-content:center"><span class="skeleton" style="width:126px; height:126px; border-radius:50%"></span><span class="skeleton" style="width:126px; height:126px; border-radius:50%"></span></div>
-            </div>
-          </div>
-        </div>`;
-    };
-
-    // Build result UI
-    const render = (data) => {
-      const salaryRaw = safe(data?.salary?.salary_raw);
-      const title = safe(data?.title) || "Untitled role";
-      const company = safe(data?.company_name);
-      const locations = asArray(data?.locations).filter(Boolean).join(' • ');
-      const sector = safe(data?.sector);
-      const seniority = safe(data?.seniority);
-      const roleType = safe(data?.role_type);
-      const summary = safe(data?.summary || data?.job_summary);
-      const keywords = asArray(data?.keywords || data?.ai?.keywords);
-      const keyReq = asArray(data?.ai?.key_requirements);
-      const otherReq = asArray(data?.ai?.other_requirements);
-      const fits = asArray(data?.ai?.fits);
-      const gaps = asArray(data?.ai?.gaps);
-      const fit = clamp(data?.ai?.fit_score);
-      const align = clamp(data?.ai?.alignment_score);
-
-      el.result.innerHTML = `
-        <div class="card">
-          <div class="head">
-            <h2 class="title">${title}</h2>
-            <div class="meta">${[company, locations].filter(Boolean).join(" — ")}</div>
-            <div class="chips">
-              ${sector ? `<span class="chip">Sector: ${sector}</span>` : ``}
-              ${roleType ? `<span class="chip">Role: ${roleType}</span>` : ``}
-              ${seniority ? `<span class="chip">Seniority: ${seniority}</span>` : ``}
-              ${salaryRaw ? `<span class="chip">Salary: ${salaryRaw}</span>` : ``}
-            </div>
-          </div>
-
-          <div class="body">
-            <div class="grid">
-              <div>
-                <div class="section">
-                  <h3>Overview</h3>
-                  ${summary ? `<p class="muted" style="margin:6px 0 10px">${summary}</p>` : `<p class="muted">No summary provided.</p>`}
-                  ${keywords.length ? `<div>${keywords.map(k=>`<span class="pill">${String(k)}</span>`).join('')}</div>` : ``}
-                </div>
-
-                ${keyReq.length ? `
-                  <div class="section" style="margin-top:12px">
-                    <h3>Key requirements</h3>
-                    <ul class="list">${keyReq.map(x=>`<li>${String(x)}</li>`).join('')}</ul>
-                  </div>`: ``}
-
-                ${otherReq.length ? `
-                  <div class="section" style="margin-top:12px">
-                    <h3>Other requirements</h3>
-                    <ul class="list">${otherReq.map(x=>`<li>${String(x)}</li>`).join('')}</ul>
-                  </div>`: ``}
-
-                <details class="summary" style="margin-top:12px">
-                  <summary>Show raw JSON</summary>
-                  <pre class="small muted" style="margin-top:8px">${escapeHtml(JSON.stringify(data, null, 2))}</pre>
-                </details>
-              </div>
-
-              <div>
-                <div class="section" style="display:flex; justify-content:space-around; align-items:center; gap:10px">
-                  ${gauge(fit, 'Fit')}
-                  ${gauge(align, 'Alignment')}
-                </div>
-
-                ${fits.length ? `
-                  <div class="section" style="margin-top:12px">
-                    <h3>Where you fit</h3>
-                    <ul class="list">${fits.map(x=>`<li>${String(x)}</li>`).join('')}</ul>
-                  </div>`: ``}
-
-                ${gaps.length ? `
-                  <div class="section" style="margin-top:12px">
-                    <h3>Gaps</h3>
-                    <ul class="list">${gaps.map(x=>`<li>${String(x)}</li>`).join('')}</ul>
-                  </div>`: ``}
-              </div>
-            </div>
-          </div>
-
-          <div class="actions">
-            <button class="btn primary" id="applyBtn">Apply</button>
-            <button class="btn ghost" id="saveBtn">Save for later</button>
-            <button class="btn ghost mono" id="copyBtn">Copy summary</button>
-            <button class="btn ghost" id="ignoreBtn">Ignore</button>
-          </div>
-        </div>
-      `;
-
-      // Button hooks (these just toast for now)
-      $('#applyBtn').onclick  = () => toast("Marked as: Apply ✅", "ok");
-      $('#saveBtn').onclick   = () => toast("Marked as: Save for later 💾");
-      $('#ignoreBtn').onclick = () => toast("Marked as: Ignore 🚫", "warn");
-      $('#copyBtn').onclick   = async () => {
-        try{
-          const text = `${title} — ${company}\n${locations}\n\n${summary}`;
-          await navigator.clipboard.writeText(text.trim());
-          toast("Summary copied to clipboard ✅", "ok");
-        }catch{ toast("Copy failed", "error"); }
-      };
-    };
-
-    function escapeHtml(s){ return s.replace(/[&<>"']/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m])) }
-
-    // Analyse flow
-    async function analyse(){
+    async function analyse() {
       const url = el.url.value.trim();
-      if(!/^https?:\/\//i.test(url)){ el.status.textContent="Please enter a valid URL."; el.url.focus(); return; }
-      setLoading(true); showSkeleton();
+      if (!/^https?:\/\//i.test(url)) {
+        el.status.innerHTML = '<span class="error">Please enter a valid URL.</span>';
+        return;
+      }
+      setLoading(true);
+      el.result.style.display = "none";
 
-      try{
+      try {
+        // Use FormData (simple request → usually no preflight)
         const form = new FormData();
         form.append("job_url", url);
 
-        const res = await fetch(WEBHOOK_URL, { method: "POST", body: form });
-        if(!res.ok){
-          const t = await res.text().catch(()=> "");
-          throw new Error(`HTTP ${res.status} ${res.statusText} — ${t}`);
+        const res = await fetch(WEBHOOK_URL, {
+          method: "POST",
+          body: form,
+          // no custom headers → helps avoid CORS preflight
+        });
+
+        if (!res.ok) {
+          const text = await res.text().catch(() => "");
+          throw new Error(`HTTP ${res.status} ${res.statusText} — ${text}`);
         }
+
         const data = await res.json();
-        render(data);
-        el.status.textContent = "";
-      }catch(err){
+
+        // Minimal rendering of the fields we care about
+        const title = data.title || "(untitled role)";
+        const company = data.company_name || "";
+        const locs = Array.isArray(data.locations) ? data.locations.join(" • ") : "";
+        const salary = fmtSalary(data.salary);
+        const summary = data.summary || "";
+        const kws = pillList(data.keywords || data.ai?.keywords || data.keywords || []);
+        const fit = data.ai?.fit_score ?? 0;
+        const align = data.ai?.alignment_score ?? 0;
+        const keys = Array.isArray(data.ai?.key_requirements) ? data.ai.key_requirements : [];
+        const othr = Array.isArray(data.ai?.other_requirements) ? data.ai.other_requirements : [];
+        const fits = Array.isArray(data.ai?.fits) ? data.ai.fits : [];
+        const gaps = Array.isArray(data.ai?.gaps) ? data.ai.gaps : [];
+
+        el.result.innerHTML = `
+          <h2 style="margin:0 0 6px 0">${title}</h2>
+          <div class="muted">${company}${locs ? " — " + locs : ""}</div>
+          ${salary ? `<div class="muted" style="margin-top:6px">${salary}</div>` : ""}
+          <div style="margin-top:10px">${summary ? `<p>${summary}</p>` : ""}</div>
+
+          <div class="grid">
+            <div>
+              <strong>Fit score:</strong> <span class="${fit>=60?'ok':''}">${fit}/100</span><br/>
+              <strong>Alignment score:</strong> <span class="${align>=60?'ok':''}">${align}/100</span>
+            </div>
+            <div>
+              ${kws ? `<div><strong>Keywords:</strong><br/>${kws}</div>` : ""}
+            </div>
+          </div>
+
+          ${keys.length ? `<div style="margin-top:10px"><strong>Key requirements</strong><ul>${keys.map(x=>`<li>${x}</li>`).join('')}</ul></div>` : ""}
+          ${othr.length ? `<div style="margin-top:10px"><strong>Other requirements</strong><ul>${othr.map(x=>`<li>${x}</li>`).join('')}</ul></div>` : ""}
+          ${fits.length ? `<div style="margin-top:10px"><strong>Where you fit</strong><ul>${fits.map(x=>`<li>${x}</li>`).join('')}</ul></div>` : ""}
+          ${gaps.length ? `<div style="margin-top:10px"><strong>Gaps</strong><ul>${gaps.map(x=>`<li>${x}</li>`).join('')}</ul></div>` : ""}
+
+          <div class="actions">
+            <button class="primary" id="applyBtn">Apply</button>
+            <button class="ghost" id="saveBtn">Save for later</button>
+            <button class="ghost" id="ignoreBtn">Ignore</button>
+          </div>
+        `;
+        el.result.style.display = "block";
+
+        // For now we just show a toast; in the next steps we’ll wire these to n8n.
+        const toast = (msg, cls="muted") => { el.status.innerHTML = `<span class="${cls}">${msg}</span>`; };
+        document.getElementById('applyBtn').onclick = () => toast("Marked as: Apply ✅","ok");
+        document.getElementById('saveBtn').onclick  = () => toast("Marked as: Save for later 💾","muted");
+        document.getElementById('ignoreBtn').onclick= () => toast("Marked as: Ignore 🚫","warn");
+
+      } catch (err) {
         console.error(err);
-        el.result.innerHTML = "";
-        el.result.style.display = "none";
         el.status.innerHTML = `<span class="error">Request failed: ${err.message}</span>`;
-      }finally{
+      } finally {
         setLoading(false);
       }
     }
 
-    el.btn.addEventListener('click', analyse);
-    el.url.addEventListener('keypress', (e)=>{ if(e.key==='Enter') analyse(); });
+    document.getElementById('analyseBtn').addEventListener('click', analyse);
+    document.getElementById('jobUrl').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') analyse();
+    });
   </script>
 </body>
 </html>
