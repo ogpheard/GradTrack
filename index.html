@@ -32,83 +32,39 @@
     }
 
     /* Header */
-    .nav {
-      position: sticky; top: 0; z-index: 20;
-      backdrop-filter: saturate(120%) blur(6px);
-      background: rgba(255,255,255,0.7);
-      border-bottom: 1px solid var(--border);
-    }
-    .nav-inner {
-      max-width: 980px; margin: 0 auto; padding: 12px 16px;
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .brand {
-      display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text);
-    }
-    .brand-logo {
-      width: 28px; height: 28px; border-radius: 8px;
-      background: conic-gradient(from 120deg, #60a5fa, #a78bfa, #60a5fa);
-      box-shadow: inset 0 0 0 3px #fff;
-    }
+    .nav { position: sticky; top: 0; z-index: 20; backdrop-filter: saturate(120%) blur(6px); background: rgba(255,255,255,0.7); border-bottom: 1px solid var(--border); }
+    .nav-inner { max-width: 980px; margin: 0 auto; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; }
+    .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .brand-logo { width: 28px; height: 28px; border-radius: 8px; background: conic-gradient(from 120deg, #60a5fa, #a78bfa, #60a5fa); box-shadow: inset 0 0 0 3px #fff; }
     .brand h1 { font-size: 1.05rem; margin: 0; letter-spacing: .2px; }
-
-    .home-btn {
-      border: 1px solid var(--border);
-      background: var(--panel);
-      color: var(--text);
-      padding: 8px 12px; border-radius: 10px;
-      text-decoration: none;
-      transition: transform .05s ease, box-shadow .2s ease;
-    }
+    .home-btn { border: 1px solid var(--border); background: var(--panel); color: var(--text); padding: 8px 12px; border-radius: 10px; text-decoration: none; transition: transform .05s ease, box-shadow .2s ease; }
     .home-btn:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
 
     /* Wrapper */
     .wrapper { max-width: 980px; margin: 28px auto 56px; padding: 0 16px; }
 
     /* Intro card */
-    .hero {
-      background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 22px; margin-bottom: 16px;
-    }
+    .hero { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 22px; margin-bottom: 16px; }
     .hero h2 { margin: 0 0 6px 0; font-size: 1.35rem; }
     .muted { color: var(--muted); }
 
     /* Input row */
     .row { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-top: 12px; }
-    input[type="url"]{
-      width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: #fff;
-      outline: none; transition: border-color .15s ease, box-shadow .15s ease;
-    }
+    input[type="url"]{ width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: #fff; outline: none; transition: border-color .15s ease, box-shadow .15s ease; }
     input[type="url"]:focus{ border-color: var(--accent); box-shadow: 0 0 0 4px rgba(37,99,235,.12); }
-    button {
-      padding: 12px 16px; border: 0; border-radius: 12px; cursor: pointer; font-weight: 600;
-      transition: transform .05s ease, box-shadow .2s ease, background .2s ease;
-    }
+    button { padding: 12px 16px; border: 0; border-radius: 12px; cursor: pointer; font-weight: 600; transition: transform .05s ease, box-shadow .2s ease, background .2s ease; }
     button.primary { background: var(--accent); color: var(--accent-fg); box-shadow: var(--shadow); }
     button.primary:hover { filter: brightness(1.04); transform: translateY(-1px); }
     button.ghost { background: var(--pill); }
     button:disabled { opacity: .7; cursor: progress; transform: none; }
 
     /* Spinner */
-    .spinner {
-      display: inline-block; margin-left: 8px; width: 18px; height: 18px;
-      border-radius: 50%;
-      border: 3px solid rgba(255,255,255,.45);
-      border-top-color: #fff;
-      vertical-align: -3px;
-      animation: spin .8s linear infinite; visibility: hidden;
-    }
+    .spinner { display: inline-block; margin-left: 8px; width: 18px; height: 18px; border-radius: 50%; border: 3px solid rgba(255,255,255,.45); border-top-color: #fff; vertical-align: -3px; animation: spin .8s linear infinite; visibility: hidden; }
     .spinner.show { visibility: visible; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Result card */
-    .card {
-      display: none;
-      background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 18px; margin-top: 16px;
-    }
+    /* Result */
+    .card { display: none; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; margin-top: 16px; }
     .heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
     .title { font-size: 1.25rem; font-weight: 700; margin: 0; }
     .meta  { color: var(--muted); }
@@ -143,11 +99,11 @@
   <!-- Top nav -->
   <header class="nav" role="banner">
     <div class="nav-inner">
-      <a class="brand" href="/grad-tracker/">
+      <a class="brand" href="#">
         <span class="brand-logo" aria-hidden="true"></span>
         <h1>Grad Tracker</h1>
       </a>
-      <a class="home-btn" href="/grad-tracker/">Home</a>
+      <a class="home-btn" href="#">Home</a>
     </div>
   </header>
 
@@ -155,7 +111,7 @@
     <!-- Intro -->
     <section class="hero">
       <h2>Analyse a Job</h2>
-      <p class="muted">Paste a job posting URL and click <strong>Analyse</strong>. We’ll run your n8n workflow and display a concise summary with fit scores.</p>
+      <p class="muted">Paste a job posting URL and click <strong>Analyse</strong>. We’ll run your n8n workflow and display a concise summary with AI scores.</p>
 
       <div class="row" role="search">
         <input id="jobUrl" type="url" inputmode="url" placeholder="https://example.com/job-posting" aria-label="Job posting URL" />
@@ -169,13 +125,16 @@
     <!-- Result -->
     <section id="result" class="card" aria-live="polite"></section>
 
-    <p class="footer">Built with n8n + GitHub Pages</p>
+    <p class="footer">Built with n8n + Google Sheets</p>
   </main>
 
   <script>
-    // ====== Configure this ======
-    const WEBHOOK_URL = "https://ogpheard.app.n8n.cloud/webhook-test/analyze-job"; // your n8n webhook (test or production)
-    // ============================
+    // ===================
+    // SET THESE TWO LINKS
+    // ===================
+    // Use your **Production** webhook URLs from n8n (the ones without "-test").
+    const ANALYSE_URL      = "https://ogpheard.app.n8n.cloud/webhook/analyse";
+    const APPLICATIONS_URL = "https://ogpheard.app.n8n.cloud/webhook/api/applications";
 
     const el = {
       url: document.getElementById('jobUrl'),
@@ -194,103 +153,137 @@
 
     // Helpers
     const asArray = v => Array.isArray(v) ? v : (v ? [v] : []);
-    function fmtSalary(s) {
-      if (!s) return "";
-      return s.salary_raw || [s.min, s.max].filter(Boolean).join(" – ");
+    function fmtSalary(s) { if (!s) return ""; return s.salary_raw || [s.min, s.max].filter(Boolean).join(" – "); }
+    function pills(arr) { return asArray(arr).map(x => `<span class="pill">${String(x)}</span>`).join(""); }
+    function setBar(el, val) { const pct = Math.max(0, Math.min(100, Number(val || 0))); requestAnimationFrame(() => el.style.width = pct + "%"); }
+
+    function todayISO() {
+      const d = new Date();
+      const off = d.getTimezoneOffset();
+      const local = new Date(d.getTime() - off*60000);
+      return local.toISOString().slice(0,10);
     }
-    function pills(arr) {
-      return asArray(arr).map(x => `<span class="pill">${String(x)}</span>`).join("");
-    }
-    function setBar(el, val) {
-      const pct = Math.max(0, Math.min(100, Number(val || 0)));
-      requestAnimationFrame(() => el.style.width = pct + "%");
+
+    // Keep the last analysis for Save/Apply
+    let lastAnalysis = null;
+
+    // Turn the analysis into flat fields your Sheet expects
+    function flattenForSheet(data) {
+      const job = data.job || data;
+      const sal = job.salary || data.salary || {};
+      const aiFit   = data.AI_fit_score ?? data.ai?.fit_score ?? 0;
+      const aiAlign = data.AI_alignment_score ?? data.ai?.alignment_score ?? 0;
+      const cvRec   = data.AI_cv_recommendation || data.ai?.cv_recommendation || {};
+      const cvFile  = cvRec.filename || data.AI_cv_filename || "";
+      const cvWhy   = cvRec.reason   || data.AI_cv_reason   || "";
+      const asList  = (v) => Array.isArray(v) ? v.join(", ") : (v || "");
+
+      return {
+        source_url:         job.source_url || data.source_url || "",
+        canonical_job_url:  data.canonical_job_url || job.source_url || data.source_url || "",
+
+        title:              job.title || data.title || "",
+        company_name:       job.company_name || data.company_name || "",
+        seniority:          job.seniority || data.seniority || "",
+        role_type:          job.role_type || data.role_type || "",
+        sector:             job.sector || data.sector || "",
+        contact_email:      job.contact_email || data.contact_email || "",
+
+        date_posted:        job.date_posted || data.date_posted || "",
+        date_deadline:      job.date_deadline || data.date_deadline || "",
+
+        salary_min:         sal.min || "",
+        salary_max:         sal.max || "",
+        salary_currency:    sal.currency || "",
+        salary_period:      sal.period || "",
+        salary_raw:         sal.salary_raw || "",
+
+        locations:          asList(job.locations || data.locations || []),
+
+        AI_fit_score:       aiFit,
+        AI_alignment_score: aiAlign,
+        AI_cv_filename:     cvFile,
+        AI_cv_reason:       cvWhy,
+
+        key_requirements:   asList(data.key_requirements || data.ai?.key_requirements || []),
+        other_requirements: asList(data.other_requirements || data.ai?.other_requirements || []),
+        fits:               asList(data.fits || data.ai?.fits || []),
+        gaps:               asList(data.gaps || data.ai?.gaps || []),
+
+        job_summary:        job.job_summary || data.job_summary || data.summary || "",
+        keywords:           asList(job.keywords || data.keywords || data.ai?.keywords || []),
+        job_description:    job.job_description || data.job_description || ""
+      };
     }
 
     async function analyse() {
       const url = el.url.value.trim();
-      if (!/^https?:\/\//i.test(url)) {
-        el.status.innerHTML = '<span class="error">Please enter a valid URL.</span>';
-        return;
-      }
-      el.result.style.display = "none";
-      setLoading(true);
+      if (!/^https?:\/\//i.test(url)) { el.status.innerHTML = '<span class="error">Please enter a valid URL.</span>'; return; }
+      el.result.style.display = "none"; setLoading(true);
 
       try {
-        // Use FormData to keep it a "simple request" (avoids CORS preflight)
         const form = new FormData();
         form.append("job_url", url);
-
-        const res = await fetch(WEBHOOK_URL, { method: "POST", body: form });
+        const res = await fetch(ANALYSE_URL, { method: "POST", body: form });
         if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-
         const data = await res.json();
+        lastAnalysis = data;
 
-        // Extract fields
-        const title = data.title || "(Untitled role)";
-        const company = data.company_name || "";
-        const locs = asArray(data.locations).join(" • ");
-        const salary = fmtSalary(data.salary);
-        const summary = data.summary || data.job_summary || "";
-        const kw = data.keywords || data.ai?.keywords || [];
-        const fit = data.ai?.fit_score ?? 0;
-        const align = data.ai?.alignment_score ?? 0;
-        const keyReq = asArray(data.ai?.key_requirements);
-        const otherReq = asArray(data.ai?.other_requirements);
-        const fits = asArray(data.ai?.fits);
-        const gaps = asArray(data.ai?.gaps);
+        const title   = data.title || data.job?.title || "(Untitled role)";
+        const company = data.company_name || data.job?.company_name || "";
+        const locs    = asArray(data.locations || data.job?.locations).join(" • ");
+        const salary  = fmtSalary(data.salary || data.job?.salary);
+        const summary = data.summary || data.job_summary || data.job?.job_summary || "";
 
-        // Render
+        const kw      = data.keywords || data.ai?.keywords || data.job?.keywords || [];
+        const fit     = data.AI_fit_score ?? data.ai?.fit_score ?? 0;
+        const align   = data.AI_alignment_score ?? data.ai?.alignment_score ?? 0;
+        const keyReq  = asArray(data.key_requirements || data.ai?.key_requirements);
+        const otherReq= asArray(data.other_requirements || data.ai?.other_requirements);
+        const fits    = asArray(data.fits || data.ai?.fits);
+        const gaps    = asArray(data.gaps || data.ai?.gaps);
+
         el.result.innerHTML = `
           <div class="heading">
             <h2 class="title">${title}</h2>
             <span class="meta"> ${company}${locs ? " — " + locs : ""}</span>
           </div>
           ${salary ? `<div class="salary">${salary}</div>` : ""}
-
           ${summary ? `<div class="section"><p>${summary}</p></div>` : ""}
 
           <div class="grid section">
             <div>
-              <div class="score-line">
-                <span>Fit score</span>
-                <span class="score-val" id="fitVal">${fit}/100</span>
-              </div>
+              <div class="score-line"><span>AI_fit_score</span><span class="score-val" id="fitVal">${fit}/100</span></div>
               <div class="bar"><span id="fitBar"></span></div>
             </div>
             <div>
-              <div class="score-line">
-                <span>Alignment score</span>
-                <span class="score-val" id="alignVal">${align}/100</span>
-              </div>
+              <div class="score-line"><span>AI_alignment_score</span><span class="score-val" id="alignVal">${align}/100</span></div>
               <div class="bar"><span id="alignBar"></span></div>
             </div>
           </div>
 
           ${kw?.length ? `<div class="section"><h3>Keywords</h3>${pills(kw)}</div>` : ""}
-
           ${keyReq.length ? `<div class="section"><h3>Key requirements</h3><ul>${keyReq.map(x=>`<li>${x}</li>`).join("")}</ul></div>` : ""}
           ${otherReq.length ? `<div class="section"><h3>Other requirements</h3><ul>${otherReq.map(x=>`<li>${x}</li>`).join("")}</ul></div>` : ""}
           ${fits.length ? `<div class="section"><h3>Where you fit</h3><ul>${fits.map(x=>`<li>${x}</li>`).join("")}</ul></div>` : ""}
-          ${gaps.length ? `<div class="section"><h3>Gaps</h3><ul>${gaps.map(x=>`<li>${x}</li>`).join("")}</ul></div>` : ""}
+          ${gaps.length ? `<div class="section"><h3>Where you don’t fit</h3><ul>${gaps.map(x=>`<li>${x}</li>`).join("")}</ul></div>` : ""}
 
           <div class="section" style="display:flex; gap:10px; flex-wrap:wrap;">
             <button class="primary" id="applyBtn">Apply</button>
             <button class="ghost" id="saveBtn">Save for later</button>
             <button class="ghost" id="ignoreBtn">Ignore</button>
-            <a class="home-btn" href="/grad-tracker/">Home</a>
           </div>
         `;
         el.result.style.display = "block";
 
-        // Animate score bars
         setBar(document.getElementById('fitBar'), fit);
         setBar(document.getElementById('alignBar'), align);
 
-        // Temporary button handlers (same behavior as before)
+        // Button handlers
         const toast = (msg, cls="muted") => { el.status.innerHTML = `<span class="${cls}">${msg}</span>`; };
-        document.getElementById('applyBtn').onclick = () => toast("Marked as: Apply ✅","ok");
-        document.getElementById('saveBtn').onclick  = () => toast("Marked as: Save for later 💾","muted");
-        document.getElementById('ignoreBtn').onclick= () => toast("Marked as: Ignore 🚫","warn");
+        document.getElementById('saveBtn').onclick  = onSave(toast);
+        document.getElementById('applyBtn').onclick = onApply(toast);
+        document.getElementById('ignoreBtn').onclick= () => toast("Ignored. (Nothing written.)", "warn");
 
       } catch (err) {
         console.error(err);
@@ -300,10 +293,46 @@
       }
     }
 
+    function onSave(toast){
+      return async function(){
+        if (!lastAnalysis) return;
+        const payload = flattenForSheet(lastAnalysis);
+        const form = new FormData();
+        Object.entries(payload).forEach(([k,v]) => form.append(k, String(v)));
+        form.append("status", "Saved");
+        form.append("status_update_date", todayISO());
+        try {
+          const r = await fetch(APPLICATIONS_URL, { method: "POST", body: form });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          toast("Saved to your sheet ✅", "ok");
+        } catch(e){ toast(`Save failed: ${e.message}`, "error"); }
+      }
+    }
+
+    function onApply(toast){
+      return async function(){
+        if (!lastAnalysis) return;
+        const effort = Number(prompt("Effort (0–10)?", "7") || "0");
+        const chance = Number(prompt("Chance (0–10)?", "6") || "0");
+        const payload = flattenForSheet(lastAnalysis);
+        const form = new FormData();
+        Object.entries(payload).forEach(([k,v]) => form.append(k, String(v)));
+        form.append("status", "Applied");
+        form.append("applied_date", todayISO());
+        form.append("application_effort_rating", String(effort));
+        form.append("application_chance_rating", String(chance));
+        form.append("status_update_date", todayISO());
+        try {
+          const r = await fetch(APPLICATIONS_URL, { method: "POST", body: form });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          toast("Marked as Applied + written to your sheet ✅", "ok");
+        } catch(e){ toast(`Apply failed: ${e.message}`, "error"); }
+      }
+    }
+
+    // Events
     document.getElementById('analyseBtn').addEventListener('click', analyse);
-    document.getElementById('jobUrl').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') analyse();
-    });
+    document.getElementById('jobUrl').addEventListener('keypress', (e) => { if (e.key === 'Enter') analyse(); });
   </script>
 </body>
 </html>
