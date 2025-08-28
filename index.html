@@ -40,11 +40,6 @@
   .decisions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
   .toast{position:fixed;right:16px;bottom:16px;background:#111635;border:1px solid #27306a;color:#e8ebff;padding:12px 14px;border-radius:12px;box-shadow:var(--shadow);opacity:0;transform:translateY(6px);transition:.25s}
   .toast.show{opacity:1;transform:translateY(0)}
-  .inline{display:inline-flex;gap:8px;align-items:center}
-  .rating{display:flex;gap:12px;align-items:center;margin-top:6px}
-  .rating input{width:64px;padding:8px;border-radius:8px;border:1px solid #2b3160;background:#0e1330;color:#fff;text-align:center}
-  .skeleton{height:14px;background:linear-gradient(90deg,#1a1f42 0%,#202759 50%,#1a1f42 100%);background-size:200% 100%;animation:sh 1.2s infinite}
-  @keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
   .small{font-size:12px}
   .env{margin-left:auto;display:flex;gap:8px;align-items:center}
   .env select{background:#0e1330;border:1px solid #2b3160;color:#fff;border-radius:10px;padding:8px}
@@ -84,18 +79,18 @@
     test: {
       analyse:      'https://ogpheard.app.n8n.cloud/webhook-test/analyse',
       applications: 'https://ogpheard.app.n8n.cloud/webhook-test/applications',
-      cover:        'https://ogpheard.app.n8n.cloud/webhook-test/cover' // <-- PUT YOUR COVER WEBHOOK (test)
+      cover:        'https://ogpheard.app.n8n.cloud/webhook-test/cover'
     },
     prod: {
       analyse:      'https://ogpheard.app.n8n.cloud/webhook/analyse',
       applications: 'https://ogpheard.app.n8n.cloud/webhook/applications',
-      cover:        'https://ogpheard.app.n8n.cloud/webhook/cover'      // <-- PUT YOUR COVER WEBHOOK (prod)
+      cover:        'https://ogpheard.app.n8n.cloud/webhook/cover'
     }
   };
 
   // Optional: pass Drive IDs to n8n (or hardcode them in n8n)
-  const CV_FOLDER_ID = '';   // e.g. '1AbCDeFg...'
-  const GUIDE_DOC_ID = '';   // e.g. '1XyZ... (your "perfect cover letter" doc)'
+  const CV_FOLDER_ID = '';   // e.g. '19L6t0a-NEvCrJmJqkJs3MQTq20VZ45fu'
+  const GUIDE_DOC_ID = '';   // e.g. '1CtPPxz6b6VP8tcBlXIR6ZiNDroHsST2kDGZuIIvnuIE'
 
   // ====== UI refs / state ======
   const envSelect = document.getElementById('envSelect');
@@ -109,196 +104,160 @@
   let currentEnv = envSelect.value;
   envSelect.addEventListener('change', () => { currentEnv = envSelect.value; toast(`Switched to ${currentEnv.toUpperCase()}`); });
 
-  let draft = null; // holds last analysis result
-  let lastCover = null; // holds last cover letter result
+  let draft = null;     // last analysis result
+  let lastCover = null; // last cover result
 
   // ====== helpers ======
   function toast(msg) {
     toastEl.textContent = msg;
     toastEl.classList.add('show');
-    setTimeout(() => toastEl.classList.remove('show'), 2200);
+    setTimeout(() => toastEl.classList.remove('show'), 2000);
   }
   function londonTodayISO() {
-    const fmt = new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit'
-    }).formatToParts(new Date());
-    const y = fmt.find(p => p.type === 'year').value;
-    const m = fmt.find(p => p.type === 'month').value;
-    const d = fmt.find(p => p.type === 'day').value;
+    const fmt = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+    const y = fmt.find(p => p.type === 'year').value, m = fmt.find(p => p.type === 'month').value, d = fmt.find(p => p.type === 'day').value;
     return `${y}-${m}-${d}`;
   }
-  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-  function nl2pre(s) { return `<pre>${escapeHtml(String(s || '')).replace(/\n{3,}/g, '\n\n')}</pre>`; }
-  function lines(list) { if (!Array.isArray(list)) return ''; return list.slice(0, 24).map(x => `• ${escapeHtml(String(x))}`).join('\n'); }
-  function badgeList(list){ if(!Array.isArray(list)) return ''; return `<div class="chips">${list.slice(0,30).map(k=>`<span class="chip">${escapeHtml(k)}</span>`).join('')}</div>`; }
-  function salaryText(a) {
-    const s = a.salary || {};
-    if (s.salary_raw) return s.salary_raw;
-    if (s.min && s.max) return `${s.currency || ''} ${s.min}–${s.max} ${s.period || ''}`.trim();
-    if (s.min) return `${s.currency || ''} ${s.min} ${s.period || ''}`.trim();
-    return a.salary_raw || '';
-  }
-  async function postForm(url, fd) {
-    const res = await fetch(url, { method:'POST', body: fd });
-    if (!res.ok) {
-      const txt = await res.text().catch(()=> '');
-      console.error('POST failed', url, res.status, txt);
-      throw new Error(`HTTP ${res.status}`);
-    }
+  function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+  function nl2pre(s){return `<pre>${escapeHtml(String(s||'')).replace(/\n{3,}/g,'\n\n')}</pre>`;}
+  function lines(list){if(!Array.isArray(list))return'';return list.slice(0,24).map(x=>`• ${escapeHtml(String(x))}`).join('\n');}
+  function badgeList(list){if(!Array.isArray(list))return'';return `<div class="chips">${list.slice(0,30).map(k=>`<span class="chip">${escapeHtml(k)}</span>`).join('')}</div>`;}
+  function salaryText(a){const s=a.salary||{};if(s.salary_raw)return s.salary_raw;if(s.min&&s.max)return `${s.currency||''} ${s.min}–${s.max} ${s.period||''}`.trim();if(s.min)return `${s.currency||''} ${s.min} ${s.period||''}`.trim();return a.salary_raw||'';}
+  async function postForm(url, fd){
+    const res = await fetch(url,{method:'POST',body:fd});
+    if(!res.ok){const t = await res.text().catch(()=> ''); console.error('POST failed', url, res.status, t); throw new Error(`HTTP ${res.status}`);}
     try { return await res.json(); } catch { return {}; }
   }
-
-  function canonicalize(u) {
-    try {
-      const url = new URL(String(u));
-      url.protocol = 'https:';
-      url.hostname = url.hostname.replace(/^www\./i,'').toLowerCase();
-      url.hash = '';
-      const keep = new Set(['gh_jid','jobId','vacancyId','rid','id','lever-origin']);
-      const q = new URLSearchParams(url.search);
-      [...q.keys()].forEach(k => {
-        const kl=k.toLowerCase();
-        if (!keep.has(k) || /^utm_/.test(kl) || /(gclid|fbclid|ref|source|src|campaign|medium)$/i.test(kl)) q.delete(k);
-      });
-      const sorted = new URLSearchParams();
-      [...q.keys()].sort().forEach(k=>sorted.append(k, q.get(k)));
-      url.search = sorted.toString() ? `?${sorted.toString()}` : '';
-      if (url.pathname.length>1) url.pathname = url.pathname.replace(/\/+$/,'');
-      return url.toString();
-    } catch { return u; }
+  function canonicalize(u){
+    try{const url=new URL(String(u));url.protocol='https:';url.hostname=url.hostname.replace(/^www\./i,'').toLowerCase();url.hash='';const keep=new Set(['gh_jid','jobId','vacancyId','rid','id','lever-origin']);const q=new URLSearchParams(url.search);[...q.keys()].forEach(k=>{const kl=k.toLowerCase();if(!keep.has(k)||/^utm_/.test(kl)||/(gclid|fbclid|ref|source|src|campaign|medium)$/i.test(kl))q.delete(k);});const sorted=new URLSearchParams();[...q.keys()].sort().forEach(k=>sorted.append(k,q.get(k)));url.search=sorted.toString()?`?${sorted.toString()}`:'';if(url.pathname.length>1)url.pathname=url.pathname.replace(/\/+$/,'');return url.toString();}catch{return u;}
   }
 
   // ====== ANALYSE ======
-  async function analyseUrl() {
+  async function analyseUrl(){
     const url = jobUrlInput.value.trim();
-    if (!/^https?:\/\//i.test(url)) { toast('Please paste a valid URL'); return; }
+    if(!/^https?:\/\//i.test(url)){ toast('Please paste a valid URL'); return; }
 
-    resultEl.style.display = 'block';
+    resultEl.style.display='block';
     resultEl.innerHTML = `
-      <div class="skeleton" style="width:60%"></div>
-      <div class="skeleton" style="width:40%;margin-top:8px"></div>
-      <div class="skeleton" style="width:90%;height:64px;margin-top:16px"></div>
-    `;
+      <div style="height:14px;width:60%" class="skeleton"></div>
+      <div style="height:14px;width:40%;margin-top:8px" class="skeleton"></div>
+      <div style="height:64px;width:90%;margin-top:16px" class="skeleton"></div>`;
     analyseBtn.disabled = true;
 
-    try {
+    try{
       const fd = new FormData();
       fd.append('job_url', url);
       const data = await postForm(URLS[currentEnv].analyse, fd);
       const out = Array.isArray(data) ? data[0] : data;
-      if (!out) throw new Error('No analysis result');
+      if(!out) throw new Error('No analysis result');
       draft = out; lastCover = null;
       renderAnalysis(out);
-    } catch (e) {
+    }catch(e){
       console.error(e);
-      resultEl.style.display = 'none';
-      toast(`Analysis failed (${currentEnv}). In Test, ensure the workflow is Executing & CORS allows this origin.`);
-    } finally {
+      resultEl.style.display='none';
+      toast(`Analysis failed (${currentEnv}). Check CORS & workflow status.`);
+    }finally{
       analyseBtn.disabled = false;
     }
   }
 
   // ====== RENDER RESULT ======
-  function renderAnalysis(a) {
-    const fit = Math.max(0, Math.min(100, Number(a.AI_fit_score || 0)));
-    const align = Math.max(0, Math.min(100, Number(a.AI_alignment_score || 0)));
+  function renderAnalysis(a){
+    const fit = Math.max(0, Math.min(100, Number(a.AI_fit_score||0)));
+    const align = Math.max(0, Math.min(100, Number(a.AI_alignment_score||0)));
     const locs = Array.isArray(a.locations) ? a.locations.join(' • ') : '';
-    const sal = salaryText(a);
+    const sal  = salaryText(a);
     const deadline = a.date_deadline ? `Deadline: ${a.date_deadline}` : '';
-    const start = a.start_date ? `Start: ${a.start_date}` : '';
+    const start    = a.start_date    ? `Start: ${a.start_date}`       : '';
 
-    const header =
-      `<h2>${escapeHtml(a.title || 'Untitled role')}</h2>
-       <div class="muted">${escapeHtml(a.company_name || '')}</div>
-       <div class="kvs">
-         <div class="kv"><b>Locations</b>${escapeHtml(locs || '—')}</div>
-         <div class="kv"><b>Salary</b>${escapeHtml(sal || '—')}</div>
-         <div class="kv"><b>Dates</b>${escapeHtml([start, deadline].filter(Boolean).join(' · ') || '—')}</div>
-         <div class="kv"><b>URL</b><a href="${a.source_url}" target="_blank" rel="noopener">${escapeHtml(a.source_url || '')}</a></div>
-       </div>`;
+    const header = `
+      <h2>${escapeHtml(a.title||'Untitled role')}</h2>
+      <div class="muted">${escapeHtml(a.company_name||'')}</div>
+      <div class="kvs">
+        <div class="kv"><b>Locations</b>${escapeHtml(locs||'—')}</div>
+        <div class="kv"><b>Salary</b>${escapeHtml(sal||'—')}</div>
+        <div class="kv"><b>Dates</b>${escapeHtml([start,deadline].filter(Boolean).join(' · ')||'—')}</div>
+        <div class="kv"><b>URL</b><a href="${a.source_url}" target="_blank" rel="noopener">${escapeHtml(a.source_url||'')}</a></div>
+      </div>`;
 
-    const meters =
-      `<div class="meters">
-         <div class="meter" aria-label="AI Fit score">
-           <div class="row"><strong>AI Fit</strong><span class="muted" style="margin-left:auto">${fit}%</span></div>
-           <div class="bar"><div class="fill" style="width:${fit}%"></div></div>
-         </div>
-         <div class="meter" aria-label="AI Alignment score">
-           <div class="row"><strong>Alignment</strong><span class="muted" style="margin-left:auto">${align}%</span></div>
-           <div class="bar"><div class="fill" style="width:${align}%"></div></div>
-         </div>
-       </div>`;
+    const meters = `
+      <div class="meters">
+        <div class="meter">
+          <div class="row"><strong>AI Fit</strong><span class="muted" style="margin-left:auto">${fit}%</span></div>
+          <div class="bar"><div class="fill" style="width:${fit}%"></div></div>
+        </div>
+        <div class="meter">
+          <div class="row"><strong>Alignment</strong><span class="muted" style="margin-left:auto">${align}%</span></div>
+          <div class="bar"><div class="fill" style="width:${align}%"></div></div>
+        </div>
+      </div>`;
 
     const keywords = `<h2>Keywords</h2>${badgeList(a.keywords)}`;
-    const colLists =
-      `<div class="cols">
-         <div>
-           <h2>Fits</h2>
-           ${nl2pre(lines(a.fits))}
-         </div>
-         <div>
-           <h2>Gaps</h2>
-           ${nl2pre(lines(a.gaps))}
-         </div>
-       </div>`;
+    const lists = `
+      <div class="cols">
+        <div>
+          <h2>Fits</h2>${nl2pre(lines(a.fits))}
+        </div>
+        <div>
+          <h2>Gaps</h2>${nl2pre(lines(a.gaps))}
+        </div>
+      </div>`;
 
-    const summary =
-      `<h2>Summary</h2>
-       <div class="kv" style="margin-top:8px">${escapeHtml(a.job_summary || '')}</div>`;
+    const summary = `<h2>Summary</h2><div class="kv" style="margin-top:8px">${escapeHtml(a.job_summary||'')}</div>`;
 
-    const actions =
-      `<div class="decisions">
-         <div class="btn-row">
-           <button id="saveBtn" class="primary">Save for later</button>
-           <div class="inline">
-             <button id="applyBtn" class="good">Yes I applied</button>
-             <div id="ratings" class="rating" style="display:none">
-               <label class="small">Effort/10 <input id="effort" type="number" min="0" max="10" step="1" value="7" /></label>
-               <label class="small">Chance/10 <input id="chance" type="number" min="0" max="10" step="1" value="6" /></label>
-               <button id="confirmApply" class="good">Confirm</button>
-             </div>
-           </div>
-           <button id="coverBtn" class="ghost">Cover letter & CV tweaks</button>
-           <button id="ignoreBtn" class="bad">Ignore</button>
-         </div>
-       </div>`;
+    const actions = `
+      <div class="decisions">
+        <div class="btn-row">
+          <button id="saveBtn" class="primary">Save for later</button>
+          <div class="inline">
+            <button id="applyBtn" class="good">Yes I applied</button>
+            <div id="ratings" class="rating" style="display:none">
+              <label class="small">Effort/10 <input id="effort" type="number" min="0" max="10" step="1" value="7" /></label>
+              <label class="small">Chance/10 <input id="chance" type="number" min="0" max="10" step="1" value="6" /></label>
+              <button id="confirmApply" class="good">Confirm</button>
+            </div>
+          </div>
+          <button id="coverBtn" class="ghost">Cover letter & CV tweaks</button>
+          <button id="ignoreBtn" class="bad">Ignore</button>
+        </div>
+      </div>`;
 
-    const coverBlock =
-      `<div id="coverBlock" class="result-block" style="display:none">
-         <h2>Cover letter & CV</h2>
-         <div id="coverStatus" class="muted subtle">Preparing…</div>
-         <div id="coverResult" style="display:none">
-           <div class="kvs">
-             <div class="kv"><b>Selected CV</b><span id="cvName">—</span></div>
-             <div class="kv"><b>Why this CV</b><span id="cvWhy">—</span></div>
-             <div class="kv"><b>Cover Letter Doc</b><span id="coverDocLink">—</span></div>
-           </div>
-           <div class="section">
-             <h2>CV tweak suggestions</h2>
-             <div id="cvTweaks"></div>
-           </div>
-           <div class="section">
-             <h2>Cover letter (preview)</h2>
-             <div id="coverPreview"></div>
-             <div class="btn-row" style="margin-top:8px">
-               <button id="copyCover" class="ghost">Copy text</button>
-               <button id="openDoc" class="primary" style="display:none">Open Google Doc</button>
-             </div>
-           </div>
-         </div>
-       </div>`;
+    const coverBlock = `
+      <div id="coverBlock" class="result-block" style="display:none">
+        <h2>Cover letter & CV</h2>
+        <div id="coverStatus" class="muted subtle">Preparing…</div>
+        <div id="coverResult" style="display:none">
+          <div class="kvs">
+            <div class="kv"><b>Selected CV</b><span id="cvName">—</span></div>
+            <div class="kv"><b>Why this CV</b><span id="cvWhy">—</span></div>
+            <div class="kv"><b>Cover Letter Doc</b><span id="coverDocLink">—</span></div>
+          </div>
+          <div class="section">
+            <h2>CV tweak suggestions</h2>
+            <div id="cvTweaks"></div>
+          </div>
+          <div class="section">
+            <h2>Cover letter (preview)</h2>
+            <div id="coverPreview"></div>
+            <div class="btn-row" style="margin-top:8px">
+              <button id="copyCover" class="ghost">Copy text</button>
+              <button id="openDoc" class="primary" style="display:none">Open Google Doc</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
 
-    const details =
-      `<div class="details">
-         <button id="toggleMore" class="ghost">View more</button>
-         <div id="moreBox" style="display:none;margin-top:12px">
-           <h2>Full description</h2>
-           ${nl2pre(a.job_description || '')}
-         </div>
-       </div>`;
+    const details = `
+      <div class="details">
+        <button id="toggleMore" class="ghost">View more</button>
+        <div id="moreBox" style="display:none;margin-top:12px">
+          <h2>Full description</h2>
+          ${nl2pre(a.job_description||'')}
+        </div>
+      </div>`;
 
-    resultEl.innerHTML = header + meters + keywords + colLists + summary + actions + coverBlock + details;
-    resultEl.style.display = 'block';
+    resultEl.innerHTML = header + meters + keywords + lists + summary + actions + coverBlock + details;
+    resultEl.style.display='block';
 
     // handlers
     document.getElementById('toggleMore').addEventListener('click', () => {
@@ -309,158 +268,150 @@
     });
     document.getElementById('saveBtn').addEventListener('click', onSave);
     document.getElementById('applyBtn').addEventListener('click', () => {
-      document.getElementById('ratings').style.display = 'inline-flex';
+      document.getElementById('ratings').style.display='inline-flex';
     });
     document.getElementById('confirmApply').addEventListener('click', onApply);
     document.getElementById('ignoreBtn').addEventListener('click', () => {
-      resultEl.style.display = 'none';
-      draft = null; lastCover = null;
-      toast('Ignored. Nothing saved.');
+      resultEl.style.display='none'; draft=null; lastCover=null; toast('Ignored. Nothing saved.');
     });
     document.getElementById('coverBtn').addEventListener('click', onCoverClick);
   }
 
-  // ====== APPLICATIONS payload / send ======
-  function toApplicationsPayload(a, opts) {
+  // ====== APPLICATIONS send ======
+  function toApplicationsPayload(a, opts){
     return {
       source_url: a.source_url || '',
       canonical_job_url: a.canonical_job_url || a.canonical_url || canonicalize(a.source_url || ''),
-      title: a.title || '',
-      company_name: a.company_name || '',
-      seniority: a.seniority || '',
-      role_type: a.role_type || '',
-      sector: a.sector || '',
-      contact_email: a.contact_email || '',
-      date_posted: a.date_posted || '',
-      date_deadline: a.date_deadline || '',
-      start_date: a.start_date || '',
-      salary_min: a.salary?.min || '',
-      salary_max: a.salary?.max || '',
-      salary_currency: a.salary?.currency || '',
-      salary_period: a.salary?.period || '',
+      title: a.title || '', company_name: a.company_name || '',
+      seniority: a.seniority || '', role_type: a.role_type || '', sector: a.sector || '',
+      contact_email: a.contact_email || '', date_posted: a.date_posted || '',
+      date_deadline: a.date_deadline || '', start_date: a.start_date || '',
+      salary_min: a.salary?.min || '', salary_max: a.salary?.max || '',
+      salary_currency: a.salary?.currency || '', salary_period: a.salary?.period || '',
       salary_raw: a.salary?.salary_raw || a.salary_raw || '',
-      locations: Array.isArray(a.locations) ? a.locations : [],
-      AI_fit_score: a.AI_fit_score ?? 0,
-      AI_alignment_score: a.AI_alignment_score ?? 0,
+      locations: Array.isArray(a.locations)? a.locations : [],
+      AI_fit_score: a.AI_fit_score ?? 0, AI_alignment_score: a.AI_alignment_score ?? 0,
       AI_cv_filename: a.AI_cv_recommendation?.filename || a.AI_cv_filename || '',
-      AI_cv_reason: a.AI_cv_recommendation?.reason || a.AI_cv_reason || '',
-      key_requirements: a.key_requirements || [],
-      other_requirements: a.other_requirements || [],
-      fits: a.fits || [],
-      gaps: a.gaps || [],
-      job_summary: a.job_summary || '',
-      keywords: a.keywords || [],
-      job_description: a.job_description || '',
-      status: opts.status, // "Saved" | "Applied"
-      applied_date: opts.status === 'Applied' ? (opts.appliedDate || londonTodayISO()) : null,
+      AI_cv_reason:   a.AI_cv_recommendation?.reason   || a.AI_cv_reason   || '',
+      key_requirements: a.key_requirements || [], other_requirements: a.other_requirements || [],
+      fits: a.fits || [], gaps: a.gaps || [], job_summary: a.job_summary || '',
+      keywords: a.keywords || [], job_description: a.job_description || '',
+      status: opts.status,
+      applied_date: opts.status==='Applied' ? (opts.appliedDate || londonTodayISO()) : null,
       application_effort_rating: opts.effort ?? null,
       application_chance_rating: opts.chance ?? null,
       cover_letter_url: a.cover_letter_url ?? null
     };
   }
-  async function sendApplications(env, payload) {
+  async function sendApplications(env, payload){
     const fd = new FormData();
-    for (const [k, v] of Object.entries(payload)) {
-      if (Array.isArray(v))      fd.append(k, JSON.stringify(v));
-      else if (v == null)        fd.append(k, '');
-      else                       fd.append(k, String(v));
+    for(const [k,v] of Object.entries(payload)){
+      if(Array.isArray(v)) fd.append(k, JSON.stringify(v));
+      else if(v==null)     fd.append(k, '');
+      else                 fd.append(k, String(v));
     }
     return postForm(URLS[env].applications, fd);
   }
-  async function onSave() {
-    if (!draft) return;
-    try {
-      const payload = toApplicationsPayload(draft, { status: 'Saved' });
+  async function onSave(){
+    if(!draft) return;
+    try{
+      const payload = toApplicationsPayload(draft, { status:'Saved' });
       await sendApplications(currentEnv, payload);
       toast('Saved for later ✅');
-    } catch (e) { console.error(e); toast(`Save failed (${currentEnv})`); }
+    }catch(e){ console.error(e); toast(`Save failed (${currentEnv})`); }
   }
-  async function onApply() {
-    if (!draft) return;
-    try {
+  async function onApply(){
+    if(!draft) return;
+    try{
       const effort = Number(document.getElementById('effort').value);
       const chance = Number(document.getElementById('chance').value);
       const payload = toApplicationsPayload(draft, {
-        status: 'Applied',
-        effort: Number.isFinite(effort) ? effort : null,
-        chance: Number.isFinite(chance) ? chance : null,
+        status:'Applied',
+        effort: Number.isFinite(effort)?effort:null,
+        chance: Number.isFinite(chance)?chance:null,
         appliedDate: londonTodayISO()
       });
       await sendApplications(currentEnv, payload);
       toast('Marked as applied 🎉');
-    } catch (e) { console.error(e); toast(`Apply failed (${currentEnv})`); }
+    }catch(e){ console.error(e); toast(`Apply failed (${currentEnv})`); }
   }
 
   // ====== COVER LETTER & CV TWEAKS ======
-  async function onCoverClick() {
-    if (!draft) return toast('Analyse a job first');
-    const block = document.getElementById('coverBlock');
+  async function onCoverClick(){
+    if(!draft) return toast('Analyse a job first');
+
+    const block  = document.getElementById('coverBlock');
     const status = document.getElementById('coverStatus');
     const outBox = document.getElementById('coverResult');
-    block.style.display = 'block';
-    status.textContent = 'Generating cover letter & CV tips…';
-    outBox.style.display = 'none';
+    const coverBtn = document.getElementById('coverBtn');
 
-    try {
-      // Send as FormData (no preflight). Pass job JSON and optional Drive IDs.
+    block.style.display='block';
+    status.textContent='Generating cover letter & CV tips…';
+    outBox.style.display='none';
+    coverBtn.disabled = true;
+
+    try{
       const fd = new FormData();
+      // Send the full analysis JSON; your n8n Code node already normalises this.
       fd.append('job_json', JSON.stringify(draft));
-      if (CV_FOLDER_ID) fd.append('cv_folder_id', CV_FOLDER_ID);
-      if (GUIDE_DOC_ID) fd.append('guide_doc_id', GUIDE_DOC_ID);
+      if(CV_FOLDER_ID) fd.append('cv_folder_id', CV_FOLDER_ID);
+      if(GUIDE_DOC_ID) fd.append('guide_doc_id', GUIDE_DOC_ID);
 
       const data = await postForm(URLS[currentEnv].cover, fd);
       lastCover = data || {};
 
-      // Expected schema:
+      // Expected from n8n:
       // {
       //   selected_cv: { filename, reason, doc_id?, doc_url? },
       //   cv_tweaks: [ "...", ... ],
       //   cover_letter: { plain_text, html?, doc_url?, doc_id? }
       // }
 
-      const cv = lastCover.selected_cv || {};
+      const cv     = lastCover.selected_cv || {};
       const tweaks = Array.isArray(lastCover.cv_tweaks) ? lastCover.cv_tweaks : [];
       const letter = lastCover.cover_letter || {};
 
       document.getElementById('cvName').textContent = cv.filename || '—';
-      document.getElementById('cvWhy').textContent = cv.reason || '—';
+      document.getElementById('cvWhy').textContent  = cv.reason   || '—';
 
-      const link = (letter.doc_url || cv.doc_url);
+      const link = letter.doc_url || cv.doc_url || '';
       document.getElementById('coverDocLink').innerHTML = link
         ? `<a target="_blank" rel="noopener" href="${escapeHtml(link)}">${escapeHtml(link)}</a>`
         : '—';
 
-      const tweaksEl = document.getElementById('cvTweaks');
-      tweaksEl.innerHTML = tweaks.length ? nl2pre(lines(tweaks)) : '<span class="muted">No tweaks suggested.</span>';
+      document.getElementById('cvTweaks').innerHTML =
+        tweaks.length ? nl2pre(lines(tweaks)) : '<span class="muted">No tweaks suggested.</span>';
 
       const preview = document.getElementById('coverPreview');
-      const plain = letter.plain_text || '';
+      const plain   = letter.plain_text || '';
       preview.innerHTML = plain ? nl2pre(plain) : (letter.html ? letter.html : '<span class="muted">No preview provided.</span>');
 
       const openDocBtn = document.getElementById('openDoc');
-      if (link) {
-        openDocBtn.style.display = 'inline-block';
-        openDocBtn.onclick = () => window.open(link, '_blank', 'noopener');
-      } else {
-        openDocBtn.style.display = 'none';
+      if(link){
+        openDocBtn.style.display='inline-block';
+        openDocBtn.onclick = () => window.open(link,'_blank','noopener');
+      }else{
+        openDocBtn.style.display='none';
       }
 
       document.getElementById('copyCover').onclick = async () => {
-        try { await navigator.clipboard.writeText(plain || letter.html || ''); toast('Cover letter copied'); }
-        catch { toast('Copy failed'); }
+        try{ await navigator.clipboard.writeText(plain || letter.html || ''); toast('Cover letter copied'); }
+        catch{ toast('Copy failed'); }
       };
 
-      status.textContent = 'Generated ✓';
-      outBox.style.display = 'block';
-    } catch (e) {
+      status.textContent='Generated ✓';
+      outBox.style.display='block';
+    }catch(e){
       console.error(e);
-      status.textContent = 'Generation failed. Check n8n logs / CORS.';
+      status.textContent='Generation failed. Check n8n logs & CORS.';
+    }finally{
+      coverBtn.disabled = false;
     }
   }
 
   // events
   analyseBtn.addEventListener('click', analyseUrl);
-  jobUrlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') analyseUrl(); });
+  jobUrlInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') analyseUrl(); });
 </script>
 </body>
 </html>
