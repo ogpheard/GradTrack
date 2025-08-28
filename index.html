@@ -6,8 +6,8 @@
 <title>Graduate Applications Assistant</title>
 <style>
   :root{
-    --bg:#0f1221; --panel:#151933; --muted:#8b91b0; --text:#e8ebff; --accent:#7aa2ff; --good:#21c07a; --warn:#ffb020; --bad:#ff5c7a; --chip:#1c2142;
-    --shadow:0 6px 24px rgba(0,0,0,.25);
+    --bg:#f5f7fa; --panel:#ffffff; --muted:#6b7280; --text:#1e1e2d; --accent:#2563eb; --good:#16a34a; --warn:#d97706; --bad:#dc2626; --chip:#eef2ff; --border:#d1d5db;
+    --shadow:0 4px 12px rgba(0,0,0,.1);
   }
   html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif}
   .wrap{max-width:960px;margin:32px auto;padding:0 16px}
@@ -16,34 +16,34 @@
   h2{font-size:18px;margin:16px 0 8px}
   .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .urlbar{display:flex;gap:8px;width:100%}
-  input[type="url"]{flex:1;padding:14px 12px;border-radius:12px;border:1px solid #2b3160;background:#0e1330;color:var(--text)}
-  button{border:0;border-radius:12px;padding:12px 16px;cursor:pointer;font-weight:600;background:#2a3170;color:#fff}
-  button.primary{background:var(--accent)}
-  button.ghost{background:transparent;border:1px solid #2b3160}
-  button.good{background:var(--good)}
-  button.warn{background:var(--warn);color:#1d1d1d}
-  button.bad{background:var(--bad)}
+  input[type="url"]{flex:1;padding:14px 12px;border-radius:12px;border:1px solid var(--border);background:#fff;color:var(--text)}
+  button{border:1px solid var(--border);border-radius:12px;padding:12px 16px;cursor:pointer;font-weight:600;background:#edf2ff;color:var(--text)}
+  button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  button.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+  button.good{background:var(--good);color:#fff;border-color:var(--good)}
+  button.warn{background:var(--warn);color:#fff;border-color:var(--warn)}
+  button.bad{background:var(--bad);color:#fff;border-color:var(--bad)}
   button:disabled{opacity:.6;cursor:not-allowed}
   .muted{color:var(--muted);font-size:13px}
   .kvs{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:12px 0}
-  .kv{background:#0e1330;border:1px solid #262d59;border-radius:12px;padding:10px}
+  .kv{background:#f8f9fc;border:1px solid var(--border);border-radius:12px;padding:10px}
   .kv b{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
   .meters{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
-  .meter{background:#0e1330;border:1px solid #262d59;border-radius:12px;padding:10px}
-  .meter .bar{height:10px;background:#1b2147;border-radius:8px;overflow:hidden;margin-top:8px}
+  .meter{background:#f8f9fc;border:1px solid var(--border);border-radius:12px;padding:10px}
+  .meter .bar{height:10px;background:#e5e7eb;border-radius:8px;overflow:hidden;margin-top:8px}
   .meter .fill{height:100%;background:linear-gradient(90deg,var(--good),var(--accent));width:0%}
   .chips{display:flex;flex-wrap:wrap;gap:8px}
-  .chip{background:var(--chip);border:1px solid #2b3160;color:#cfd6ff;padding:6px 10px;border-radius:999px;font-size:12px}
+  .chip{background:var(--chip);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:999px;font-size:12px}
   .cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .details{margin-top:12px}
-  .details pre{white-space:pre-wrap;word-break:break-word;background:#0e1330;border:1px solid #262d59;border-radius:12px;padding:12px;color:#cfe0ff;max-height:360px;overflow:auto}
+  .details pre{white-space:pre-wrap;word-break:break-word;background:#f8f9fc;border:1px solid var(--border);border-radius:12px;padding:12px;color:var(--text);max-height:360px;overflow:auto}
   .decisions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-  .toast{position:fixed;right:16px;bottom:16px;background:#111635;border:1px solid #27306a;color:#e8ebff;padding:12px 14px;border-radius:12px;box-shadow:var(--shadow);opacity:0;transform:translateY(6px);transition:.25s}
+  .toast{position:fixed;right:16px;bottom:16px;background:#ffffff;border:1px solid var(--border);color:var(--text);padding:12px 14px;border-radius:12px;box-shadow:var(--shadow);opacity:0;transform:translateY(6px);transition:.25s}
   .toast.show{opacity:1;transform:translateY(0)}
   .small{font-size:12px}
   .env{margin-left:auto;display:flex;gap:8px;align-items:center}
-  .env select{background:#0e1330;border:1px solid #2b3160;color:#fff;border-radius:10px;padding:8px}
-  .result-block{margin-top:16px;border-top:1px solid #262d59;padding-top:12px}
+  .env select{background:#fff;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:8px}
+  .result-block{margin-top:16px;border-top:1px solid var(--border);padding-top:12px}
   .btn-row{display:flex;gap:8px;flex-wrap:wrap}
   .subtle{opacity:.9}
 </style>
