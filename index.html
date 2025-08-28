@@ -1,338 +1,336 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Grad Tracker – Analyse a Job</title>
-  <meta name="color-scheme" content="light" />
-  <style>
-    :root{
-      --bg: #f8fafc;
-      --panel: #ffffff;
-      --text: #0f172a;
-      --muted: #64748b;
-      --border: #e5e7eb;
-      --accent: #2563eb;
-      --accent-fg: #ffffff;
-      --pill: #f1f5f9;
-      --ok: #16a34a;
-      --warn: #b45309;
-      --err: #dc2626;
-      --shadow: 0 10px 30px rgba(2,6,23,0.06), 0 2px 6px rgba(2,6,23,0.05);
-      --radius: 16px;
-    }
-
-    * { box-sizing: border-box; }
-    html, body { height: 100%; }
-    body {
-      margin: 0;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-      color: var(--text);
-      background: radial-gradient(1200px 600px at 10% -10%, #eef2ff 0%, rgba(238,242,255,0) 60%), var(--bg);
-    }
-
-    /* Header */
-    .nav { position: sticky; top: 0; z-index: 20; backdrop-filter: saturate(120%) blur(6px); background: rgba(255,255,255,0.7); border-bottom: 1px solid var(--border); }
-    .nav-inner { max-width: 980px; margin: 0 auto; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; }
-    .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
-    .brand-logo { width: 28px; height: 28px; border-radius: 8px; background: conic-gradient(from 120deg, #60a5fa, #a78bfa, #60a5fa); box-shadow: inset 0 0 0 3px #fff; }
-    .brand h1 { font-size: 1.05rem; margin: 0; letter-spacing: .2px; }
-    .home-btn { border: 1px solid var(--border); background: var(--panel); color: var(--text); padding: 8px 12px; border-radius: 10px; text-decoration: none; transition: transform .05s ease, box-shadow .2s ease; }
-    .home-btn:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
-
-    /* Wrapper */
-    .wrapper { max-width: 980px; margin: 28px auto 56px; padding: 0 16px; }
-
-    /* Intro card */
-    .hero { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 22px; margin-bottom: 16px; }
-    .hero h2 { margin: 0 0 6px 0; font-size: 1.35rem; }
-    .muted { color: var(--muted); }
-
-    /* Input row */
-    .row { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-top: 12px; }
-    input[type="url"]{ width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: #fff; outline: none; transition: border-color .15s ease, box-shadow .15s ease; }
-    input[type="url"]:focus{ border-color: var(--accent); box-shadow: 0 0 0 4px rgba(37,99,235,.12); }
-    button { padding: 12px 16px; border: 0; border-radius: 12px; cursor: pointer; font-weight: 600; transition: transform .05s ease, box-shadow .2s ease, background .2s ease; }
-    button.primary { background: var(--accent); color: var(--accent-fg); box-shadow: var(--shadow); }
-    button.primary:hover { filter: brightness(1.04); transform: translateY(-1px); }
-    button.ghost { background: var(--pill); }
-    button:disabled { opacity: .7; cursor: progress; transform: none; }
-
-    /* Spinner */
-    .spinner { display: inline-block; margin-left: 8px; width: 18px; height: 18px; border-radius: 50%; border: 3px solid rgba(255,255,255,.45); border-top-color: #fff; vertical-align: -3px; animation: spin .8s linear infinite; visibility: hidden; }
-    .spinner.show { visibility: visible; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* Result */
-    .card { display: none; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; margin-top: 16px; }
-    .heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
-    .title { font-size: 1.25rem; font-weight: 700; margin: 0; }
-    .meta  { color: var(--muted); }
-    .salary { color: var(--muted); margin-top: 4px; }
-
-    .grid { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
-    @media (max-width: 700px){ .grid{ grid-template-columns: 1fr; } }
-
-    .section { margin-top: 12px; }
-    .section h3 { margin: 6px 0 6px; font-size: 1rem; }
-    ul { margin: 6px 0 0 18px; }
-
-    .pill { display: inline-block; padding: 5px 10px; font-size: 12px; background: var(--pill); border: 1px solid var(--border); border-radius: 999px; margin: 4px 6px 0 0; }
-
-    /* Score bars */
-    .bar { position: relative; height: 10px; background: #eef2f7; border-radius: 999px; overflow: hidden; }
-    .bar > span { position: absolute; inset: 0; width: 0; background: linear-gradient(90deg, #60a5fa, #2563eb); border-radius: inherit; transition: width .6s ease; }
-    .score-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; }
-    .score-val { font-weight: 700; }
-
-    /* Status / toasts */
-    #status { margin-top: 10px; min-height: 20px; }
-    .ok { color: var(--ok); }
-    .warn { color: var(--warn); }
-    .error { color: var(--err); }
-
-    /* Footer */
-    .footer { color: var(--muted); text-align: center; margin: 24px 0; font-size: .9rem; }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Graduate Applications Assistant</title>
+<style>
+  :root{
+    --bg:#0f1221; --panel:#151933; --muted:#8b91b0; --text:#e8ebff; --accent:#7aa2ff; --good:#21c07a; --warn:#ffb020; --bad:#ff5c7a; --chip:#1c2142;
+    --shadow:0 6px 24px rgba(0,0,0,.25);
+  }
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif}
+  .wrap{max-width:960px;margin:32px auto;padding:0 16px}
+  .card{background:var(--panel);border-radius:16px;box-shadow:var(--shadow);padding:20px}
+  h1{font-size:24px;margin:0 0 16px}
+  h2{font-size:18px;margin:16px 0 8px}
+  .row{display:flex;gap:8px;align-items:center}
+  .urlbar{display:flex;gap:8px}
+  input[type="url"]{flex:1;padding:14px 12px;border-radius:12px;border:1px solid #2b3160;background:#0e1330;color:var(--text)}
+  button{border:0;border-radius:12px;padding:12px 16px;cursor:pointer;font-weight:600;background:#2a3170;color:#fff}
+  button.primary{background:var(--accent)}
+  button.ghost{background:transparent;border:1px solid #2b3160}
+  button.good{background:var(--good)}
+  button.warn{background:var(--warn);color:#1d1d1d}
+  button.bad{background:var(--bad)}
+  button:disabled{opacity:.6;cursor:not-allowed}
+  .muted{color:var(--muted);font-size:13px}
+  .kvs{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:12px 0}
+  .kv{background:#0e1330;border:1px solid #262d59;border-radius:12px;padding:10px}
+  .kv b{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+  .meters{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+  .meter{background:#0e1330;border:1px solid #262d59;border-radius:12px;padding:10px}
+  .meter .bar{height:10px;background:#1b2147;border-radius:8px;overflow:hidden;margin-top:8px}
+  .meter .fill{height:100%;background:linear-gradient(90deg,var(--good),var(--accent));width:0%}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{background:var(--chip);border:1px solid #2b3160;color:#cfd6ff;padding:6px 10px;border-radius:999px;font-size:12px}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .details{margin-top:12px}
+  .details pre{white-space:pre-wrap;word-break:break-word;background:#0e1330;border:1px solid #262d59;border-radius:12px;padding:12px;color:#cfe0ff;max-height:360px;overflow:auto}
+  .decisions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .toast{position:fixed;right:16px;bottom:16px;background:#111635;border:1px solid #27306a;color:#e8ebff;padding:12px 14px;border-radius:12px;box-shadow:var(--shadow);opacity:0;transform:translateY(6px);transition:.25s}
+  .toast.show{opacity:1;transform:translateY(0)}
+  .inline{display:inline-flex;gap:8px;align-items:center}
+  .rating{display:flex;gap:12px;align-items:center;margin-top:6px}
+  .rating input{width:64px;padding:8px;border-radius:8px;border:1px solid #2b3160;background:#0e1330;color:#fff;text-align:center}
+  .skeleton{height:14px;background:linear-gradient(90deg,#1a1f42 0%,#202759 50%,#1a1f42 100%);background-size:200% 100%;animation:sh 1.2s infinite}
+  @keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  .small{font-size:12px}
+</style>
 </head>
 <body>
-  <!-- Top nav -->
-  <header class="nav" role="banner">
-    <div class="nav-inner">
-      <a class="brand" href="#">
-        <span class="brand-logo" aria-hidden="true"></span>
-        <h1>Grad Tracker</h1>
-      </a>
-      <a class="home-btn" href="#">Home</a>
+<div class="wrap">
+  <div class="card">
+    <h1>Graduate Applications Assistant</h1>
+    <div class="urlbar">
+      <input id="jobUrl" type="url" placeholder="Paste a job URL…" autocomplete="off" />
+      <button id="analyzeBtn" class="primary">Analyse</button>
     </div>
-  </header>
+    <p class="muted small">No secrets in the browser. Writes go through n8n. Time zone: Europe/London.</p>
+  </div>
 
-  <main class="wrapper" role="main">
-    <!-- Intro -->
-    <section class="hero">
-      <h2>Analyse a Job</h2>
-      <p class="muted">Paste a job posting URL and click <strong>Analyse</strong>. We’ll run your n8n workflow and display a concise summary with AI scores.</p>
+  <div id="result" class="card" style="margin-top:16px; display:none;"></div>
+</div>
 
-      <div class="row" role="search">
-        <input id="jobUrl" type="url" inputmode="url" placeholder="https://example.com/job-posting" aria-label="Job posting URL" />
-        <button id="analyseBtn" class="primary" aria-live="polite" aria-busy="false">
-          Analyse <span id="spin" class="spinner" aria-hidden="true"></span>
-        </button>
-      </div>
-      <div id="status" class="muted" aria-live="polite"></div>
-    </section>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-    <!-- Result -->
-    <section id="result" class="card" aria-live="polite"></section>
+<script>
+  // ====== CONFIG – set these to your values ======
+  const N8N_BASE = 'https://ogpheard.app.n8n.cloud';
+  const USE_TEST_URLS = false; // true while testing in n8n's "Execute" mode
+  const ANALYSE_PATH = USE_TEST_URLS ? '/webhook-test/analyse' : '/webhook/analyse';
+  const APPLICATIONS_PATH = USE_TEST_URLS ? '/webhook-test/applications' : '/webhook/applications';
+  // ===============================================
 
-    <p class="footer">Built with n8n + Google Sheets</p>
-  </main>
+  const el = (sel) => document.querySelector(sel);
+  const resultEl = el('#result');
+  const toastEl = el('#toast');
+  const analyzeBtn = el('#analyzeBtn');
+  const jobUrlInput = el('#jobUrl');
 
-  <script>
-    // ===================
-    // SET THESE TWO LINKS
-    // ===================
-    // Use your **Production** webhook URLs from n8n (the ones without "-test").
-    const ANALYSE_URL      = "https://ogpheard.app.n8n.cloud/webhook-test/analyse";
-    const APPLICATIONS_URL = "https://ogpheard.app.n8n.cloud/webhook-test/api/applications";
+  let draft = null; // holds the latest /analyse result
 
-    const el = {
-      url: document.getElementById('jobUrl'),
-      btn: document.getElementById('analyseBtn'),
-      spin: document.getElementById('spin'),
-      status: document.getElementById('status'),
-      result: document.getElementById('result'),
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    setTimeout(() => toastEl.classList.remove('show'), 2500);
+  }
+
+  function londonTodayISO() {
+    const fmt = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts(new Date());
+    const y = fmt.find(p => p.type === 'year').value;
+    const m = fmt.find(p => p.type === 'month').value;
+    const d = fmt.find(p => p.type === 'day').value;
+    return `${y}-${m}-${d}`;
+  }
+
+  async function postJSON(path, body) {
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 30000);
+    try {
+      const res = await fetch(N8N_BASE + path, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify(body),
+        signal: ctrl.signal
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } finally {
+      clearTimeout(to);
+    }
+  }
+
+  function sanitizeAnalysis(a) {
+    // a might come as [obj] — flatten
+    if (Array.isArray(a)) a = a[0];
+    return a || null;
+  }
+
+  function salaryText(a) {
+    const s = a.salary || {};
+    if (s.salary_raw) return s.salary_raw;
+    if (s.min && s.max) return `${s.currency || ''} ${s.min}–${s.max} ${s.period || ''}`.trim();
+    if (s.min) return `${s.currency || ''} ${s.min} ${s.period || ''}`.trim();
+    return a.salary_raw || '';
+  }
+
+  function badgeList(list) {
+    if (!Array.isArray(list)) return '';
+    return `<div class="chips">${list.slice(0, 20).map(k => `<span class="chip">${escapeHtml(String(k))}</span>`).join('')}</div>`;
+  }
+
+  function lines(list) {
+    if (!Array.isArray(list)) return '';
+    return list.slice(0, 12).map(x => `• ${escapeHtml(String(x))}`).join('\n');
+  }
+
+  function nl2pre(s) {
+    return `<pre>${escapeHtml(String(s || '')).replace(/\n{3,}/g, '\n\n')}</pre>`;
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function renderAnalysis(a) {
+    const locs = Array.isArray(a.locations) ? a.locations.join(' • ') : '';
+    const sal = salaryText(a);
+    const deadline = a.date_deadline ? `Deadline: ${a.date_deadline}` : '';
+    const start = a.start_date ? `Start: ${a.start_date}` : '';
+    const header =
+      `<h2>${escapeHtml(a.title || 'Untitled role')}</h2>
+       <div class="muted">${escapeHtml(a.company_name || '')}</div>
+       <div class="kvs">
+         <div class="kv"><b>Locations</b>${escapeHtml(locs || '—')}</div>
+         <div class="kv"><b>Salary</b>${escapeHtml(sal || '—')}</div>
+         <div class="kv"><b>Dates</b>${escapeHtml([start, deadline].filter(Boolean).join(' · ') || '—')}</div>
+         <div class="kv"><b>URL</b><a href="${a.source_url}" target="_blank" rel="noopener">${escapeHtml(a.source_url || '')}</a></div>
+       </div>`;
+
+    const fit = Math.max(0, Math.min(100, Number(a.AI_fit_score || 0)));
+    const align = Math.max(0, Math.min(100, Number(a.AI_alignment_score || 0)));
+    const meters =
+      `<div class="meters">
+         <div class="meter" aria-label="AI Fit score">
+           <div class="row"><strong>AI Fit</strong><span class="muted" style="margin-left:auto">${fit}%</span></div>
+           <div class="bar"><div class="fill" style="width:${fit}%"></div></div>
+         </div>
+         <div class="meter" aria-label="AI Alignment score">
+           <div class="row"><strong>Alignment</strong><span class="muted" style="margin-left:auto">${align}%</span></div>
+           <div class="bar"><div class="fill" style="width:${align}%"></div></div>
+         </div>
+       </div>`;
+
+    const keywords = `<h2>Keywords</h2>${badgeList(a.keywords)}`;
+    const colLists =
+      `<div class="cols">
+         <div>
+           <h2>Fits</h2>
+           ${nl2pre(lines(a.fits))}
+         </div>
+         <div>
+           <h2>Gaps</h2>
+           ${nl2pre(lines(a.gaps))}
+         </div>
+       </div>`;
+
+    const summary =
+      `<h2>Summary</h2>
+       <div class="kv" style="margin-top:8px">${escapeHtml(a.job_summary || '')}</div>`;
+
+    const details =
+      `<div class="details">
+         <button id="toggleMore" class="ghost">View more</button>
+         <div id="moreBox" style="display:none;margin-top:12px">
+           <h2>Full description</h2>
+           ${nl2pre(a.job_description || '')}
+         </div>
+       </div>`;
+
+    const decisions =
+      `<div class="decisions">
+         <button id="saveBtn" class="primary">Save for later</button>
+         <div class="inline">
+           <button id="applyBtn" class="good">Yes I applied</button>
+           <div id="ratings" class="rating" style="display:none">
+             <label class="small">Effort/10 <input id="effort" type="number" min="0" max="10" step="1" value="7" /></label>
+             <label class="small">Chance/10 <input id="chance" type="number" min="0" max="10" step="1" value="6" /></label>
+             <button id="confirmApply" class="good">Confirm</button>
+           </div>
+         </div>
+         <button id="ignoreBtn" class="bad">Ignore</button>
+       </div>`;
+
+    resultEl.innerHTML = header + meters + keywords + colLists + summary + details + decisions;
+
+    // button handlers
+    el('#toggleMore').addEventListener('click', () => {
+      const box = el('#moreBox');
+      const open = box.style.display !== 'none';
+      box.style.display = open ? 'none' : 'block';
+      el('#toggleMore').textContent = open ? 'View more' : 'Hide';
+    });
+
+    el('#saveBtn').addEventListener('click', onSave);
+    el('#applyBtn').addEventListener('click', () => {
+      el('#ratings').style.display = 'inline-flex';
+    });
+    el('#confirmApply').addEventListener('click', onApply);
+    el('#ignoreBtn').addEventListener('click', () => {
+      resultEl.style.display = 'none';
+      draft = null;
+      toast('Ignored. Nothing saved.');
+    });
+  }
+
+  function toApplicationsPayload(a, opts) {
+    return {
+      source_url: a.source_url || '',
+      canonical_job_url: a.canonical_job_url || a.canonical_url || a.source_url || '',
+      title: a.title || '',
+      company_name: a.company_name || '',
+      seniority: a.seniority || '',
+      role_type: a.role_type || '',
+      sector: a.sector || '',
+      contact_email: a.contact_email || '',
+      date_posted: a.date_posted || '',
+      date_deadline: a.date_deadline || '',
+      start_date: a.start_date || '',
+      salary_min: a.salary?.min || '',
+      salary_max: a.salary?.max || '',
+      salary_currency: a.salary?.currency || '',
+      salary_period: a.salary?.period || '',
+      salary_raw: a.salary?.salary_raw || a.salary_raw || '',
+      locations: Array.isArray(a.locations) ? a.locations : [],
+      AI_fit_score: a.AI_fit_score ?? 0,
+      AI_alignment_score: a.AI_alignment_score ?? 0,
+      AI_cv_filename: a.AI_cv_recommendation?.filename || a.AI_cv_filename || '',
+      AI_cv_reason: a.AI_cv_recommendation?.reason || a.AI_cv_reason || '',
+      key_requirements: a.key_requirements || [],
+      other_requirements: a.other_requirements || [],
+      fits: a.fits || [],
+      gaps: a.gaps || [],
+      job_summary: a.job_summary || '',
+      keywords: a.keywords || [],
+      job_description: a.job_description || '',
+      status: opts.status, // "Saved" | "Applied"
+      applied_date: opts.status === 'Applied' ? (opts.appliedDate || londonTodayISO()) : null,
+      application_effort_rating: opts.effort ?? null,
+      application_chance_rating: opts.chance ?? null,
+      cover_letter_url: a.cover_letter_url ?? null
     };
+  }
 
-    function setLoading(on) {
-      el.btn.disabled = on;
-      el.btn.setAttribute('aria-busy', on ? 'true' : 'false');
-      el.spin.classList.toggle('show', on);
-      el.status.textContent = on ? "Analysing… this can take a moment." : "";
+  async function onSave() {
+    if (!draft) return;
+    const payload = toApplicationsPayload(draft, { status: 'Saved' });
+    try {
+      const res = await postJSON(APPLICATIONS_PATH, payload);
+      toast('Saved for later ✅');
+    } catch (e) {
+      console.error(e);
+      toast('Save failed. Check n8n / CORS.');
     }
+  }
 
-    // Helpers
-    const asArray = v => Array.isArray(v) ? v : (v ? [v] : []);
-    function fmtSalary(s) { if (!s) return ""; return s.salary_raw || [s.min, s.max].filter(Boolean).join(" – "); }
-    function pills(arr) { return asArray(arr).map(x => `<span class="pill">${String(x)}</span>`).join(""); }
-    function setBar(el, val) { const pct = Math.max(0, Math.min(100, Number(val || 0))); requestAnimationFrame(() => el.style.width = pct + "%"); }
-
-    function todayISO() {
-      const d = new Date();
-      const off = d.getTimezoneOffset();
-      const local = new Date(d.getTime() - off*60000);
-      return local.toISOString().slice(0,10);
+  async function onApply() {
+    if (!draft) return;
+    const effort = Number(el('#effort').value);
+    const chance = Number(el('#chance').value);
+    const payload = toApplicationsPayload(draft, {
+      status: 'Applied',
+      effort: Number.isFinite(effort) ? effort : null,
+      chance: Number.isFinite(chance) ? chance : null,
+      appliedDate: londonTodayISO()
+    });
+    try {
+      const res = await postJSON(APPLICATIONS_PATH, payload);
+      toast('Marked as applied 🎉');
+    } catch (e) {
+      console.error(e);
+      toast('Apply failed. Check n8n / CORS.');
     }
+  }
 
-    // Keep the last analysis for Save/Apply
-    let lastAnalysis = null;
-
-    // Turn the analysis into flat fields your Sheet expects
-    function flattenForSheet(data) {
-      const job = data.job || data;
-      const sal = job.salary || data.salary || {};
-      const aiFit   = data.AI_fit_score ?? data.ai?.fit_score ?? 0;
-      const aiAlign = data.AI_alignment_score ?? data.ai?.alignment_score ?? 0;
-      const cvRec   = data.AI_cv_recommendation || data.ai?.cv_recommendation || {};
-      const cvFile  = cvRec.filename || data.AI_cv_filename || "";
-      const cvWhy   = cvRec.reason   || data.AI_cv_reason   || "";
-      const asList  = (v) => Array.isArray(v) ? v.join(", ") : (v || "");
-
-      return {
-        source_url:         job.source_url || data.source_url || "",
-        canonical_job_url:  data.canonical_job_url || job.source_url || data.source_url || "",
-
-        title:              job.title || data.title || "",
-        company_name:       job.company_name || data.company_name || "",
-        seniority:          job.seniority || data.seniority || "",
-        role_type:          job.role_type || data.role_type || "",
-        sector:             job.sector || data.sector || "",
-        contact_email:      job.contact_email || data.contact_email || "",
-
-        date_posted:        job.date_posted || data.date_posted || "",
-        date_deadline:      job.date_deadline || data.date_deadline || "",
-
-        salary_min:         sal.min || "",
-        salary_max:         sal.max || "",
-        salary_currency:    sal.currency || "",
-        salary_period:      sal.period || "",
-        salary_raw:         sal.salary_raw || "",
-
-        locations:          asList(job.locations || data.locations || []),
-
-        AI_fit_score:       aiFit,
-        AI_alignment_score: aiAlign,
-        AI_cv_filename:     cvFile,
-        AI_cv_reason:       cvWhy,
-
-        key_requirements:   asList(data.key_requirements || data.ai?.key_requirements || []),
-        other_requirements: asList(data.other_requirements || data.ai?.other_requirements || []),
-        fits:               asList(data.fits || data.ai?.fits || []),
-        gaps:               asList(data.gaps || data.ai?.gaps || []),
-
-        job_summary:        job.job_summary || data.job_summary || data.summary || "",
-        keywords:           asList(job.keywords || data.keywords || data.ai?.keywords || []),
-        job_description:    job.job_description || data.job_description || ""
-      };
+  async function analyseUrl() {
+    const url = jobUrlInput.value.trim();
+    if (!url) return toast('Please paste a job URL.');
+    analyzeBtn.disabled = true;
+    resultEl.style.display = 'block';
+    resultEl.innerHTML = `
+      <div class="skeleton" style="width:60%"></div>
+      <div class="skeleton" style="width:40%;margin-top:8px"></div>
+      <div class="skeleton" style="width:90%;height:64px;margin-top:16px"></div>
+    `;
+    try {
+      const data = await postJSON(ANALYSE_PATH, { job_url: url });
+      draft = sanitizeAnalysis(data);
+      if (!draft) throw new Error('No analysis');
+      renderAnalysis(draft);
+    } catch (e) {
+      console.error(e);
+      resultEl.style.display = 'none';
+      toast('Analysis failed. Check n8n / CORS.');
+    } finally {
+      analyzeBtn.disabled = false;
     }
+  }
 
-    async function analyse() {
-      const url = el.url.value.trim();
-      if (!/^https?:\/\//i.test(url)) { el.status.innerHTML = '<span class="error">Please enter a valid URL.</span>'; return; }
-      el.result.style.display = "none"; setLoading(true);
-
-      try {
-        const form = new FormData();
-        form.append("job_url", url);
-        const res = await fetch(ANALYSE_URL, { method: "POST", body: form });
-        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-        const data = await res.json();
-        lastAnalysis = data;
-
-        const title   = data.title || data.job?.title || "(Untitled role)";
-        const company = data.company_name || data.job?.company_name || "";
-        const locs    = asArray(data.locations || data.job?.locations).join(" • ");
-        const salary  = fmtSalary(data.salary || data.job?.salary);
-        const summary = data.summary || data.job_summary || data.job?.job_summary || "";
-
-        const kw      = data.keywords || data.ai?.keywords || data.job?.keywords || [];
-        const fit     = data.AI_fit_score ?? data.ai?.fit_score ?? 0;
-        const align   = data.AI_alignment_score ?? data.ai?.alignment_score ?? 0;
-        const keyReq  = asArray(data.key_requirements || data.ai?.key_requirements);
-        const otherReq= asArray(data.other_requirements || data.ai?.other_requirements);
-        const fits    = asArray(data.fits || data.ai?.fits);
-        const gaps    = asArray(data.gaps || data.ai?.gaps);
-
-        el.result.innerHTML = `
-          <div class="heading">
-            <h2 class="title">${title}</h2>
-            <span class="meta"> ${company}${locs ? " — " + locs : ""}</span>
-          </div>
-          ${salary ? `<div class="salary">${salary}</div>` : ""}
-          ${summary ? `<div class="section"><p>${summary}</p></div>` : ""}
-
-          <div class="grid section">
-            <div>
-              <div class="score-line"><span>AI_fit_score</span><span class="score-val" id="fitVal">${fit}/100</span></div>
-              <div class="bar"><span id="fitBar"></span></div>
-            </div>
-            <div>
-              <div class="score-line"><span>AI_alignment_score</span><span class="score-val" id="alignVal">${align}/100</span></div>
-              <div class="bar"><span id="alignBar"></span></div>
-            </div>
-          </div>
-
-          ${kw?.length ? `<div class="section"><h3>Keywords</h3>${pills(kw)}</div>` : ""}
-          ${keyReq.length ? `<div class="section"><h3>Key requirements</h3><ul>${keyReq.map(x=>`<li>${x}</li>`).join("")}</ul></div>` : ""}
-          ${otherReq.length ? `<div class="section"><h3>Other requirements</h3><ul>${otherReq.map(x=>`<li>${x}</li>`).join("")}</ul></div>` : ""}
-          ${fits.length ? `<div class="section"><h3>Where you fit</h3><ul>${fits.map(x=>`<li>${x}</li>`).join("")}</ul></div>` : ""}
-          ${gaps.length ? `<div class="section"><h3>Where you don’t fit</h3><ul>${gaps.map(x=>`<li>${x}</li>`).join("")}</ul></div>` : ""}
-
-          <div class="section" style="display:flex; gap:10px; flex-wrap:wrap;">
-            <button class="primary" id="applyBtn">Apply</button>
-            <button class="ghost" id="saveBtn">Save for later</button>
-            <button class="ghost" id="ignoreBtn">Ignore</button>
-          </div>
-        `;
-        el.result.style.display = "block";
-
-        setBar(document.getElementById('fitBar'), fit);
-        setBar(document.getElementById('alignBar'), align);
-
-        // Button handlers
-        const toast = (msg, cls="muted") => { el.status.innerHTML = `<span class="${cls}">${msg}</span>`; };
-        document.getElementById('saveBtn').onclick  = onSave(toast);
-        document.getElementById('applyBtn').onclick = onApply(toast);
-        document.getElementById('ignoreBtn').onclick= () => toast("Ignored. (Nothing written.)", "warn");
-
-      } catch (err) {
-        console.error(err);
-        el.status.innerHTML = `<span class="error">Request failed: ${err.message}</span>`;
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    function onSave(toast){
-      return async function(){
-        if (!lastAnalysis) return;
-        const payload = flattenForSheet(lastAnalysis);
-        const form = new FormData();
-        Object.entries(payload).forEach(([k,v]) => form.append(k, String(v)));
-        form.append("status", "Saved");
-        form.append("status_update_date", todayISO());
-        try {
-          const r = await fetch(APPLICATIONS_URL, { method: "POST", body: form });
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          toast("Saved to your sheet ✅", "ok");
-        } catch(e){ toast(`Save failed: ${e.message}`, "error"); }
-      }
-    }
-
-    function onApply(toast){
-      return async function(){
-        if (!lastAnalysis) return;
-        const effort = Number(prompt("Effort (0–10)?", "7") || "0");
-        const chance = Number(prompt("Chance (0–10)?", "6") || "0");
-        const payload = flattenForSheet(lastAnalysis);
-        const form = new FormData();
-        Object.entries(payload).forEach(([k,v]) => form.append(k, String(v)));
-        form.append("status", "Applied");
-        form.append("applied_date", todayISO());
-        form.append("application_effort_rating", String(effort));
-        form.append("application_chance_rating", String(chance));
-        form.append("status_update_date", todayISO());
-        try {
-          const r = await fetch(APPLICATIONS_URL, { method: "POST", body: form });
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          toast("Marked as Applied + written to your sheet ✅", "ok");
-        } catch(e){ toast(`Apply failed: ${e.message}`, "error"); }
-      }
-    }
-
-    // Events
-    document.getElementById('analyseBtn').addEventListener('click', analyse);
-    document.getElementById('jobUrl').addEventListener('keypress', (e) => { if (e.key === 'Enter') analyse(); });
-  </script>
+  analyzeBtn.addEventListener('click', analyseUrl);
+  jobUrlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') analyseUrl(); });
+</script>
 </body>
 </html>
