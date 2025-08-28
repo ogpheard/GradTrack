@@ -12,10 +12,10 @@
   html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif}
   .wrap{max-width:960px;margin:32px auto;padding:0 16px}
   .card{background:var(--panel);border-radius:16px;box-shadow:var(--shadow);padding:20px}
-  h1{font-size:24px;margin:0 0 16px}
+  h1{font-size:24px;margin:0 0 12px}
   h2{font-size:18px;margin:16px 0 8px}
-  .row{display:flex;gap:8px;align-items:center}
-  .urlbar{display:flex;gap:8px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .urlbar{display:flex;gap:8px;width:100%}
   input[type="url"]{flex:1;padding:14px 12px;border-radius:12px;border:1px solid #2b3160;background:#0e1330;color:var(--text)}
   button{border:0;border-radius:12px;padding:12px 16px;cursor:pointer;font-weight:600;background:#2a3170;color:#fff}
   button.primary{background:var(--accent)}
@@ -46,17 +46,28 @@
   .skeleton{height:14px;background:linear-gradient(90deg,#1a1f42 0%,#202759 50%,#1a1f42 100%);background-size:200% 100%;animation:sh 1.2s infinite}
   @keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
   .small{font-size:12px}
+  .env{margin-left:auto;display:flex;gap:8px;align-items:center}
+  .env select{background:#0e1330;border:1px solid #2b3160;color:#fff;border-radius:10px;padding:8px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>Graduate Applications Assistant</h1>
+    <div class="row">
+      <h1>Graduate Applications Assistant</h1>
+      <div class="env">
+        <label class="small muted">Environment</label>
+        <select id="envSelect" title="Switch between Test (webhook-test) and Prod (webhook)">
+          <option value="test">Test</option>
+          <option value="prod">Prod</option>
+        </select>
+      </div>
+    </div>
     <div class="urlbar">
       <input id="jobUrl" type="url" placeholder="Paste a job URL…" autocomplete="off" />
       <button id="analyzeBtn" class="primary">Analyse</button>
     </div>
-    <p class="muted small">No secrets in the browser. Writes go through n8n. Time zone: Europe/London.</p>
+    <p class="muted small">Test uses <code>/webhook-test/*</code> (workflow must be Executing). Prod uses <code>/webhook/*</code> (workflow must be Active).</p>
   </div>
 
   <div id="result" class="card" style="margin-top:16px; display:none;"></div>
@@ -65,12 +76,21 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script>
-  // ====== CONFIG – set these to your values ======
-  const N8N_BASE = 'https://ogpheard.app.n8n.cloud';
-  const USE_TEST_URLS = false; // true while testing in n8n's "Execute" mode
-  const ANALYSE_PATH = USE_TEST_URLS ? '/webhook-test/analyse' : '/webhook/analyse';
-  const APPLICATIONS_PATH = USE_TEST_URLS ? '/webhook-test/applications' : '/webhook/applications';
-  // ===============================================
+  // ====== ENDPOINTS (your URLs) ======
+  const URLS = {
+    test: {
+      analyse: 'https://ogpheard.app.n8n.cloud/webhook-test/analyse',
+      applications: 'https://ogpheard.app.n8n.cloud/webhook-test/applications',
+    },
+    prod: {
+      analyse: 'https://ogpheard.app.n8n.cloud/webhook/analyse',
+      applications: 'https://ogpheard.app.n8n.cloud/webhook/applications',
+    }
+  };
+  // Default env: test (switchable by dropdown or ?env=prod)
+  const initialEnv = (new URLSearchParams(location.search).get('env') || 'test').toLowerCase();
+  const envSelect = document.getElementById('envSelect');
+  envSelect.value = (initialEnv === 'prod' ? 'prod' : 'test');
 
   const el = (sel) => document.querySelector(sel);
   const resultEl = el('#result');
@@ -78,12 +98,18 @@
   const analyzeBtn = el('#analyzeBtn');
   const jobUrlInput = el('#jobUrl');
 
-  let draft = null; // holds the latest /analyse result
+  let currentEnv = envSelect.value;
+  let draft = null;
+
+  envSelect.addEventListener('change', () => {
+    currentEnv = envSelect.value;
+    toast(`Switched to ${currentEnv.toUpperCase()}`);
+  });
 
   function toast(msg) {
     toastEl.textContent = msg;
     toastEl.classList.add('show');
-    setTimeout(() => toastEl.classList.remove('show'), 2500);
+    setTimeout(() => toastEl.classList.remove('show'), 2200);
   }
 
   function londonTodayISO() {
@@ -96,11 +122,11 @@
     return `${y}-${m}-${d}`;
   }
 
-  async function postJSON(path, body) {
+  async function postJSON(url, body) {
     const ctrl = new AbortController();
     const to = setTimeout(() => ctrl.abort(), 30000);
     try {
-      const res = await fetch(N8N_BASE + path, {
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type':'application/json' },
         body: JSON.stringify(body),
@@ -114,7 +140,6 @@
   }
 
   function sanitizeAnalysis(a) {
-    // a might come as [obj] — flatten
     if (Array.isArray(a)) a = a[0];
     return a || null;
   }
@@ -131,16 +156,13 @@
     if (!Array.isArray(list)) return '';
     return `<div class="chips">${list.slice(0, 20).map(k => `<span class="chip">${escapeHtml(String(k))}</span>`).join('')}</div>`;
   }
-
   function lines(list) {
     if (!Array.isArray(list)) return '';
     return list.slice(0, 12).map(x => `• ${escapeHtml(String(x))}`).join('\n');
   }
-
   function nl2pre(s) {
     return `<pre>${escapeHtml(String(s || '')).replace(/\n{3,}/g, '\n\n')}</pre>`;
   }
-
   function escapeHtml(s) {
     return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
@@ -278,11 +300,11 @@
     if (!draft) return;
     const payload = toApplicationsPayload(draft, { status: 'Saved' });
     try {
-      const res = await postJSON(APPLICATIONS_PATH, payload);
+      await postJSON(URLS[currentEnv].applications, payload);
       toast('Saved for later ✅');
     } catch (e) {
       console.error(e);
-      toast('Save failed. Check n8n / CORS.');
+      toast(`Save failed (${currentEnv}). Check n8n/CORS.`);
     }
   }
 
@@ -297,11 +319,11 @@
       appliedDate: londonTodayISO()
     });
     try {
-      const res = await postJSON(APPLICATIONS_PATH, payload);
+      await postJSON(URLS[currentEnv].applications, payload);
       toast('Marked as applied 🎉');
     } catch (e) {
       console.error(e);
-      toast('Apply failed. Check n8n / CORS.');
+      toast(`Apply failed (${currentEnv}). Check n8n/CORS.`);
     }
   }
 
@@ -316,19 +338,21 @@
       <div class="skeleton" style="width:90%;height:64px;margin-top:16px"></div>
     `;
     try {
-      const data = await postJSON(ANALYSE_PATH, { job_url: url });
+      const data = await postJSON(URLS[currentEnv].analyse, { job_url: url });
       draft = sanitizeAnalysis(data);
       if (!draft) throw new Error('No analysis');
       renderAnalysis(draft);
     } catch (e) {
       console.error(e);
       resultEl.style.display = 'none';
-      toast('Analysis failed. Check n8n / CORS.');
+      toast(`Analysis failed (${currentEnv}). If using Test, make sure the workflow is Executing.`);
     } finally {
       analyzeBtn.disabled = false;
     }
   }
 
+  const analyzeBtn = document.getElementById('analyzeBtn');
+  const jobUrlInput = document.getElementById('jobUrl');
   analyzeBtn.addEventListener('click', analyseUrl);
   jobUrlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') analyseUrl(); });
 </script>
