@@ -65,9 +65,9 @@
     </div>
     <div class="urlbar">
       <input id="jobUrl" type="url" placeholder="Paste a job URL…" autocomplete="off" />
-      <button id="analyzeBtn" class="primary">Analyse</button>
+      <button id="analyseBtn" class="primary">Analyse</button>
     </div>
-    <p class="muted small">Test uses <code>/webhook-test/*</code> (workflow must be Executing). Prod uses <code>/webhook/*</code> (workflow Active).</p>
+    <p class="muted small">Test uses <code>/webhook-test/*</code> (workflows must be Executing). Prod uses <code>/webhook/*</code> (workflows Active).</p>
   </div>
 
   <div id="result" class="card" style="margin-top:16px; display:none;"></div>
@@ -76,7 +76,7 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script>
-  // ====== ENDPOINTS (YOUR URLS) ======
+  // ========= YOUR EXACT ENDPOINTS =========
   const URLS = {
     test: {
       analyse: 'https://ogpheard.app.n8n.cloud/webhook-test/analyse',
@@ -88,18 +88,19 @@
     }
   };
 
-  // ====== UI refs ======
+  // ====== UI refs / state ======
   const envSelect = document.getElementById('envSelect');
-  const analyzeBtn = document.getElementById('analyzeBtn');
+  const analyseBtn = document.getElementById('analyseBtn');
   const jobUrlInput = document.getElementById('jobUrl');
   const resultEl = document.getElementById('result');
   const toastEl = document.getElementById('toast');
 
-  // Default env from ?env=prod or Test
   const initialEnv = (new URLSearchParams(location.search).get('env') || 'test').toLowerCase();
   envSelect.value = (initialEnv === 'prod' ? 'prod' : 'test');
   let currentEnv = envSelect.value;
   envSelect.addEventListener('change', () => { currentEnv = envSelect.value; toast(`Switched to ${currentEnv.toUpperCase()}`); });
+
+  let draft = null; // holds last analysis result
 
   // ====== helpers ======
   function toast(msg) {
@@ -127,24 +128,69 @@
     if (s.min) return `${s.currency || ''} ${s.min} ${s.period || ''}`.trim();
     return a.salary_raw || '';
   }
-
-  async function postJSON(url, body) {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json' },
-      body: JSON.stringify(body)
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json().catch(()=> ({}));
-  }
-  async function postForm(url, formData) {
-    const res = await fetch(url, { method:'POST', body:formData });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
+  async function postForm(url, fd) {
+    const res = await fetch(url, { method:'POST', body: fd });
+    if (!res.ok) {
+      const txt = await res.text().catch(()=> '');
+      console.error('POST failed', url, res.status, txt);
+      throw new Error(`HTTP ${res.status}`);
+    }
+    try { return await res.json(); } catch { return {}; }
   }
 
-  let draft = null; // latest analysis
+  // Make a canonical URL if analysis didn’t provide one
+  function canonicalize(u) {
+    try {
+      const url = new URL(String(u));
+      url.protocol = 'https:';
+      url.hostname = url.hostname.replace(/^www\./i,'').toLowerCase();
+      url.hash = '';
+      const keep = new Set(['gh_jid','jobId','vacancyId','rid','id','lever-origin']);
+      const q = new URLSearchParams(url.search);
+      [...q.keys()].forEach(k => {
+        const kl=k.toLowerCase();
+        if (!keep.has(k) || /^utm_/.test(kl) || /(gclid|fbclid|ref|source|src|campaign|medium)$/i.test(kl)) q.delete(k);
+      });
+      const sorted = new URLSearchParams();
+      [...q.keys()].sort().forEach(k=>sorted.append(k, q.get(k)));
+      url.search = sorted.toString() ? `?${sorted.toString()}` : '';
+      if (url.pathname.length>1) url.pathname = url.pathname.replace(/\/+$/,'');
+      return url.toString();
+    } catch { return u; }
+  }
 
+  // ====== ANALYSE (FormData with job_url) ======
+  async function analyseUrl() {
+    const url = jobUrlInput.value.trim();
+    if (!/^https?:\/\//i.test(url)) { toast('Please paste a valid URL'); return; }
+
+    // skeleton while loading
+    resultEl.style.display = 'block';
+    resultEl.innerHTML = `
+      <div class="skeleton" style="width:60%"></div>
+      <div class="skeleton" style="width:40%;margin-top:8px"></div>
+      <div class="skeleton" style="width:90%;height:64px;margin-top:16px"></div>
+    `;
+    analyseBtn.disabled = true;
+
+    try {
+      const fd = new FormData();
+      fd.append('job_url', url);
+      const data = await postForm(URLS[currentEnv].analyse, fd);
+      const out = Array.isArray(data) ? data[0] : data;
+      if (!out) throw new Error('No analysis result');
+      draft = out;
+      renderAnalysis(out);
+    } catch (e) {
+      console.error(e);
+      resultEl.style.display = 'none';
+      toast(`Analysis failed (${currentEnv}). In Test, ensure the workflow is Executing & CORS allows this origin.`);
+    } finally {
+      analyseBtn.disabled = false;
+    }
+  }
+
+  // ====== RENDER RESULT ======
   function renderAnalysis(a) {
     const fit = Math.max(0, Math.min(100, Number(a.AI_fit_score || 0)));
     const align = Math.max(0, Math.min(100, Number(a.AI_alignment_score || 0)));
@@ -218,7 +264,6 @@
     resultEl.innerHTML = header + meters + keywords + colLists + summary + details + decisions;
     resultEl.style.display = 'block';
 
-    // handlers
     document.getElementById('toggleMore').addEventListener('click', () => {
       const box = document.getElementById('moreBox');
       const open = box.style.display !== 'none';
@@ -237,10 +282,11 @@
     });
   }
 
+  // ====== BUILD APPLICATIONS PAYLOAD ======
   function toApplicationsPayload(a, opts) {
     return {
       source_url: a.source_url || '',
-      canonical_job_url: a.canonical_job_url || a.canonical_url || a.source_url || '',
+      canonical_job_url: a.canonical_job_url || a.canonical_url || canonicalize(a.source_url || ''),
       title: a.title || '',
       company_name: a.company_name || '',
       seniority: a.seniority || '',
@@ -275,11 +321,26 @@
     };
   }
 
+  // ====== SEND APPLICATIONS AS FORMDATA (no preflight) ======
+  async function sendApplications(env, payload) {
+    const fd = new FormData();
+    for (const [k, v] of Object.entries(payload)) {
+      if (Array.isArray(v)) {
+        fd.append(k, JSON.stringify(v)); // arrays -> JSON string (your flow already handles)
+      } else if (v === null || v === undefined) {
+        fd.append(k, '');
+      } else {
+        fd.append(k, String(v));
+      }
+    }
+    return postForm(URLS[env].applications, fd);
+  }
+
   async function onSave() {
     if (!draft) return;
     try {
       const payload = toApplicationsPayload(draft, { status: 'Saved' });
-      await postJSON(URLS[currentEnv].applications, payload);
+      await sendApplications(currentEnv, payload);
       toast('Saved for later ✅');
     } catch (e) {
       console.error(e); toast(`Save failed (${currentEnv})`);
@@ -297,43 +358,15 @@
         chance: Number.isFinite(chance) ? chance : null,
         appliedDate: londonTodayISO()
       });
-      await postJSON(URLS[currentEnv].applications, payload);
+      await sendApplications(currentEnv, payload);
       toast('Marked as applied 🎉');
     } catch (e) {
       console.error(e); toast(`Apply failed (${currentEnv})`);
     }
   }
 
-  async function analyseUrl() {
-    const url = jobUrlInput.value.trim();
-    if (!/^https?:\/\//i.test(url)) { toast('Please paste a valid URL'); return; }
-    // skeleton
-    resultEl.style.display = 'block';
-    resultEl.innerHTML = `
-      <div class="skeleton" style="width:60%"></div>
-      <div class="skeleton" style="width:40%;margin-top:8px"></div>
-      <div class="skeleton" style="width:90%;height:64px;margin-top:16px"></div>
-    `;
-    analyzeBtn.disabled = true;
-    try {
-      // POST FormData with job_url (matches your working page)
-      const fd = new FormData();
-      fd.append('job_url', url);
-      const data = await postForm(URLS[currentEnv].analyse, fd);
-      const out = Array.isArray(data) ? data[0] : data;
-      if (!out) throw new Error('No analysis');
-      draft = out;
-      renderAnalysis(out);
-    } catch (e) {
-      console.error(e);
-      resultEl.style.display = 'none';
-      toast(`Analysis failed (${currentEnv}). If Test, make sure the workflow is Executing and CORS allows this origin.`);
-    } finally {
-      analyzeBtn.disabled = false;
-    }
-  }
-
-  analyzeBtn.addEventListener('click', analyseUrl);
+  // events
+  analyseBtn.addEventListener('click', analyseUrl);
   jobUrlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') analyseUrl(); });
 </script>
 </body>
