@@ -57,7 +57,7 @@
       <h1>Graduate Applications Assistant</h1>
       <div class="env">
         <label class="small muted">Environment</label>
-        <select id="envSelect" title="Switch between Test (webhook-test) and Prod (webhook)">
+        <select id="envSelect" title="Switch between Test and Prod">
           <option value="test">Test</option>
           <option value="prod">Prod</option>
         </select>
@@ -67,7 +67,7 @@
       <input id="jobUrl" type="url" placeholder="Paste a job URL…" autocomplete="off" />
       <button id="analyzeBtn" class="primary">Analyse</button>
     </div>
-    <p class="muted small">Test uses <code>/webhook-test/*</code> (workflow must be Executing). Prod uses <code>/webhook/*</code> (workflow must be Active).</p>
+    <p class="muted small">Test uses <code>/webhook-test/*</code> (workflow must be Executing). Prod uses <code>/webhook/*</code> (workflow Active).</p>
   </div>
 
   <div id="result" class="card" style="margin-top:16px; display:none;"></div>
@@ -76,7 +76,7 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script>
-  // ====== ENDPOINTS (your URLs) ======
+  // ====== ENDPOINTS (YOUR URLS) ======
   const URLS = {
     test: {
       analyse: 'https://ogpheard.app.n8n.cloud/webhook-test/analyse',
@@ -87,31 +87,26 @@
       applications: 'https://ogpheard.app.n8n.cloud/webhook/applications',
     }
   };
-  // Default env: test (switchable by dropdown or ?env=prod)
-  const initialEnv = (new URLSearchParams(location.search).get('env') || 'test').toLowerCase();
+
+  // ====== UI refs ======
   const envSelect = document.getElementById('envSelect');
+  const analyzeBtn = document.getElementById('analyzeBtn');
+  const jobUrlInput = document.getElementById('jobUrl');
+  const resultEl = document.getElementById('result');
+  const toastEl = document.getElementById('toast');
+
+  // Default env from ?env=prod or Test
+  const initialEnv = (new URLSearchParams(location.search).get('env') || 'test').toLowerCase();
   envSelect.value = (initialEnv === 'prod' ? 'prod' : 'test');
-
-  const el = (sel) => document.querySelector(sel);
-  const resultEl = el('#result');
-  const toastEl = el('#toast');
-  const analyzeBtn = el('#analyzeBtn');
-  const jobUrlInput = el('#jobUrl');
-
   let currentEnv = envSelect.value;
-  let draft = null;
+  envSelect.addEventListener('change', () => { currentEnv = envSelect.value; toast(`Switched to ${currentEnv.toUpperCase()}`); });
 
-  envSelect.addEventListener('change', () => {
-    currentEnv = envSelect.value;
-    toast(`Switched to ${currentEnv.toUpperCase()}`);
-  });
-
+  // ====== helpers ======
   function toast(msg) {
     toastEl.textContent = msg;
     toastEl.classList.add('show');
     setTimeout(() => toastEl.classList.remove('show'), 2200);
   }
-
   function londonTodayISO() {
     const fmt = new Intl.DateTimeFormat('en-GB', {
       timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit'
@@ -121,29 +116,10 @@
     const d = fmt.find(p => p.type === 'day').value;
     return `${y}-${m}-${d}`;
   }
-
-  async function postJSON(url, body) {
-    const ctrl = new AbortController();
-    const to = setTimeout(() => ctrl.abort(), 30000);
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify(body),
-        signal: ctrl.signal
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
-    } finally {
-      clearTimeout(to);
-    }
-  }
-
-  function sanitizeAnalysis(a) {
-    if (Array.isArray(a)) a = a[0];
-    return a || null;
-  }
-
+  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function nl2pre(s) { return `<pre>${escapeHtml(String(s || '')).replace(/\n{3,}/g, '\n\n')}</pre>`; }
+  function lines(list) { if (!Array.isArray(list)) return ''; return list.slice(0, 12).map(x => `• ${escapeHtml(String(x))}`).join('\n'); }
+  function badgeList(list){ if(!Array.isArray(list)) return ''; return `<div class="chips">${list.slice(0,20).map(k=>`<span class="chip">${escapeHtml(k)}</span>`).join('')}</div>`; }
   function salaryText(a) {
     const s = a.salary || {};
     if (s.salary_raw) return s.salary_raw;
@@ -152,26 +128,31 @@
     return a.salary_raw || '';
   }
 
-  function badgeList(list) {
-    if (!Array.isArray(list)) return '';
-    return `<div class="chips">${list.slice(0, 20).map(k => `<span class="chip">${escapeHtml(String(k))}</span>`).join('')}</div>`;
+  async function postJSON(url, body) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json().catch(()=> ({}));
   }
-  function lines(list) {
-    if (!Array.isArray(list)) return '';
-    return list.slice(0, 12).map(x => `• ${escapeHtml(String(x))}`).join('\n');
-  }
-  function nl2pre(s) {
-    return `<pre>${escapeHtml(String(s || '')).replace(/\n{3,}/g, '\n\n')}</pre>`;
-  }
-  function escapeHtml(s) {
-    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  async function postForm(url, formData) {
+    const res = await fetch(url, { method:'POST', body:formData });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
   }
 
+  let draft = null; // latest analysis
+
   function renderAnalysis(a) {
+    const fit = Math.max(0, Math.min(100, Number(a.AI_fit_score || 0)));
+    const align = Math.max(0, Math.min(100, Number(a.AI_alignment_score || 0)));
     const locs = Array.isArray(a.locations) ? a.locations.join(' • ') : '';
     const sal = salaryText(a);
     const deadline = a.date_deadline ? `Deadline: ${a.date_deadline}` : '';
     const start = a.start_date ? `Start: ${a.start_date}` : '';
+
     const header =
       `<h2>${escapeHtml(a.title || 'Untitled role')}</h2>
        <div class="muted">${escapeHtml(a.company_name || '')}</div>
@@ -182,8 +163,6 @@
          <div class="kv"><b>URL</b><a href="${a.source_url}" target="_blank" rel="noopener">${escapeHtml(a.source_url || '')}</a></div>
        </div>`;
 
-    const fit = Math.max(0, Math.min(100, Number(a.AI_fit_score || 0)));
-    const align = Math.max(0, Math.min(100, Number(a.AI_alignment_score || 0)));
     const meters =
       `<div class="meters">
          <div class="meter" aria-label="AI Fit score">
@@ -237,21 +216,21 @@
        </div>`;
 
     resultEl.innerHTML = header + meters + keywords + colLists + summary + details + decisions;
+    resultEl.style.display = 'block';
 
-    // button handlers
-    el('#toggleMore').addEventListener('click', () => {
-      const box = el('#moreBox');
+    // handlers
+    document.getElementById('toggleMore').addEventListener('click', () => {
+      const box = document.getElementById('moreBox');
       const open = box.style.display !== 'none';
       box.style.display = open ? 'none' : 'block';
-      el('#toggleMore').textContent = open ? 'View more' : 'Hide';
+      document.getElementById('toggleMore').textContent = open ? 'View more' : 'Hide';
     });
-
-    el('#saveBtn').addEventListener('click', onSave);
-    el('#applyBtn').addEventListener('click', () => {
-      el('#ratings').style.display = 'inline-flex';
+    document.getElementById('saveBtn').addEventListener('click', onSave);
+    document.getElementById('applyBtn').addEventListener('click', () => {
+      document.getElementById('ratings').style.display = 'inline-flex';
     });
-    el('#confirmApply').addEventListener('click', onApply);
-    el('#ignoreBtn').addEventListener('click', () => {
+    document.getElementById('confirmApply').addEventListener('click', onApply);
+    document.getElementById('ignoreBtn').addEventListener('click', () => {
       resultEl.style.display = 'none';
       draft = null;
       toast('Ignored. Nothing saved.');
@@ -298,61 +277,62 @@
 
   async function onSave() {
     if (!draft) return;
-    const payload = toApplicationsPayload(draft, { status: 'Saved' });
     try {
+      const payload = toApplicationsPayload(draft, { status: 'Saved' });
       await postJSON(URLS[currentEnv].applications, payload);
       toast('Saved for later ✅');
     } catch (e) {
-      console.error(e);
-      toast(`Save failed (${currentEnv}). Check n8n/CORS.`);
+      console.error(e); toast(`Save failed (${currentEnv})`);
     }
   }
 
   async function onApply() {
     if (!draft) return;
-    const effort = Number(el('#effort').value);
-    const chance = Number(el('#chance').value);
-    const payload = toApplicationsPayload(draft, {
-      status: 'Applied',
-      effort: Number.isFinite(effort) ? effort : null,
-      chance: Number.isFinite(chance) ? chance : null,
-      appliedDate: londonTodayISO()
-    });
     try {
+      const effort = Number(document.getElementById('effort').value);
+      const chance = Number(document.getElementById('chance').value);
+      const payload = toApplicationsPayload(draft, {
+        status: 'Applied',
+        effort: Number.isFinite(effort) ? effort : null,
+        chance: Number.isFinite(chance) ? chance : null,
+        appliedDate: londonTodayISO()
+      });
       await postJSON(URLS[currentEnv].applications, payload);
       toast('Marked as applied 🎉');
     } catch (e) {
-      console.error(e);
-      toast(`Apply failed (${currentEnv}). Check n8n/CORS.`);
+      console.error(e); toast(`Apply failed (${currentEnv})`);
     }
   }
 
   async function analyseUrl() {
     const url = jobUrlInput.value.trim();
-    if (!url) return toast('Please paste a job URL.');
-    analyzeBtn.disabled = true;
+    if (!/^https?:\/\//i.test(url)) { toast('Please paste a valid URL'); return; }
+    // skeleton
     resultEl.style.display = 'block';
     resultEl.innerHTML = `
       <div class="skeleton" style="width:60%"></div>
       <div class="skeleton" style="width:40%;margin-top:8px"></div>
       <div class="skeleton" style="width:90%;height:64px;margin-top:16px"></div>
     `;
+    analyzeBtn.disabled = true;
     try {
-      const data = await postJSON(URLS[currentEnv].analyse, { job_url: url });
-      draft = sanitizeAnalysis(data);
-      if (!draft) throw new Error('No analysis');
-      renderAnalysis(draft);
+      // POST FormData with job_url (matches your working page)
+      const fd = new FormData();
+      fd.append('job_url', url);
+      const data = await postForm(URLS[currentEnv].analyse, fd);
+      const out = Array.isArray(data) ? data[0] : data;
+      if (!out) throw new Error('No analysis');
+      draft = out;
+      renderAnalysis(out);
     } catch (e) {
       console.error(e);
       resultEl.style.display = 'none';
-      toast(`Analysis failed (${currentEnv}). If using Test, make sure the workflow is Executing.`);
+      toast(`Analysis failed (${currentEnv}). If Test, make sure the workflow is Executing and CORS allows this origin.`);
     } finally {
       analyzeBtn.disabled = false;
     }
   }
 
-  const analyzeBtn = document.getElementById('analyzeBtn');
-  const jobUrlInput = document.getElementById('jobUrl');
   analyzeBtn.addEventListener('click', analyseUrl);
   jobUrlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') analyseUrl(); });
 </script>
