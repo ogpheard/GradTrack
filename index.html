@@ -48,6 +48,9 @@
   .small{font-size:12px}
   .env{margin-left:auto;display:flex;gap:8px;align-items:center}
   .env select{background:#0e1330;border:1px solid #2b3160;color:#fff;border-radius:10px;padding:8px}
+  .result-block{margin-top:16px;border-top:1px solid #262d59;padding-top:12px}
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap}
+  .subtle{opacity:.9}
 </style>
 </head>
 <body>
@@ -67,7 +70,7 @@
       <input id="jobUrl" type="url" placeholder="Paste a job URL…" autocomplete="off" />
       <button id="analyseBtn" class="primary">Analyse</button>
     </div>
-    <p class="muted small">Test uses <code>/webhook-test/*</code> (workflows must be Executing). Prod uses <code>/webhook/*</code> (workflows Active).</p>
+    <p class="muted small">Test uses <code>/webhook-test/*</code> (workflows Executing). Prod uses <code>/webhook/*</code> (workflows Active).</p>
   </div>
 
   <div id="result" class="card" style="margin-top:16px; display:none;"></div>
@@ -76,17 +79,23 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script>
-  // ========= YOUR EXACT ENDPOINTS =========
+  // ========= YOUR ENDPOINTS =========
   const URLS = {
     test: {
-      analyse: 'https://ogpheard.app.n8n.cloud/webhook-test/analyse',
+      analyse:      'https://ogpheard.app.n8n.cloud/webhook-test/analyse',
       applications: 'https://ogpheard.app.n8n.cloud/webhook-test/applications',
+      cover:        'https://ogpheard.app.n8n.cloud/webhook-test/cover' // <-- PUT YOUR COVER WEBHOOK (test)
     },
     prod: {
-      analyse: 'https://ogpheard.app.n8n.cloud/webhook/analyse',
+      analyse:      'https://ogpheard.app.n8n.cloud/webhook/analyse',
       applications: 'https://ogpheard.app.n8n.cloud/webhook/applications',
+      cover:        'https://ogpheard.app.n8n.cloud/webhook/cover'      // <-- PUT YOUR COVER WEBHOOK (prod)
     }
   };
+
+  // Optional: pass Drive IDs to n8n (or hardcode them in n8n)
+  const CV_FOLDER_ID = '';   // e.g. '1AbCDeFg...'
+  const GUIDE_DOC_ID = '';   // e.g. '1XyZ... (your "perfect cover letter" doc)'
 
   // ====== UI refs / state ======
   const envSelect = document.getElementById('envSelect');
@@ -101,6 +110,7 @@
   envSelect.addEventListener('change', () => { currentEnv = envSelect.value; toast(`Switched to ${currentEnv.toUpperCase()}`); });
 
   let draft = null; // holds last analysis result
+  let lastCover = null; // holds last cover letter result
 
   // ====== helpers ======
   function toast(msg) {
@@ -119,8 +129,8 @@
   }
   function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function nl2pre(s) { return `<pre>${escapeHtml(String(s || '')).replace(/\n{3,}/g, '\n\n')}</pre>`; }
-  function lines(list) { if (!Array.isArray(list)) return ''; return list.slice(0, 12).map(x => `• ${escapeHtml(String(x))}`).join('\n'); }
-  function badgeList(list){ if(!Array.isArray(list)) return ''; return `<div class="chips">${list.slice(0,20).map(k=>`<span class="chip">${escapeHtml(k)}</span>`).join('')}</div>`; }
+  function lines(list) { if (!Array.isArray(list)) return ''; return list.slice(0, 24).map(x => `• ${escapeHtml(String(x))}`).join('\n'); }
+  function badgeList(list){ if(!Array.isArray(list)) return ''; return `<div class="chips">${list.slice(0,30).map(k=>`<span class="chip">${escapeHtml(k)}</span>`).join('')}</div>`; }
   function salaryText(a) {
     const s = a.salary || {};
     if (s.salary_raw) return s.salary_raw;
@@ -138,7 +148,6 @@
     try { return await res.json(); } catch { return {}; }
   }
 
-  // Make a canonical URL if analysis didn’t provide one
   function canonicalize(u) {
     try {
       const url = new URL(String(u));
@@ -159,12 +168,11 @@
     } catch { return u; }
   }
 
-  // ====== ANALYSE (FormData with job_url) ======
+  // ====== ANALYSE ======
   async function analyseUrl() {
     const url = jobUrlInput.value.trim();
     if (!/^https?:\/\//i.test(url)) { toast('Please paste a valid URL'); return; }
 
-    // skeleton while loading
     resultEl.style.display = 'block';
     resultEl.innerHTML = `
       <div class="skeleton" style="width:60%"></div>
@@ -179,7 +187,7 @@
       const data = await postForm(URLS[currentEnv].analyse, fd);
       const out = Array.isArray(data) ? data[0] : data;
       if (!out) throw new Error('No analysis result');
-      draft = out;
+      draft = out; lastCover = null;
       renderAnalysis(out);
     } catch (e) {
       console.error(e);
@@ -238,6 +246,48 @@
       `<h2>Summary</h2>
        <div class="kv" style="margin-top:8px">${escapeHtml(a.job_summary || '')}</div>`;
 
+    const actions =
+      `<div class="decisions">
+         <div class="btn-row">
+           <button id="saveBtn" class="primary">Save for later</button>
+           <div class="inline">
+             <button id="applyBtn" class="good">Yes I applied</button>
+             <div id="ratings" class="rating" style="display:none">
+               <label class="small">Effort/10 <input id="effort" type="number" min="0" max="10" step="1" value="7" /></label>
+               <label class="small">Chance/10 <input id="chance" type="number" min="0" max="10" step="1" value="6" /></label>
+               <button id="confirmApply" class="good">Confirm</button>
+             </div>
+           </div>
+           <button id="coverBtn" class="ghost">Cover letter & CV tweaks</button>
+           <button id="ignoreBtn" class="bad">Ignore</button>
+         </div>
+       </div>`;
+
+    const coverBlock =
+      `<div id="coverBlock" class="result-block" style="display:none">
+         <h2>Cover letter & CV</h2>
+         <div id="coverStatus" class="muted subtle">Preparing…</div>
+         <div id="coverResult" style="display:none">
+           <div class="kvs">
+             <div class="kv"><b>Selected CV</b><span id="cvName">—</span></div>
+             <div class="kv"><b>Why this CV</b><span id="cvWhy">—</span></div>
+             <div class="kv"><b>Cover Letter Doc</b><span id="coverDocLink">—</span></div>
+           </div>
+           <div class="section">
+             <h2>CV tweak suggestions</h2>
+             <div id="cvTweaks"></div>
+           </div>
+           <div class="section">
+             <h2>Cover letter (preview)</h2>
+             <div id="coverPreview"></div>
+             <div class="btn-row" style="margin-top:8px">
+               <button id="copyCover" class="ghost">Copy text</button>
+               <button id="openDoc" class="primary" style="display:none">Open Google Doc</button>
+             </div>
+           </div>
+         </div>
+       </div>`;
+
     const details =
       `<div class="details">
          <button id="toggleMore" class="ghost">View more</button>
@@ -247,23 +297,10 @@
          </div>
        </div>`;
 
-    const decisions =
-      `<div class="decisions">
-         <button id="saveBtn" class="primary">Save for later</button>
-         <div class="inline">
-           <button id="applyBtn" class="good">Yes I applied</button>
-           <div id="ratings" class="rating" style="display:none">
-             <label class="small">Effort/10 <input id="effort" type="number" min="0" max="10" step="1" value="7" /></label>
-             <label class="small">Chance/10 <input id="chance" type="number" min="0" max="10" step="1" value="6" /></label>
-             <button id="confirmApply" class="good">Confirm</button>
-           </div>
-         </div>
-         <button id="ignoreBtn" class="bad">Ignore</button>
-       </div>`;
-
-    resultEl.innerHTML = header + meters + keywords + colLists + summary + details + decisions;
+    resultEl.innerHTML = header + meters + keywords + colLists + summary + actions + coverBlock + details;
     resultEl.style.display = 'block';
 
+    // handlers
     document.getElementById('toggleMore').addEventListener('click', () => {
       const box = document.getElementById('moreBox');
       const open = box.style.display !== 'none';
@@ -277,12 +314,13 @@
     document.getElementById('confirmApply').addEventListener('click', onApply);
     document.getElementById('ignoreBtn').addEventListener('click', () => {
       resultEl.style.display = 'none';
-      draft = null;
+      draft = null; lastCover = null;
       toast('Ignored. Nothing saved.');
     });
+    document.getElementById('coverBtn').addEventListener('click', onCoverClick);
   }
 
-  // ====== BUILD APPLICATIONS PAYLOAD ======
+  // ====== APPLICATIONS payload / send ======
   function toApplicationsPayload(a, opts) {
     return {
       source_url: a.source_url || '',
@@ -320,33 +358,23 @@
       cover_letter_url: a.cover_letter_url ?? null
     };
   }
-
-  // ====== SEND APPLICATIONS AS FORMDATA (no preflight) ======
   async function sendApplications(env, payload) {
     const fd = new FormData();
     for (const [k, v] of Object.entries(payload)) {
-      if (Array.isArray(v)) {
-        fd.append(k, JSON.stringify(v)); // arrays -> JSON string (your flow already handles)
-      } else if (v === null || v === undefined) {
-        fd.append(k, '');
-      } else {
-        fd.append(k, String(v));
-      }
+      if (Array.isArray(v))      fd.append(k, JSON.stringify(v));
+      else if (v == null)        fd.append(k, '');
+      else                       fd.append(k, String(v));
     }
     return postForm(URLS[env].applications, fd);
   }
-
   async function onSave() {
     if (!draft) return;
     try {
       const payload = toApplicationsPayload(draft, { status: 'Saved' });
       await sendApplications(currentEnv, payload);
       toast('Saved for later ✅');
-    } catch (e) {
-      console.error(e); toast(`Save failed (${currentEnv})`);
-    }
+    } catch (e) { console.error(e); toast(`Save failed (${currentEnv})`); }
   }
-
   async function onApply() {
     if (!draft) return;
     try {
@@ -360,8 +388,73 @@
       });
       await sendApplications(currentEnv, payload);
       toast('Marked as applied 🎉');
+    } catch (e) { console.error(e); toast(`Apply failed (${currentEnv})`); }
+  }
+
+  // ====== COVER LETTER & CV TWEAKS ======
+  async function onCoverClick() {
+    if (!draft) return toast('Analyse a job first');
+    const block = document.getElementById('coverBlock');
+    const status = document.getElementById('coverStatus');
+    const outBox = document.getElementById('coverResult');
+    block.style.display = 'block';
+    status.textContent = 'Generating cover letter & CV tips…';
+    outBox.style.display = 'none';
+
+    try {
+      // Send as FormData (no preflight). Pass job JSON and optional Drive IDs.
+      const fd = new FormData();
+      fd.append('job_json', JSON.stringify(draft));
+      if (CV_FOLDER_ID) fd.append('cv_folder_id', CV_FOLDER_ID);
+      if (GUIDE_DOC_ID) fd.append('guide_doc_id', GUIDE_DOC_ID);
+
+      const data = await postForm(URLS[currentEnv].cover, fd);
+      lastCover = data || {};
+
+      // Expected schema:
+      // {
+      //   selected_cv: { filename, reason, doc_id?, doc_url? },
+      //   cv_tweaks: [ "...", ... ],
+      //   cover_letter: { plain_text, html?, doc_url?, doc_id? }
+      // }
+
+      const cv = lastCover.selected_cv || {};
+      const tweaks = Array.isArray(lastCover.cv_tweaks) ? lastCover.cv_tweaks : [];
+      const letter = lastCover.cover_letter || {};
+
+      document.getElementById('cvName').textContent = cv.filename || '—';
+      document.getElementById('cvWhy').textContent = cv.reason || '—';
+
+      const link = (letter.doc_url || cv.doc_url);
+      document.getElementById('coverDocLink').innerHTML = link
+        ? `<a target="_blank" rel="noopener" href="${escapeHtml(link)}">${escapeHtml(link)}</a>`
+        : '—';
+
+      const tweaksEl = document.getElementById('cvTweaks');
+      tweaksEl.innerHTML = tweaks.length ? nl2pre(lines(tweaks)) : '<span class="muted">No tweaks suggested.</span>';
+
+      const preview = document.getElementById('coverPreview');
+      const plain = letter.plain_text || '';
+      preview.innerHTML = plain ? nl2pre(plain) : (letter.html ? letter.html : '<span class="muted">No preview provided.</span>');
+
+      const openDocBtn = document.getElementById('openDoc');
+      if (link) {
+        openDocBtn.style.display = 'inline-block';
+        openDocBtn.onclick = () => window.open(link, '_blank', 'noopener');
+      } else {
+        openDocBtn.style.display = 'none';
+      }
+
+      document.getElementById('copyCover').onclick = async () => {
+        try { await navigator.clipboard.writeText(plain || letter.html || ''); toast('Cover letter copied'); }
+        catch { toast('Copy failed'); }
+      };
+
+      status.textContent = 'Generated ✓';
+      outBox.style.display = 'block';
     } catch (e) {
-      console.error(e); toast(`Apply failed (${currentEnv})`);
+      console.error(e);
+      status.textContent = 'Generation failed. Check n8n logs / CORS.';
     }
   }
 
