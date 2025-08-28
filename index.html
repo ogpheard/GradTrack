@@ -129,7 +129,7 @@
     try { return await res.json(); } catch { return {}; }
   }
   function canonicalize(u){
-    try{const url=new URL(String(u));url.protocol='https:';url.hostname=url.hostname.replace(/^www\./i,'').toLowerCase();url.hash='';const keep=new Set(['gh_jid','jobId','vacancyId','rid','id','lever-origin']);const q=new URLSearchParams(url.search);[...q.keys()].forEach(k=>{const kl=k.toLowerCase();if(!keep.has(k)||/^utm_/.test(kl)||/(gclid|fbclid|ref|source|src|campaign|medium)$/i.test(kl))q.delete(k);});const sorted=new URLSearchParams();[...q.keys()].sort().forEach(k=>sorted.append(k,q.get(k)));url.search=sorted.toString()?`?${sorted.toString()}`:'';if(url.pathname.length>1)url.pathname=url.pathname.replace(/\/+$/,'');return url.toString();}catch{return u;}
+    try{const url=new URL(String(u));url.protocol='https:';url.hostname=url.hostname.replace(/^www\./i,'').toLowerCase();url.hash='';const keep=new Set(['gh_jid','jobid','vacancyid','rid','id','lever-origin']);const q=new URLSearchParams(url.search);[...q.keys()].forEach(k=>{const kl=k.toLowerCase();if(!keep.has(kl)||/^utm_/.test(kl)||/(gclid|fbclid|ref|source|src|campaign|medium)$/i.test(kl))q.delete(k);});const sorted=new URLSearchParams();[...q.keys()].sort().forEach(k=>sorted.append(k,q.get(k)));url.search=sorted.toString()?`?${sorted.toString()}`:'';if(url.pathname.length>1)url.pathname=url.pathname.replace(/\/+$/,'');return url.toString();}catch{return u;}
   }
 
   // ====== ANALYSE ======
