@@ -4,48 +4,62 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Graduate Applications Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 <style>
   :root{
-    --bg:#f5f7fa; --panel:#ffffff; --muted:#6b7280; --text:#1e1e2d; --accent:#2563eb; --good:#16a34a; --warn:#d97706; --bad:#dc2626; --chip:#eef2ff; --border:#d1d5db;
-    --shadow:0 4px 12px rgba(0,0,0,.1);
+    --bg:#f9fafb; --panel:rgba(255,255,255,0.8); --muted:#6b7280; --text:#1f2937;
+    --accent:#2563eb; --accent-light:#3b82f6; --good:#22c55e; --warn:#d97706; --bad:#dc2626;
+    --chip:#eef2ff; --border:#d1d5db; --shadow:0 8px 16px rgba(0,0,0,.06),0 2px 4px rgba(0,0,0,.04);
   }
-  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif}
-  .wrap{max-width:960px;margin:32px auto;padding:0 16px}
-  .card{background:var(--panel);border-radius:16px;box-shadow:var(--shadow);padding:20px}
-  h1{font-size:24px;margin:0 0 12px}
-  h2{font-size:18px;margin:16px 0 8px}
-  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:'Inter',system-ui,Segoe UI,Roboto,Arial,sans-serif}
+  h1{font-size:clamp(1.75rem,2vw+1rem,2.5rem);margin:0 0 12px}
+  h2{font-size:clamp(1.25rem,1vw+1rem,1.5rem);margin:16px 0 8px}
+  .wrap{max-width:960px;margin:0 auto;padding:32px 16px}
+  .card{background:var(--panel);border-radius:16px;box-shadow:var(--shadow);padding:24px;backdrop-filter:blur(12px)}
+  .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
   .urlbar{display:flex;gap:8px;width:100%}
-  input[type="url"]{flex:1;padding:14px 12px;border-radius:12px;border:1px solid var(--border);background:#fff;color:var(--text)}
-  button{border:1px solid var(--border);border-radius:12px;padding:12px 16px;cursor:pointer;font-weight:600;background:#edf2ff;color:var(--text)}
-  button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  input[type="url"]{flex:1;padding:14px 12px;border-radius:12px;border:1px solid var(--border);background:#fff;color:var(--text);transition:all .3s ease}
+  input[type="url"]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-light)}
+  button{border:1px solid var(--border);border-radius:12px;padding:12px 20px;cursor:pointer;font-weight:600;transition:all .3s ease;position:relative}
+  button:hover{transform:translateY(-2px)}
+  button:active{transform:scale(.98)}
+  button.primary{background:linear-gradient(135deg,var(--accent),var(--accent-light));color:#fff;border-color:var(--accent)}
   button.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
-  button.good{background:var(--good);color:#fff;border-color:var(--good)}
-  button.warn{background:var(--warn);color:#fff;border-color:var(--warn)}
-  button.bad{background:var(--bad);color:#fff;border-color:var(--bad)}
+  button.good{background:linear-gradient(135deg,var(--good),#34d399);color:#fff;border-color:var(--good)}
+  button.warn{background:linear-gradient(135deg,var(--warn),#fbbf24);color:#fff;border-color:var(--warn)}
+  button.bad{background:linear-gradient(135deg,var(--bad),#ef4444);color:#fff;border-color:var(--bad)}
   button:disabled{opacity:.6;cursor:not-allowed}
+  button.loading{color:transparent}
+  button.loading::after{content:'';position:absolute;top:50%;left:50%;width:16px;height:16px;margin:-8px 0 0 -8px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
   .muted{color:var(--muted);font-size:13px}
   .kvs{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:12px 0}
-  .kv{background:#f8f9fc;border:1px solid var(--border);border-radius:12px;padding:10px}
+  .kv{background:#f8f9fc;border:1px solid var(--border);border-radius:12px;padding:12px;overflow-wrap:anywhere}
   .kv b{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
   .meters{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
-  .meter{background:#f8f9fc;border:1px solid var(--border);border-radius:12px;padding:10px}
+  .meter{background:#f8f9fc;border:1px solid var(--border);border-radius:12px;padding:12px}
   .meter .bar{height:10px;background:#e5e7eb;border-radius:8px;overflow:hidden;margin-top:8px}
-  .meter .fill{height:100%;background:linear-gradient(90deg,var(--good),var(--accent));width:0%}
+  .meter .fill{height:100%;background:linear-gradient(90deg,var(--good),var(--accent));width:0;animation:fill 1.2s forwards}
   .chips{display:flex;flex-wrap:wrap;gap:8px}
   .chip{background:var(--chip);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:999px;font-size:12px}
   .cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .details{margin-top:12px}
   .details pre{white-space:pre-wrap;word-break:break-word;background:#f8f9fc;border:1px solid var(--border);border-radius:12px;padding:12px;color:var(--text);max-height:360px;overflow:auto}
   .decisions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-  .toast{position:fixed;right:16px;bottom:16px;background:#ffffff;border:1px solid var(--border);color:var(--text);padding:12px 14px;border-radius:12px;box-shadow:var(--shadow);opacity:0;transform:translateY(6px);transition:.25s}
+  .toast{position:fixed;right:16px;bottom:16px;background:rgba(255,255,255,.8);backdrop-filter:blur(8px);border:1px solid var(--border);color:var(--text);padding:12px 14px;border-radius:12px;box-shadow:var(--shadow);opacity:0;transform:translateY(6px);transition:.25s}
   .toast.show{opacity:1;transform:translateY(0)}
+  .skeleton{background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 37%,#e5e7eb 63%);background-size:400% 100%;animation:skeleton 1.4s ease infinite;border-radius:8px}
   .small{font-size:12px}
   .env{margin-left:auto;display:flex;gap:8px;align-items:center}
   .env select{background:#fff;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:8px}
   .result-block{margin-top:16px;border-top:1px solid var(--border);padding-top:12px}
   .btn-row{display:flex;gap:8px;flex-wrap:wrap}
   .subtle{opacity:.9}
+  @keyframes skeleton{0%{background-position:0 0}100%{background-position:100% 0}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes fill{to{width:var(--w)}}
+  @media(max-width:600px){.cols{grid-template-columns:1fr}.meters{grid-template-columns:1fr}.btn-row{flex-direction:column}.env{margin-left:0}}
 </style>
 </head>
 <body>
@@ -143,6 +157,7 @@
       <div style="height:14px;width:40%;margin-top:8px" class="skeleton"></div>
       <div style="height:64px;width:90%;margin-top:16px" class="skeleton"></div>`;
     analyseBtn.disabled = true;
+    analyseBtn.classList.add('loading');
 
     try{
       const fd = new FormData();
@@ -158,6 +173,7 @@
       toast(`Analysis failed (${currentEnv}). Check CORS & workflow status.`);
     }finally{
       analyseBtn.disabled = false;
+      analyseBtn.classList.remove('loading');
     }
   }
 
@@ -169,6 +185,9 @@
     const sal  = salaryText(a);
     const deadline = a.date_deadline ? `Deadline: ${a.date_deadline}` : '';
     const start    = a.start_date    ? `Start: ${a.start_date}`       : '';
+    const urlLink = a.source_url
+      ? `<a href="${escapeHtml(a.source_url)}" target="_blank" rel="noopener">Original job listing</a>`
+      : '—';
 
     const header = `
       <h2>${escapeHtml(a.title||'Untitled role')}</h2>
@@ -177,18 +196,18 @@
         <div class="kv"><b>Locations</b>${escapeHtml(locs||'—')}</div>
         <div class="kv"><b>Salary</b>${escapeHtml(sal||'—')}</div>
         <div class="kv"><b>Dates</b>${escapeHtml([start,deadline].filter(Boolean).join(' · ')||'—')}</div>
-        <div class="kv"><b>URL</b><a href="${a.source_url}" target="_blank" rel="noopener">${escapeHtml(a.source_url||'')}</a></div>
+        <div class="kv"><b>URL</b>${urlLink}</div>
       </div>`;
 
     const meters = `
       <div class="meters">
         <div class="meter">
           <div class="row"><strong>AI Fit</strong><span class="muted" style="margin-left:auto">${fit}%</span></div>
-          <div class="bar"><div class="fill" style="width:${fit}%"></div></div>
+          <div class="bar"><div class="fill" style="--w:${fit}%"></div></div>
         </div>
         <div class="meter">
           <div class="row"><strong>Alignment</strong><span class="muted" style="margin-left:auto">${align}%</span></div>
-          <div class="bar"><div class="fill" style="width:${align}%"></div></div>
+          <div class="bar"><div class="fill" style="--w:${align}%"></div></div>
         </div>
       </div>`;
 
@@ -349,6 +368,7 @@
     status.textContent='Generating cover letter & CV tips…';
     outBox.style.display='none';
     coverBtn.disabled = true;
+    coverBtn.classList.add('loading');
 
     try{
       const fd = new FormData();
@@ -406,6 +426,7 @@
       status.textContent='Generation failed. Check n8n logs & CORS.';
     }finally{
       coverBtn.disabled = false;
+      coverBtn.classList.remove('loading');
     }
   }
 
