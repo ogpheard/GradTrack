@@ -434,12 +434,14 @@
       test: {
         analyse:      'https://ogpheard.app.n8n.cloud/webhook-test/analyse',
         applications: 'https://ogpheard.app.n8n.cloud/webhook-test/applications',
-        cover:        'https://ogpheard.app.n8n.cloud/webhook-test/cover'
+        cover:        'https://ogpheard.app.n8n.cloud/webhook-test/cover',
+        list:         'https://ogpheard.app.n8n.cloud/webhook-test/apps/list'
       },
       prod: {
         analyse:      'https://ogpheard.app.n8n.cloud/webhook/analyse',
         applications: 'https://ogpheard.app.n8n.cloud/webhook/applications',
-        cover:        'https://ogpheard.app.n8n.cloud/webhook/cover'
+        cover:        'https://ogpheard.app.n8n.cloud/webhook/cover',
+        list:         'https://ogpheard.app.n8n.cloud/webhook/apps/list'
       }
     };
     const CV_FOLDER_ID = '';
@@ -541,14 +543,83 @@
     let draft = null;     // last analysis JSON
     let lastCover = null; // last cover JSON
 
-    // --- Sample data (edit later / or load from Sheets) ---
-    let applicationsList = [
-      { id:'1', title:'Graduate Software Developer', company:'TechFlow Solutions', status:'applied', appliedDate:'2025-07-15', location:'London, UK', salary:'£32,000 - £38,000', fitScore:85, alignmentScore:92, source:'LinkedIn', description:'Join our dynamic team…', requirements:['CS degree','JS/TS','React'], fits:['Strong JS','React projects','Top uni'], gaps:['Limited commercial exp.','No backend'], effortRating:8, chanceRating:7 },
-      { id:'2', title:'Junior Data Analyst', company:'DataInsights Ltd', status:'response', appliedDate:'2025-06-12', location:'Manchester, UK', salary:'£28,000 - £34,000', fitScore:78, alignmentScore:85, source:'Company site', description:'Growing analytics team…', requirements:['Stats/Math','Python/R','SQL'], fits:['Math background','Python cert','SQL bootcamp'], gaps:['No industry exp.','Viz tools limited'], effortRating:9, chanceRating:8 },
-      { id:'3', title:'Graduate Product Manager', company:'InnovateTech', status:'saved', appliedDate:null, location:'Remote, UK', salary:'£35,000 - £42,000', fitScore:72, alignmentScore:88, source:'Glassdoor', description:'Shape our products…', requirements:['Biz/Eng','Analytical','Comms'], fits:['Business degree','Presentations','Internship'], gaps:['No PM exp.','Limited tech'], effortRating:null, chanceRating:null },
-      { id:'4', title:'Software Engineer Trainee', company:'Global Systems Inc', status:'applied', appliedDate:'2025-08-10', location:'Birmingham, UK', salary:'£30,000 - £36,000', fitScore:90, alignmentScore:82, source:'Indeed', description:'12-month training…', requirements:['STEM','Problem-solving','Programming'], fits:['CS degree','Algorithms','OSS'], gaps:['Limited framework','No professional dev'], effortRating:7, chanceRating:9 },
-      { id:'5', title:'Graduate GIS Consultant', company:'Stantec', status:'saved', appliedDate:null, location:'Bristol, UK', salary:'£28,000 - £33,000', fitScore:88, alignmentScore:94, source:'Careers site', description:'GIS analysis in water…', requirements:['GIS','ArcGIS','QGIS'], fits:['Perfect GIS record','ArcGIS experience','R programming'], gaps:['Limited industry'], effortRating:null, chanceRating:null }
-    ];
+    let appsLive = { applied: [], saved: [] }; // server truth from Workflow 4
+    let applicationsList = [];                  // flattened view for “My Applications”
+
+    async function fetchJSONorText(url){
+      const res = await fetch(url, { method:'GET', cache:'no-store' });
+      const text = await res.text();
+      try { return JSON.parse(text); } catch { return text; }
+    }
+
+    function toCardShape(r){
+      const locs = Array.isArray(r.locations) ? r.locations.join(' • ')
+               : typeof r.locations === 'string' ? r.locations : '';
+      const salary =
+        r.salary_raw ||
+        ((r.salary_currency || '') +
+         (r.salary_min ? ` ${r.salary_min}` : '') +
+         (r.salary_max ? `–${r.salary_max}` : '') +
+         (r.salary_period ? ` ${r.salary_period}` : '')).trim();
+
+      return {
+        id: r.application_id || r.canonical_job_url || String(Math.random()),
+        title: r.title || 'Untitled role',
+        company: r.company_name || '',
+        status: String(r.status || '').toLowerCase(),
+        appliedDate: r.applied_date || null,
+        location: locs || '—',
+        salary: salary || '—',
+        fitScore: Number(r.AI_fit_score || 0),
+        alignmentScore: Number(r.AI_alignment_score || 0),
+        source: r.source_url ? new URL(r.source_url).hostname : '—',
+        description: r.job_description || '',
+        requirements: Array.isArray(r.key_requirements) ? r.key_requirements : [],
+        fits: Array.isArray(r.fits) ? r.fits : [],
+        gaps: Array.isArray(r.gaps) ? r.gaps : []
+      };
+    }
+
+    async function refreshData(silent=false){
+      try{
+        const url = URLS[currentEnv].list + `?t=${Date.now()}`;
+        const data = await fetchJSONorText(url);
+        if (!data || typeof data !== 'object') throw new Error('Bad response from list endpoint');
+
+        appsLive = {
+          applied: Array.isArray(data.applied) ? data.applied : [],
+          saved:   Array.isArray(data.saved)   ? data.saved   : []
+        };
+
+        const flat = [
+          ...appsLive.applied.map(toCardShape),
+          ...appsLive.saved.map(toCardShape)
+        ];
+        applicationsList = flat.filter(a => a.status !== 'saved');
+
+        if (!silent) toast('Data refreshed');
+
+        if (applicationsPage.classList.contains('active')) renderApplications();
+        if (savedPage.classList.contains('active'))        renderSaved();
+        if (analyticsPage.classList.contains('active'))    renderAnalytics();
+      }catch(e){
+        console.error(e);
+        if (!silent) toast('Failed to load live data');
+      }
+    }
+
+    let pollTimer = null;
+    function startPolling(){
+      stopPolling();
+      pollTimer = setInterval(()=> refreshData(true), 45000); // 45s
+    }
+    function stopPolling(){
+      if (pollTimer){ clearInterval(pollTimer); pollTimer = null; }
+    }
+    document.addEventListener('visibilitychange', ()=>{
+      if (document.hidden) stopPolling();
+      else { refreshData(true); startPolling(); }
+    });
 
     // ====== Helpers
     function toast(msg){ toastEl.textContent = msg; toastEl.classList.add('show'); setTimeout(()=>toastEl.classList.remove('show'), 2400); }
@@ -730,24 +801,7 @@
         const payload = toApplicationsPayload(draft, { status:'Saved' });
         await sendApplications(currentEnv, payload);
         toast('Saved for later ✅');
-        applicationsList.push({
-          id: String(Date.now()),
-          title: draft.title || 'Untitled role',
-          company: draft.company_name || '',
-          status: 'saved',
-          appliedDate: null,
-          location: asArray(draft.locations).join(' • ') || '—',
-          salary: salaryText(draft) || '—',
-          fitScore: Number(draft.AI_fit_score || 0),
-          alignmentScore: Number(draft.AI_alignment_score || 0),
-          source: (draft.source_url ? new URL(draft.source_url).hostname : '—'),
-          description: draft.job_description || '',
-          requirements: asArray(draft.key_requirements || []),
-          fits: asArray(draft.fits || []),
-          gaps: asArray(draft.gaps || []),
-          effortRating: null,
-          chanceRating: null
-        });
+        await refreshData(true);
       }catch(e){ console.error(e); toast(`Save failed (${currentEnv})`); }
     }
 
@@ -765,25 +819,7 @@
         await sendApplications(currentEnv, payload);
         toast('Marked as applied 🎉');
         ratingInputs.classList.remove('show'); ratingInputs.setAttribute('aria-hidden','true');
-
-        applicationsList.push({
-          id: String(Date.now()),
-          title: draft.title || 'Untitled role',
-          company: draft.company_name || '',
-          status: 'applied',
-          appliedDate: londonTodayISO(),
-          location: asArray(draft.locations).join(' • ') || '—',
-          salary: salaryText(draft) || '—',
-          fitScore: Number(draft.AI_fit_score || 0),
-          alignmentScore: Number(draft.AI_alignment_score || 0),
-          source: (draft.source_url ? new URL(draft.source_url).hostname : '—'),
-          description: draft.job_description || '',
-          requirements: asArray(draft.key_requirements || []),
-          fits: asArray(draft.fits || []),
-          gaps: asArray(draft.gaps || []),
-          effortRating: effort,
-          chanceRating: chance
-        });
+        await refreshData(true);
       }catch(e){ console.error(e); toast(`Apply failed (${currentEnv})`); }
     }
 
@@ -858,7 +894,8 @@
     }
 
     window.openApplicationModal = function(id){
-      const app = applicationsList.find(a=>a.id===id);
+      let app = applicationsList.find(a=>a.id===id);
+      if (!app) app = appsLive.saved.map(toCardShape).find(a=>a.id===id);
       if (!app) return;
       modalTitle.textContent = app.title;
       modalBody.innerHTML = `
@@ -895,9 +932,9 @@
     // ====== Saved page
     savedSort.onchange = renderSaved;
     function renderSaved(){
-      let arr = applicationsList.filter(a=>a.status==='saved');
+      let arr = appsLive.saved.map(toCardShape);
       const s = savedSort.value;
-      if (s==='date-desc') arr.sort((a,b)=> new Date(b.createdDate||b.appliedDate||'2000-01-01') - new Date(a.createdDate||a.appliedDate||'2000-01-01'));
+      if (s==='date-desc') arr.sort((a,b)=> new Date(b.appliedDate||'2000-01-01') - new Date(a.appliedDate||'2000-01-01'));
       if (s==='fit-desc')  arr.sort((a,b)=> (b.fitScore||0)-(a.fitScore||0));
       if (s==='company')   arr.sort((a,b)=> (a.company||'').localeCompare(b.company||''));
       savedGrid.innerHTML = arr.map(app => `
@@ -914,14 +951,8 @@
       `).join('');
     }
     window.markSavedApplied = async function(id){
-      const app = applicationsList.find(a=>a.id===id);
+      const app = appsLive.saved.map(toCardShape).find(a=>a.id===id);
       if (!app) return;
-      // Update local
-      app.status = 'applied';
-      app.appliedDate = londonTodayISO();
-      app.effortRating = app.effortRating ?? 7;
-      app.chanceRating = app.chanceRating ?? 6;
-      // Send to n8n
       try{
         const payload = {
           source_url:'',
@@ -941,15 +972,15 @@
           job_summary:'', keywords: [],
           job_description: app.description || '',
           status: 'Applied',
-          applied_date: app.appliedDate,
-          application_effort_rating: app.effortRating,
-          application_chance_rating: app.chanceRating,
+          applied_date: londonTodayISO(),
+          application_effort_rating: app.effortRating ?? '',
+          application_chance_rating: app.chanceRating ?? '',
           status_update_date: londonTodayISO(),
           cover_letter_url:''
         };
         await sendApplications(currentEnv, payload);
         toast('Marked applied ✅');
-        renderSaved(); renderApplications(); renderAnalytics();
+        await refreshData(true);
       }catch(e){ console.error(e); toast('Failed to update n8n'); }
     };
 
@@ -969,7 +1000,11 @@
 
     function renderAnalytics(){
       const range = analyticsRange.value;
-      const data = filterByRange(applicationsList, range);
+      const flat = [
+        ...appsLive.applied.map(toCardShape),
+        ...appsLive.saved.map(toCardShape)
+      ];
+      const data = filterByRange(flat, range);
 
       // KPIs
       const total = data.length;
@@ -1072,23 +1107,8 @@
       try{
         await sendApplications(currentEnv, payload);
         toast('Saved to n8n ✅');
-        // Also add locally
-        applicationsList.push({
-          id:String(Date.now()),
-          title:payload.title, company:payload.company_name, status:payload.status.toLowerCase(),
-          appliedDate: payload.applied_date || null,
-          location: payload.locations.join(' • '),
-          salary: [payload.salary_currency, payload.salary_min && ' ' + payload.salary_min, payload.salary_max && '–' + payload.salary_max, payload.salary_period && ' ' + payload.salary_period].filter(Boolean).join('') || '—',
-          fitScore: payload.AI_fit_score, alignmentScore: payload.AI_alignment_score,
-          source: (payload.source_url ? new URL(payload.source_url).hostname : '—'),
-          description: payload.job_description, requirements: payload.key_requirements,
-          fits: payload.fits, gaps: payload.gaps,
-          effortRating: payload.application_effort_rating ? Number(payload.application_effort_rating) : null,
-          chanceRating: payload.application_chance_rating ? Number(payload.application_chance_rating) : null,
-          createdDate: londonTodayISO()
-        });
         addForm.reset();
-        renderApplications(); renderSaved(); renderAnalytics();
+        await refreshData(true);
       }catch(e){ console.error(e); toast('Failed to save to n8n'); }
     });
 
@@ -1105,7 +1125,7 @@
     };
 
     // ====== Init renders
-    renderApplications(); renderSaved(); renderAnalytics();
+    (async ()=>{ await refreshData(); startPolling(); })();
 
     // ====== Analyse button disables loading skeleton on first view
     document.addEventListener('DOMContentLoaded',()=>{
