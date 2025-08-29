@@ -435,13 +435,15 @@
         analyse:      'https://ogpheard.app.n8n.cloud/webhook-test/analyse',
         applications: 'https://ogpheard.app.n8n.cloud/webhook-test/applications',
         cover:        'https://ogpheard.app.n8n.cloud/webhook-test/cover',
-        list:         'https://ogpheard.app.n8n.cloud/webhook-test/apps/list'
+        list:         'https://ogpheard.app.n8n.cloud/webhook-test/apps/list',
+        update:       'https://ogpheard.app.n8n.cloud/webhook-test/updater'
       },
       prod: {
         analyse:      'https://ogpheard.app.n8n.cloud/webhook/analyse',
         applications: 'https://ogpheard.app.n8n.cloud/webhook/applications',
         cover:        'https://ogpheard.app.n8n.cloud/webhook/cover',
-        list:         'https://ogpheard.app.n8n.cloud/webhook/apps/list'
+        list:         'https://ogpheard.app.n8n.cloud/webhook/apps/list',
+        update:       'https://ogpheard.app.n8n.cloud/webhook/updater'
       }
     };
     const CV_FOLDER_ID = '';
@@ -578,6 +580,15 @@
         fits: Array.isArray(r.fits) ? r.fits : [],
         gaps: Array.isArray(r.gaps) ? r.gaps : []
       };
+    }
+
+    function getRawRowById(id){
+      const all = [...(appsLive.applied||[]), ...(appsLive.saved||[])];
+      // Prefer a direct application_id match, else fall back to the derived card id
+      return all.find(r =>
+        (r.application_id && r.application_id === id) ||
+        (toCardShape(r).id === id)
+      ) || null;
     }
 
     async function refreshData(silent=false){
@@ -874,9 +885,9 @@
 
     function cardHTML(app){
       return `
-        <div class="application-card" onclick="openApplicationModal('${app.id}')">
+        <div class="application-card">
           <div class="application-status status-${app.status}">${escapeHtml(app.status)}</div>
-          <div class="application-header">
+          <div class="application-header" onclick="openApplicationModal('${app.id}')">
             <div class="application-title">${escapeHtml(app.title)}</div>
             <div class="application-company">${escapeHtml(app.company)}</div>
             <div class="application-date">${app.appliedDate ? `Applied: ${formatDate(app.appliedDate)}` : 'Saved for later'}</div>
@@ -888,6 +899,10 @@
           <div class="application-meta">
             <div>${escapeHtml(app.location || '—')}</div>
             <div style="font-weight:800">${escapeHtml(app.salary || '—')}</div>
+          </div>
+          <div style="display:flex;gap:.5rem;margin-top:.6rem">
+            <button class="btn btn-primary" onclick="openApplicationModal('${app.id}')">View</button>
+            <button class="btn btn-outline" onclick="openEditModal('${app.id}')">Edit</button>
           </div>
         </div>
       `;
@@ -924,8 +939,165 @@
         <div class="section"><h3 class="section-title">Job description</h3><div class="summary"><div>${escapeHtml(app.description||'')}</div></div></div>
         <div class="section"><h3 class="section-title">Requirements</h3><div class="keywords">${asArray(app.requirements).map(r=>`<span class="keyword">${escapeHtml(r)}</span>`).join('')}</div></div>
       `;
+      modalBody.innerHTML += `
+        <div style="display:flex;gap:.5rem;margin-top:1rem">
+          <button class="btn btn-primary" id="editBtn">Edit</button>
+        </div>
+      `;
+      document.getElementById('editBtn').onclick = ()=> openEditModal(id);
       modal.classList.add('show'); modal.setAttribute('aria-hidden','false');
     };
+
+    function arrayToCSV(arr){ return Array.isArray(arr) ? arr.join(', ') : (arr || ''); }
+    function arrayToSemi(arr){ return Array.isArray(arr) ? arr.join('; ') : (arr || ''); }
+
+    function openEditModal(id){
+      const raw = getRawRowById(id);
+      if (!raw){ toast('Could not load item'); return; }
+
+      const card = toCardShape(raw);
+      const status = raw.status || (card.status==='applied' ? 'Applied' : 'Saved');
+
+      modalTitle.textContent = `Edit: ${raw.title || 'Untitled role'}`;
+      modalBody.innerHTML = `
+        <form id="editForm" class="form-grid">
+          <!-- Hidden identifiers: keep the same id so Workflow 5 upserts -->
+          <input type="hidden" name="application_id" value="${escapeHtml(raw.application_id || '')}"/>
+          <input type="hidden" name="canonical_job_url" value="${escapeHtml(raw.canonical_job_url || '')}"/>
+          <input type="hidden" name="source_url" value="${escapeHtml(raw.source_url || '')}"/>
+
+          <div class="form-field"><label>Status</label>
+            <select name="status">
+              <option ${status==='Saved'?'selected':''}>Saved</option>
+              <option ${status==='Applied'?'selected':''}>Applied</option>
+            </select>
+          </div>
+
+          <div class="form-field"><label>Title</label>
+            <input name="title" value="${escapeHtml(raw.title||'')}"/>
+          </div>
+          <div class="form-field"><label>Company</label>
+            <input name="company_name" value="${escapeHtml(raw.company_name||'')}"/>
+          </div>
+
+          <div class="form-field"><label>Locations (comma)</label>
+            <input name="locations" value="${escapeHtml(arrayToCSV(raw.locations))}"/>
+          </div>
+
+          <div class="form-field"><label>Applied date (YYYY-MM-DD)</label>
+            <input name="applied_date" value="${escapeHtml(raw.applied_date||'')}"/>
+            <div class="help">If status is "Applied" and this is empty, backend sets today (London).</div>
+          </div>
+
+          <div class="form-field"><label>Salary min</label>
+            <input name="salary_min" type="number" value="${escapeHtml(raw.salary_min||'')}"/>
+          </div>
+          <div class="form-field"><label>Salary max</label>
+            <input name="salary_max" type="number" value="${escapeHtml(raw.salary_max||'')}"/>
+          </div>
+          <div class="form-field"><label>Currency</label>
+            <input name="salary_currency" value="${escapeHtml(raw.salary_currency||'')}"/>
+          </div>
+          <div class="form-field"><label>Period</label>
+            <input name="salary_period" value="${escapeHtml(raw.salary_period||'')}"/>
+          </div>
+
+          <div class="form-field"><label>AI Fit %</label>
+            <input name="AI_fit_score" type="number" min="0" max="100" value="${escapeHtml(raw.AI_fit_score||0)}"/>
+          </div>
+          <div class="form-field"><label>AI Alignment %</label>
+            <input name="AI_alignment_score" type="number" min="0" max="100" value="${escapeHtml(raw.AI_alignment_score||0)}"/>
+          </div>
+          <div class="form-field"><label>Effort /10</label>
+            <input name="application_effort_rating" type="number" min="0" max="10" step="1" value="${escapeHtml(raw.application_effort_rating ?? '')}"/>
+          </div>
+          <div class="form-field"><label>Chance /10</label>
+            <input name="application_chance_rating" type="number" min="0" max="10" step="1" value="${escapeHtml(raw.application_chance_rating ?? '')}"/>
+          </div>
+
+          <div class="form-field" style="grid-column:1/-1"><label>Fits (semicolon)</label>
+            <input name="fits" value="${escapeHtml(arrayToSemi(raw.fits))}"/>
+          </div>
+          <div class="form-field" style="grid-column:1/-1"><label>Gaps (semicolon)</label>
+            <input name="gaps" value="${escapeHtml(arrayToSemi(raw.gaps))}"/>
+          </div>
+          <div class="form-field" style="grid-column:1/-1"><label>Keywords (comma)</label>
+            <input name="keywords" value="${escapeHtml(arrayToCSV(raw.keywords))}"/>
+          </div>
+
+          <div class="form-field" style="grid-column:1/-1"><label>Summary</label>
+            <textarea name="job_summary" rows="3">${escapeHtml(raw.job_summary||'')}</textarea>
+          </div>
+          <div class="form-field" style="grid-column:1/-1"><label>Description</label>
+            <textarea name="job_description" rows="6">${escapeHtml(raw.job_description||'')}</textarea>
+          </div>
+
+          <div class="hr"></div>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn btn-primary" type="submit">Save changes</button>
+            <button class="btn btn-outline" type="button" id="cancelEdit">Cancel</button>
+          </div>
+        </form>
+      `;
+
+      document.getElementById('cancelEdit').onclick = closeModal;
+
+      document.getElementById('editForm').onsubmit = async (e)=>{
+        e.preventDefault();
+        const fd = new FormData(e.target);
+
+        // Convert list inputs → JSON string arrays (Workflow 5 parses them)
+        const toArray = (s,splitOn)=> (s||'').split(splitOn).map(x=>x.trim()).filter(Boolean);
+        const locations = JSON.stringify(toArray(fd.get('locations'), ','));
+        const fits      = JSON.stringify(toArray(fd.get('fits'), ';'));
+        const gaps      = JSON.stringify(toArray(fd.get('gaps'), ';'));
+        const keywords  = JSON.stringify(toArray(fd.get('keywords'), ','));
+
+        // Payload expected by Workflow 5
+        const payload = new FormData();
+        const fields = {
+          application_id: fd.get('application_id') || '',
+          canonical_job_url: fd.get('canonical_job_url') || '',
+          source_url: fd.get('source_url') || '',
+
+          title: fd.get('title') || '',
+          company_name: fd.get('company_name') || '',
+          status: fd.get('status') || 'Saved',
+
+          locations, fits, gaps, keywords,
+
+          salary_min: fd.get('salary_min') || '',
+          salary_max: fd.get('salary_max') || '',
+          salary_currency: fd.get('salary_currency') || '',
+          salary_period: fd.get('salary_period') || '',
+
+          AI_fit_score: fd.get('AI_fit_score') || 0,
+          AI_alignment_score: fd.get('AI_alignment_score') || 0,
+          application_effort_rating: fd.get('application_effort_rating') || '',
+          application_chance_rating: fd.get('application_chance_rating') || '',
+
+          applied_date: fd.get('applied_date') || '',
+
+          job_summary: fd.get('job_summary') || '',
+          job_description: fd.get('job_description') || ''
+        };
+        Object.entries(fields).forEach(([k,v])=> payload.append(k,v));
+
+        try{
+          const res = await fetch(URLS[currentEnv].update, { method:'POST', body: payload });
+          if (!res.ok) throw new Error('HTTP '+res.status);
+          await res.json().catch(()=> ({})); // ignore body if plain text
+          toast('Saved changes ✓');
+          closeModal();
+          await refreshData(true);
+        }catch(err){
+          console.error(err);
+          toast('Failed to save changes');
+        }
+      };
+
+      modal.classList.add('show'); modal.setAttribute('aria-hidden','false');
+    }
     function closeModal(){ modal.classList.remove('show'); modal.setAttribute('aria-hidden','true'); }
     modalOverlay.onclick = closeModal; modalClose.onclick = closeModal; document.addEventListener('keydown',(e)=>{ if (e.key==='Escape' && modal.classList.contains('show')) closeModal(); });
 
@@ -945,6 +1117,7 @@
           <div class="application-meta"><div>${escapeHtml(app.location||'—')}</div><div>${escapeHtml(app.salary||'—')}</div></div>
           <div style="display:flex;gap:.5rem;margin-top:.6rem">
             <button class="btn btn-primary" onclick="openApplicationModal('${app.id}')">View</button>
+            <button class="btn btn-outline" onclick="openEditModal('${app.id}')">Edit</button>
             <button class="btn btn-success" onclick="markSavedApplied('${app.id}')">Mark applied</button>
           </div>
         </div>
