@@ -1,438 +1,933 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Graduate Applications Assistant</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-<style>
-  :root{
-    --bg:#f9fafb; --panel:rgba(255,255,255,0.8); --muted:#6b7280; --text:#1f2937;
-    --accent:#2563eb; --accent-light:#3b82f6; --good:#22c55e; --warn:#d97706; --bad:#dc2626;
-    --chip:#eef2ff; --border:#d1d5db; --shadow:0 8px 16px rgba(0,0,0,.06),0 2px 4px rgba(0,0,0,.04);
-  }
-  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:'Inter',system-ui,Segoe UI,Roboto,Arial,sans-serif}
-  h1{font-size:clamp(1.75rem,2vw+1rem,2.5rem);margin:0 0 12px}
-  h2{font-size:clamp(1.25rem,1vw+1rem,1.5rem);margin:16px 0 8px}
-  .wrap{max-width:960px;margin:0 auto;padding:32px 16px}
-  .card{background:var(--panel);border-radius:16px;box-shadow:var(--shadow);padding:24px;backdrop-filter:blur(12px)}
-  .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-  .urlbar{display:flex;gap:8px;width:100%}
-  input[type="url"]{flex:1;padding:14px 12px;border-radius:12px;border:1px solid var(--border);background:#fff;color:var(--text);transition:all .3s ease}
-  input[type="url"]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-light)}
-  button{border:1px solid var(--border);border-radius:12px;padding:12px 20px;cursor:pointer;font-weight:600;transition:all .3s ease;position:relative}
-  button:hover{transform:translateY(-2px)}
-  button:active{transform:scale(.98)}
-  button.primary{background:linear-gradient(135deg,var(--accent),var(--accent-light));color:#fff;border-color:var(--accent)}
-  button.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
-  button.good{background:linear-gradient(135deg,var(--good),#34d399);color:#fff;border-color:var(--good)}
-  button.warn{background:linear-gradient(135deg,var(--warn),#fbbf24);color:#fff;border-color:var(--warn)}
-  button.bad{background:linear-gradient(135deg,var(--bad),#ef4444);color:#fff;border-color:var(--bad)}
-  button:disabled{opacity:.6;cursor:not-allowed}
-  button.loading{color:transparent}
-  button.loading::after{content:'';position:absolute;top:50%;left:50%;width:16px;height:16px;margin:-8px 0 0 -8px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
-  .muted{color:var(--muted);font-size:13px}
-  .kvs{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:12px 0}
-  .kv{background:#f8f9fc;border:1px solid var(--border);border-radius:12px;padding:12px;overflow-wrap:anywhere}
-  .kv b{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
-  .meters{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
-  .meter{background:#f8f9fc;border:1px solid var(--border);border-radius:12px;padding:12px}
-  .meter .bar{height:10px;background:#e5e7eb;border-radius:8px;overflow:hidden;margin-top:8px}
-  .meter .fill{height:100%;background:linear-gradient(90deg,var(--good),var(--accent));width:0;animation:fill 1.2s forwards}
-  .chips{display:flex;flex-wrap:wrap;gap:8px}
-  .chip{background:var(--chip);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:999px;font-size:12px}
-  .cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .details{margin-top:12px}
-  .details pre{white-space:pre-wrap;word-break:break-word;background:#f8f9fc;border:1px solid var(--border);border-radius:12px;padding:12px;color:var(--text);max-height:360px;overflow:auto}
-  .decisions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-  .toast{position:fixed;right:16px;bottom:16px;background:rgba(255,255,255,.8);backdrop-filter:blur(8px);border:1px solid var(--border);color:var(--text);padding:12px 14px;border-radius:12px;box-shadow:var(--shadow);opacity:0;transform:translateY(6px);transition:.25s}
-  .toast.show{opacity:1;transform:translateY(0)}
-  .skeleton{background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 37%,#e5e7eb 63%);background-size:400% 100%;animation:skeleton 1.4s ease infinite;border-radius:8px}
-  .small{font-size:12px}
-  .env{margin-left:auto;display:flex;gap:8px;align-items:center}
-  .env select{background:#fff;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:8px}
-  .result-block{margin-top:16px;border-top:1px solid var(--border);padding-top:12px}
-  .btn-row{display:flex;gap:8px;flex-wrap:wrap}
-  .subtle{opacity:.9}
-  @keyframes skeleton{0%{background-position:0 0}100%{background-position:100% 0}}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  @keyframes fill{to{width:var(--w)}}
-  @media(max-width:600px){.cols{grid-template-columns:1fr}.meters{grid-template-columns:1fr}.btn-row{flex-direction:column}.env{margin-left:0}}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Graduate Applications Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-50:#eff6ff; --primary-100:#dbeafe; --primary-500:#3b82f6; --primary-600:#2563eb; --primary-700:#1d4ed8;
+      --success-50:#f0fdf4; --success-500:#22c55e; --success-600:#16a34a;
+      --warning-50:#fffbeb; --warning-500:#f59e0b; --warning-600:#d97706;
+      --danger-50:#fef2f2; --danger-500:#ef4444; --danger-600:#dc2626;
+      --gray-50:#f9fafb; --gray-100:#f3f4f6; --gray-200:#e5e7eb; --gray-300:#d1d5db; --gray-400:#9ca3af;
+      --gray-500:#6b7280; --gray-600:#4b5563; --gray-700:#374151; --gray-800:#1f2937; --gray-900:#111827;
+      --shadow-sm:0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md:0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      --shadow-lg:0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+      --shadow-xl:0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+      --gradient-primary: linear-gradient(135deg,var(--primary-500),var(--primary-600));
+      --gradient-success: linear-gradient(135deg,var(--success-500),var(--success-600));
+      --gradient-warning: linear-gradient(135deg,var(--warning-500),var(--warning-600));
+      --gradient-danger: linear-gradient(135deg,var(--danger-500),var(--danger-600));
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+      min-height:100vh; padding:2rem 1rem; color:var(--gray-800); line-height:1.6;
+    }
+    .container{max-width:1200px;margin:0 auto}
+    .header,.applications-header{
+      background:rgba(255,255,255,0.95); backdrop-filter:blur(20px);
+      border:1px solid rgba(255,255,255,0.2); border-radius:24px; padding:2rem; margin-bottom:2rem; box-shadow:var(--shadow-xl);
+    }
+    .header-content{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:2rem}
+    .title{font-size:clamp(1.5rem,4vw,2.5rem);font-weight:700;background:var(--gradient-primary);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+    .nav-controls{display:flex;align-items:center;gap:2rem;flex-wrap:wrap}
+    .nav-tabs{display:flex;background:var(--gray-100);border-radius:12px;padding:4px}
+    .nav-tab{display:flex;align-items:center;gap:.5rem;padding:.75rem 1.5rem;border:none;background:transparent;color:var(--gray-600);font-weight:500;border-radius:8px;cursor:pointer;transition:.3s}
+    .nav-tab:hover{background:var(--gray-200);color:var(--gray-800)}
+    .nav-tab.active{background:#fff;color:var(--primary-600);box-shadow:var(--shadow-sm)}
+    .env-selector{display:flex;align-items:center;gap:.75rem;background:var(--gray-50);padding:.75rem 1rem;border-radius:16px;border:1px solid var(--gray-200)}
+    .env-selector label{font-size:.875rem;font-weight:500;color:var(--gray-600)}
+    .env-selector select{background:#fff;border:1px solid var(--gray-300);border-radius:8px;padding:.5rem .75rem;font-size:.875rem;color:var(--gray-700);cursor:pointer}
+    .env-selector select:focus{outline:none;border-color:var(--primary-500);box-shadow:0 0 0 3px rgba(59,130,246,.1)}
+    .page-content{display:none}
+    .page-content.active{display:block}
+
+    /* Analyse page */
+    .search-section{position:relative}
+    .search-input{width:100%;padding:1rem 1.5rem;font-size:1rem;border:2px solid var(--gray-200);border-radius:16px;background:#fff;transition:.3s;outline:none}
+    .search-input:focus{border-color:var(--primary-500);box-shadow:0 0 0 4px rgba(59,130,246,.1);transform:translateY(-2px)}
+    .search-button{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:var(--gradient-primary);color:#fff;border:none;padding:.75rem 1.5rem;border-radius:12px;font-weight:600;cursor:pointer;transition:.3s;box-shadow:var(--shadow-md)}
+    .search-button:hover:not(:disabled){transform:translateY(calc(-50% - 2px));box-shadow:var(--shadow-lg)}
+    .search-button:disabled{opacity:.6;cursor:not-allowed}
+    .helper-text{margin-top:1rem;font-size:.875rem;color:var(--gray-500);display:flex;align-items:center;gap:.5rem}
+    .result-card{background:rgba(255,255,255,.95);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.2);border-radius:24px;padding:2rem;box-shadow:var(--shadow-xl);display:none;animation:slideUp .6s ease-out}
+    @keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+    .job-header{border-bottom:1px solid var(--gray-200);padding-bottom:2rem;margin-bottom:2rem}
+    .job-title{font-size:2rem;font-weight:700;color:var(--gray-900);margin-bottom:.5rem}
+    .job-company{font-size:1.25rem;color:var(--gray-600);margin-bottom:1.5rem}
+    .job-details{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem}
+    .detail-item{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:12px;padding:1rem}
+    .detail-label{font-size:.75rem;font-weight:600;color:var(--gray-500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem}
+    .detail-value{font-weight:500;color:var(--gray-700)}
+    .detail-value a{color:var(--primary-600);text-decoration:none}
+    .scores-section{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.5rem;margin:2rem 0}
+    .score-card{background:#fff;border:1px solid var(--gray-200);border-radius:16px;padding:1.5rem;text-align:center;transition:.3s}
+    .score-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg)}
+    .score-label{font-weight:600;color:var(--gray-700);margin-bottom:1rem}
+    .score-value{font-size:2rem;font-weight:700;margin-bottom:1rem}
+    .score-bar{height:8px;background:var(--gray-200);border-radius:4px;overflow:hidden}
+    .score-fill{height:100%;border-radius:4px;transition:width 1s ease-out;background:var(--gradient-primary)}
+    .section{margin:2rem 0}
+    .section-title{font-size:1.5rem;font-weight:600;color:var(--gray-900);margin-bottom:1rem;display:flex;align-items:center;gap:.5rem}
+    .keywords{display:flex;flex-wrap:wrap;gap:.75rem}
+    .keyword{background:var(--primary-50);color:var(--primary-700);border:1px solid var(--primary-200);padding:.5rem 1rem;border-radius:20px;font-size:.875rem;font-weight:500}
+    .columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:2rem}
+    .column{background:#fff;border:1px solid var(--gray-200);border-radius:16px;padding:1.5rem;box-shadow:var(--shadow-sm)}
+    .column h3{color:var(--gray-800);margin-bottom:1rem;font-size:1.25rem}
+    .list-content{background:var(--gray-50);border-radius:8px;padding:1rem;white-space:pre-wrap;color:var(--gray-700)}
+    .summary{background:linear-gradient(135deg,var(--primary-50),var(--primary-100));border:1px solid var(--primary-200);border-radius:16px;padding:1.5rem;margin:2rem 0}
+    .actions{display:flex;flex-wrap:wrap;gap:1rem;margin:2rem 0;padding:2rem 0;border-top:1px solid var(--gray-200)}
+    .btn{padding:.75rem 1.5rem;border-radius:12px;font-weight:600;cursor:pointer;transition:.3s;border:none;display:flex;align-items:center;gap:.5rem;text-decoration:none;font-size:.875rem}
+    .btn-primary{background:var(--gradient-primary);color:#fff;box-shadow:var(--shadow-md)}
+    .btn-success{background:var(--gradient-success);color:#fff;box-shadow:var(--shadow-md)}
+    .btn-outline{background:#fff;color:var(--gray-700);border:2px solid var(--gray-300)}
+    .btn-danger{background:var(--gradient-danger);color:#fff;box-shadow:var(--shadow-md)}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .rating-inputs{display:none;align-items:center;gap:1rem;margin-top:1rem;padding:1rem;background:var(--gray-50);border-radius:12px;border:1px solid var(--gray-200)}
+    .rating-inputs.show{display:flex}
+    .rating-input{display:flex;flex-direction:column;gap:.25rem}
+    .rating-input label{font-size:.875rem;font-weight:500;color:var(--gray-600)}
+    .rating-input input{padding:.5rem;border:1px solid var(--gray-300);border-radius:6px;width:80px}
+    .cover-section{display:none;margin-top:2rem;padding-top:2rem;border-top:1px solid var(--gray-200)}
+    .cover-section.show{display:block;animation:slideUp .6s ease-out}
+    .cover-status{display:flex;align-items:center;gap:.5rem;color:var(--gray-600);margin-bottom:1.5rem}
+    .spinner{width:16px;height:16px;border:2px solid var(--gray-300);border-top:2px solid var(--primary-500);border-radius:50%;animation:spin 1s linear infinite}
+    @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+    .cover-content{display:none}
+    .cover-content.show{display:block}
+    .cover-preview{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:12px;padding:1.5rem;margin:1rem 0;white-space:pre-wrap;max-height:400px;overflow:auto}
+    .details-section{margin-top:2rem;border-top:1px solid var(--gray-200);padding-top:2rem}
+    .details-content{display:none;margin-top:1rem}
+    .details-content.show{display:block;animation:slideUp .4s ease-out}
+    .details-text{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:12px;padding:1.5rem;white-space:pre-wrap;max-height:600px;overflow:auto}
+
+    /* Applications page */
+    .applications-title{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:2rem;margin-bottom:2rem}
+    .applications-title h2{font-size:2rem;font-weight:700;color:var(--gray-900)}
+    .applications-stats{display:flex;gap:2rem}
+    .stat-item{text-align:center;padding:1rem 1.5rem;background:var(--gray-50);border-radius:12px;border:1px solid var(--gray-200)}
+    .stat-number{display:block;font-size:1.5rem;font-weight:700;color:var(--primary-600)}
+    .stat-label{font-size:.875rem;color:var(--gray-600);font-weight:500}
+    .applications-filters{display:flex;gap:1rem;flex-wrap:wrap}
+    .filter-select{padding:.75rem 1rem;border:1px solid var(--gray-300);border-radius:12px;background:#fff;color:var(--gray-700);font-weight:500;cursor:pointer}
+    .applications-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:1.5rem}
+    .application-card{background:rgba(255,255,255,.95);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.2);border-radius:16px;padding:1.5rem;box-shadow:var(--shadow-md);cursor:pointer;transition:.3s;position:relative;overflow:hidden}
+    .application-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-xl)}
+    .application-status{position:absolute;top:1rem;right:1rem;padding:.25rem .75rem;border-radius:20px;font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+    .status-applied{background:var(--success-50);color:var(--success-600);border:1px solid #bbf7d0}
+    .status-saved{background:var(--primary-50);color:var(--primary-600);border:1px solid #bfdbfe}
+    .status-response{background:var(--warning-50);color:var(--warning-600);border:1px solid #fde68a}
+    .application-header{margin-bottom:1rem;padding-right:4rem}
+    .application-title{font-size:1.25rem;font-weight:600;color:var(--gray-900);margin-bottom:.5rem;line-height:1.3}
+    .application-company{color:var(--primary-600);font-weight:500;margin-bottom:.5rem}
+    .application-date{font-size:.875rem;color:var(--gray-500)}
+    .application-scores{display:flex;gap:1rem;margin:1rem 0}
+    .mini-score{flex:1;text-align:center}
+    .mini-score-label{font-size:.75rem;color:var(--gray-500);margin-bottom:.25rem}
+    .mini-score-value{font-weight:600;color:var(--primary-600)}
+    .application-meta{display:flex;justify-content:space-between;align-items:center;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--gray-200);font-size:.875rem;color:var(--gray-600)}
+    .application-location{display:flex;align-items:center;gap:.25rem}
+    .application-salary{font-weight:500}
+
+    /* Modal */
+    .modal{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1000;display:none;align-items:center;justify-content:center;padding:2rem}
+    .modal.show{display:flex;animation:modalShow .3s ease-out}
+    @keyframes modalShow{from{opacity:0}to{opacity:1}}
+    .modal-overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);backdrop-filter:blur(4px)}
+    .modal-content{position:relative;background:#fff;border-radius:24px;box-shadow:var(--shadow-xl);max-width:800px;width:100%;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;animation:modalContentShow .3s ease-out}
+    @keyframes modalContentShow{from{opacity:0;transform:scale(.9) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}
+    .modal-header{display:flex;justify-content:space-between;align-items:center;padding:2rem 2rem 1rem;border-bottom:1px solid var(--gray-200)}
+    .modal-header h3{font-size:1.5rem;font-weight:600;color:var(--gray-900)}
+    .modal-close{background:none;border:none;color:var(--gray-400);cursor:pointer;padding:.5rem;border-radius:8px}
+    .modal-close:hover{background:var(--gray-100);color:var(--gray-600)}
+    .modal-body{padding:2rem;overflow-y:auto}
+
+    /* Toast */
+    .toast{position:fixed;top:2rem;right:2rem;background:rgba(255,255,255,.95);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.2);color:var(--gray-800);padding:1rem 1.5rem;border-radius:12px;box-shadow:var(--shadow-xl);transform:translateX(400px);opacity:0;transition:.4s;z-index:1000;max-width:320px}
+    .toast.show{transform:translateX(0);opacity:1}
+
+    .loading-skeleton{display:flex;flex-direction:column;gap:1rem;padding:2rem 0}
+    .skeleton{height:20px;background:linear-gradient(90deg,var(--gray-200) 25%,var(--gray-100) 50%,var(--gray-200) 75%);background-size:200% 100%;animation:loading 1.5s infinite;border-radius:8px}
+    @keyframes loading{0%{background-position:200% 0}100%{background-position:-200% 0}}
+    .loading-skeleton .skeleton:nth-child(1){width:60%}
+    .loading-skeleton .skeleton:nth-child(2){width:40%}
+    .loading-skeleton .skeleton:nth-child(3){width:80%;height:80px}
+    .loading-skeleton .skeleton:nth-child(4){width:90%;height:40px}
+
+    @media (max-width:768px){
+      body{padding:1rem}
+      .header{padding:1.5rem}
+      .header-content{flex-direction:column;align-items:stretch}
+      .nav-controls{flex-direction:column;gap:1rem}
+      .applications-title{flex-direction:column;align-items:stretch;gap:1rem}
+      .applications-grid{grid-template-columns:1fr}
+      .job-title{font-size:1.5rem}
+      .actions{flex-direction:column}
+      .btn{justify-content:center}
+      .toast{right:1rem;left:1rem;max-width:none}
+      .modal{padding:1rem}
+      .modal-content{max-height:95vh}
+      .modal-header,.modal-body{padding:1.5rem}
+    }
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="card">
-    <div class="row">
-      <h1>Graduate Applications Assistant</h1>
-      <div class="env">
-        <label class="small muted">Environment</label>
-        <select id="envSelect" title="Switch between Test and Prod">
-          <option value="test">Test</option>
-          <option value="prod">Prod</option>
-        </select>
+  <div class="container">
+    <div class="header">
+      <div class="header-content">
+        <h1 class="title">Graduate Applications Assistant</h1>
+        <div class="nav-controls">
+          <nav class="nav-tabs">
+            <button id="analyzeTab" class="nav-tab active" data-tab="analyze">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+              Analyze
+            </button>
+            <button id="applicationsTab" class="nav-tab" data-tab="applications">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+              My Applications
+            </button>
+          </nav>
+          <div class="env-selector">
+            <label>Environment:</label>
+            <select id="envSelect">
+              <option value="test">Test</option>
+              <option value="prod">Production</option>
+            </select>
+          </div>
+        </div>
       </div>
     </div>
-    <div class="urlbar">
-      <input id="jobUrl" type="url" placeholder="Paste a job URL…" autocomplete="off" />
-      <button id="analyseBtn" class="primary">Analyse</button>
+
+    <!-- Applications Page -->
+    <div id="applicationsPage" class="page-content">
+      <div class="applications-header">
+        <div class="applications-title">
+          <h2>My Applications</h2>
+          <div class="applications-stats">
+            <div class="stat-item"><span id="statTotal" class="stat-number">0</span><span class="stat-label">Total</span></div>
+            <div class="stat-item"><span id="statApplied" class="stat-number">0</span><span class="stat-label">Applied</span></div>
+            <div class="stat-item"><span id="statSaved" class="stat-number">0</span><span class="stat-label">Saved</span></div>
+            <div class="stat-item"><span id="statResponses" class="stat-number">0</span><span class="stat-label">Responses</span></div>
+          </div>
+        </div>
+        <div class="applications-filters">
+          <select id="statusFilter" class="filter-select">
+            <option value="all">All Applications</option>
+            <option value="applied">Applied</option>
+            <option value="saved">Saved</option>
+            <option value="response">Got Response</option>
+          </select>
+          <select id="sortFilter" class="filter-select">
+            <option value="date-desc">Newest First</option>
+            <option value="date-asc">Oldest First</option>
+            <option value="fit-desc">Best Fit First</option>
+            <option value="company">By Company</option>
+          </select>
+        </div>
+      </div>
+      <div id="applicationsGrid" class="applications-grid"></div>
     </div>
-    <p class="muted small">Test uses <code>/webhook-test/*</code> (workflows Executing). Prod uses <code>/webhook/*</code> (workflows Active).</p>
-  </div>
 
-  <div id="result" class="card" style="margin-top:16px; display:none;"></div>
-</div>
-
-<div id="toast" class="toast" role="status" aria-live="polite"></div>
-
-<script>
-  // ========= YOUR ENDPOINTS =========
-  const URLS = {
-    test: {
-      analyse:      'https://ogpheard.app.n8n.cloud/webhook-test/analyse',
-      applications: 'https://ogpheard.app.n8n.cloud/webhook-test/applications',
-      cover:        'https://ogpheard.app.n8n.cloud/webhook-test/cover'
-    },
-    prod: {
-      analyse:      'https://ogpheard.app.n8n.cloud/webhook/analyse',
-      applications: 'https://ogpheard.app.n8n.cloud/webhook/applications',
-      cover:        'https://ogpheard.app.n8n.cloud/webhook/cover'
-    }
-  };
-
-  // Optional: pass Drive IDs to n8n (or hardcode them in n8n)
-  const CV_FOLDER_ID = '';   // e.g. '19L6t0a-NEvCrJmJqkJs3MQTq20VZ45fu'
-  const GUIDE_DOC_ID = '';   // e.g. '1CtPPxz6b6VP8tcBlXIR6ZiNDroHsST2kDGZuIIvnuIE'
-
-  // ====== UI refs / state ======
-  const envSelect = document.getElementById('envSelect');
-  const analyseBtn = document.getElementById('analyseBtn');
-  const jobUrlInput = document.getElementById('jobUrl');
-  const resultEl = document.getElementById('result');
-  const toastEl = document.getElementById('toast');
-
-  const initialEnv = (new URLSearchParams(location.search).get('env') || 'test').toLowerCase();
-  envSelect.value = (initialEnv === 'prod' ? 'prod' : 'test');
-  let currentEnv = envSelect.value;
-  envSelect.addEventListener('change', () => { currentEnv = envSelect.value; toast(`Switched to ${currentEnv.toUpperCase()}`); });
-
-  let draft = null;     // last analysis result
-  let lastCover = null; // last cover result
-
-  // ====== helpers ======
-  function toast(msg) {
-    toastEl.textContent = msg;
-    toastEl.classList.add('show');
-    setTimeout(() => toastEl.classList.remove('show'), 2000);
-  }
-  function londonTodayISO() {
-    const fmt = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
-    const y = fmt.find(p => p.type === 'year').value, m = fmt.find(p => p.type === 'month').value, d = fmt.find(p => p.type === 'day').value;
-    return `${y}-${m}-${d}`;
-  }
-  function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-  function nl2pre(s){return `<pre>${escapeHtml(String(s||'')).replace(/\n{3,}/g,'\n\n')}</pre>`;}
-  function lines(list){if(!Array.isArray(list))return'';return list.slice(0,24).map(x=>`• ${escapeHtml(String(x))}`).join('\n');}
-  function badgeList(list){if(!Array.isArray(list))return'';return `<div class="chips">${list.slice(0,30).map(k=>`<span class="chip">${escapeHtml(k)}</span>`).join('')}</div>`;}
-  function salaryText(a){const s=a.salary||{};if(s.salary_raw)return s.salary_raw;if(s.min&&s.max)return `${s.currency||''} ${s.min}–${s.max} ${s.period||''}`.trim();if(s.min)return `${s.currency||''} ${s.min} ${s.period||''}`.trim();return a.salary_raw||'';}
-  async function postForm(url, fd){
-    const res = await fetch(url,{method:'POST',body:fd});
-    if(!res.ok){const t = await res.text().catch(()=> ''); console.error('POST failed', url, res.status, t); throw new Error(`HTTP ${res.status}`);}
-    try { return await res.json(); } catch { return {}; }
-  }
-  function canonicalize(u){
-    try{const url=new URL(String(u));url.protocol='https:';url.hostname=url.hostname.replace(/^www\./i,'').toLowerCase();url.hash='';const keep=new Set(['gh_jid','jobid','vacancyid','rid','id','lever-origin']);const q=new URLSearchParams(url.search);[...q.keys()].forEach(k=>{const kl=k.toLowerCase();if(!keep.has(kl)||/^utm_/.test(kl)||/(gclid|fbclid|ref|source|src|campaign|medium)$/i.test(kl))q.delete(k);});const sorted=new URLSearchParams();[...q.keys()].sort().forEach(k=>sorted.append(k,q.get(k)));url.search=sorted.toString()?`?${sorted.toString()}`:'';if(url.pathname.length>1)url.pathname=url.pathname.replace(/\/+$/,'');return url.toString();}catch{return u;}
-  }
-
-  // ====== ANALYSE ======
-  async function analyseUrl(){
-    const url = jobUrlInput.value.trim();
-    if(!/^https?:\/\//i.test(url)){ toast('Please paste a valid URL'); return; }
-
-    resultEl.style.display='block';
-    resultEl.innerHTML = `
-      <div style="height:14px;width:60%" class="skeleton"></div>
-      <div style="height:14px;width:40%;margin-top:8px" class="skeleton"></div>
-      <div style="height:64px;width:90%;margin-top:16px" class="skeleton"></div>`;
-    analyseBtn.disabled = true;
-    analyseBtn.classList.add('loading');
-
-    try{
-      const fd = new FormData();
-      fd.append('job_url', url);
-      const data = await postForm(URLS[currentEnv].analyse, fd);
-      const out = Array.isArray(data) ? data[0] : data;
-      if(!out) throw new Error('No analysis result');
-      draft = out; lastCover = null;
-      renderAnalysis(out);
-    }catch(e){
-      console.error(e);
-      resultEl.style.display='none';
-      toast(`Analysis failed (${currentEnv}). Check CORS & workflow status.`);
-    }finally{
-      analyseBtn.disabled = false;
-      analyseBtn.classList.remove('loading');
-    }
-  }
-
-  // ====== RENDER RESULT ======
-  function renderAnalysis(a){
-    const fit = Math.max(0, Math.min(100, Number(a.AI_fit_score||0)));
-    const align = Math.max(0, Math.min(100, Number(a.AI_alignment_score||0)));
-    const locs = Array.isArray(a.locations) ? a.locations.join(' • ') : '';
-    const sal  = salaryText(a);
-    const deadline = a.date_deadline ? `Deadline: ${a.date_deadline}` : '';
-    const start    = a.start_date    ? `Start: ${a.start_date}`       : '';
-    const urlLink = a.source_url
-      ? `<a href="${escapeHtml(a.source_url)}" target="_blank" rel="noopener">Original job listing</a>`
-      : '—';
-
-    const header = `
-      <h2>${escapeHtml(a.title||'Untitled role')}</h2>
-      <div class="muted">${escapeHtml(a.company_name||'')}</div>
-      <div class="kvs">
-        <div class="kv"><b>Locations</b>${escapeHtml(locs||'—')}</div>
-        <div class="kv"><b>Salary</b>${escapeHtml(sal||'—')}</div>
-        <div class="kv"><b>Dates</b>${escapeHtml([start,deadline].filter(Boolean).join(' · ')||'—')}</div>
-        <div class="kv"><b>URL</b>${urlLink}</div>
-      </div>`;
-
-    const meters = `
-      <div class="meters">
-        <div class="meter">
-          <div class="row"><strong>AI Fit</strong><span class="muted" style="margin-left:auto">${fit}%</span></div>
-          <div class="bar"><div class="fill" style="--w:${fit}%"></div></div>
+    <!-- Application Modal -->
+    <div id="applicationModal" class="modal" aria-hidden="true">
+      <div id="modalOverlay" class="modal-overlay"></div>
+      <div class="modal-content" role="dialog" aria-modal="true">
+        <div class="modal-header">
+          <h3 id="modalTitle">Application Details</h3>
+          <button id="modalClose" class="modal-close" aria-label="Close">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
-        <div class="meter">
-          <div class="row"><strong>Alignment</strong><span class="muted" style="margin-left:auto">${align}%</span></div>
-          <div class="bar"><div class="fill" style="--w:${align}%"></div></div>
-        </div>
-      </div>`;
+        <div id="modalBody" class="modal-body"></div>
+      </div>
+    </div>
 
-    const keywords = `<h2>Keywords</h2>${badgeList(a.keywords)}`;
-    const lists = `
-      <div class="cols">
-        <div>
-          <h2>Fits</h2>${nl2pre(lines(a.fits))}
-        </div>
-        <div>
-          <h2>Gaps</h2>${nl2pre(lines(a.gaps))}
-        </div>
-      </div>`;
+    <!-- Analyse Page -->
+    <div id="analyzePage" class="page-content active">
+      <div class="search-section">
+        <input id="jobUrl" type="url" class="search-input" placeholder="Paste a job URL to analyze…" autocomplete="off"/>
+        <button id="analyzeBtn" class="search-button"><span id="analyzeText">Analyze</span></button>
+      </div>
+      <div class="helper-text">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+        Test uses <code>/webhook-test/*</code> endpoints. Production uses <code>/webhook/*</code> endpoints.
+      </div>
 
-    const summary = `<h2>Summary</h2><div class="kv" style="margin-top:8px">${escapeHtml(a.job_summary||'')}</div>`;
+      <div id="resultCard" class="result-card" aria-live="polite">
+        <div id="loadingState" class="loading-skeleton">
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+        </div>
 
-    const actions = `
-      <div class="decisions">
-        <div class="btn-row">
-          <button id="saveBtn" class="primary">Save for later</button>
-          <div class="inline">
-            <button id="applyBtn" class="good">Yes I applied</button>
-            <div id="ratings" class="rating" style="display:none">
-              <label class="small">Effort/10 <input id="effort" type="number" min="0" max="10" step="1" value="7" /></label>
-              <label class="small">Chance/10 <input id="chance" type="number" min="0" max="10" step="1" value="6" /></label>
-              <button id="confirmApply" class="good">Confirm</button>
+        <div id="resultContent" style="display:none">
+          <div class="job-header">
+            <h2 id="jobTitle" class="job-title">Job Title</h2>
+            <div id="jobCompany" class="job-company">Company</div>
+            <div id="jobDetails" class="job-details"></div>
+          </div>
+
+          <div class="scores-section">
+            <div class="score-card">
+              <div class="score-label">AI Fit Score</div>
+              <div id="fitScore" class="score-value">0%</div>
+              <div class="score-bar"><div id="fitFill" class="score-fill" style="width:0%"></div></div>
+            </div>
+            <div class="score-card">
+              <div class="score-label">Alignment Score</div>
+              <div id="alignScore" class="score-value">0%</div>
+              <div class="score-bar"><div id="alignFill" class="score-fill" style="width:0%"></div></div>
             </div>
           </div>
-          <button id="coverBtn" class="ghost">Cover letter & CV tweaks</button>
-          <button id="ignoreBtn" class="bad">Ignore</button>
-        </div>
-      </div>`;
 
-    const coverBlock = `
-      <div id="coverBlock" class="result-block" style="display:none">
-        <h2>Cover letter & CV</h2>
-        <div id="coverStatus" class="muted subtle">Preparing…</div>
-        <div id="coverResult" style="display:none">
-          <div class="kvs">
-            <div class="kv"><b>Selected CV</b><span id="cvName">—</span></div>
-            <div class="kv"><b>Why this CV</b><span id="cvWhy">—</span></div>
-            <div class="kv"><b>Cover Letter Doc</b><span id="coverDocLink">—</span></div>
-          </div>
           <div class="section">
-            <h2>CV tweak suggestions</h2>
-            <div id="cvTweaks"></div>
+            <h3 class="section-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              Keywords
+            </h3>
+            <div id="keywords" class="keywords"></div>
           </div>
+
+          <div class="columns">
+            <div class="column">
+              <h3>✅ Perfect Fits</h3>
+              <div id="fits" class="list-content"></div>
+            </div>
+            <div class="column">
+              <h3>⚠️ Areas to Address</h3>
+              <div id="gaps" class="list-content"></div>
+            </div>
+          </div>
+
           <div class="section">
-            <h2>Cover letter (preview)</h2>
-            <div id="coverPreview"></div>
-            <div class="btn-row" style="margin-top:8px">
-              <button id="copyCover" class="ghost">Copy text</button>
-              <button id="openDoc" class="primary" style="display:none">Open Google Doc</button>
+            <h3 class="section-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14,2 14,8 20,8"/></svg>
+              Job Summary
+            </h3>
+            <div class="summary"><div id="summary"></div></div>
+          </div>
+
+          <div class="actions">
+            <button id="saveBtn" class="btn btn-primary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
+              Save for later
+            </button>
+
+            <button id="applyBtn" class="btn btn-success">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+              I applied!
+            </button>
+
+            <button id="coverBtn" class="btn btn-outline">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                <polyline points="14,2 14,8 20,8"/>
+                <path d="M10 13l2 2 4-4"/>
+              </svg>
+              Cover letter & CV
+            </button>
+
+            <button id="ignoreBtn" class="btn btn-danger">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              Not interested
+            </button>
+          </div>
+
+          <div id="ratingInputs" class="rating-inputs" aria-hidden="true">
+            <div class="rating-input">
+              <label for="effort">Effort /10</label>
+              <input id="effort" type="number" min="0" max="10" step="1" value="7"/>
+            </div>
+            <div class="rating-input">
+              <label for="chance">Chance /10</label>
+              <input id="chance" type="number" min="0" max="10" step="1" value="6"/>
+            </div>
+            <button id="confirmApply" class="btn btn-success">Confirm</button>
+          </div>
+
+          <div id="coverSection" class="cover-section" aria-live="polite">
+            <div id="coverStatus" class="cover-status"><span class="spinner" aria-hidden="true"></span> Preparing cover letter & CV tips…</div>
+            <div id="coverContent" class="cover-content">
+              <div class="job-details" style="margin-bottom:1rem">
+                <div class="detail-item">
+                  <div class="detail-label">Selected CV</div>
+                  <div id="cvName" class="detail-value">—</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">Why this CV</div>
+                  <div id="cvWhy" class="detail-value">—</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">Cover letter doc</div>
+                  <div id="coverDocLink" class="detail-value">—</div>
+                </div>
+              </div>
+
+              <div class="section">
+                <h3 class="section-title">CV tweak suggestions</h3>
+                <div id="cvTweaks" class="list-content"></div>
+              </div>
+
+              <div class="section">
+                <h3 class="section-title">Cover letter (preview)</h3>
+                <div id="coverPreview" class="cover-preview"></div>
+                <div style="display:flex;gap:.5rem;margin-top:.5rem">
+                  <button id="copyCover" class="btn btn-outline">Copy text</button>
+                  <button id="openDoc" class="btn btn-primary" style="display:none">Open Google Doc</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="details-section">
+            <button id="toggleDetails" class="btn btn-outline">View more</button>
+            <div id="detailsContent" class="details-content">
+              <h3 class="section-title">Full description</h3>
+              <div id="fullDescription" class="details-text"></div>
             </div>
           </div>
         </div>
-      </div>`;
+      </div>
+    </div><!-- /Analyze Page -->
+  </div><!-- /container -->
 
-    const details = `
-      <div class="details">
-        <button id="toggleMore" class="ghost">View more</button>
-        <div id="moreBox" style="display:none;margin-top:12px">
-          <h2>Full description</h2>
-          ${nl2pre(a.job_description||'')}
-        </div>
-      </div>`;
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-    resultEl.innerHTML = header + meters + keywords + lists + summary + actions + coverBlock + details;
-    resultEl.style.display='block';
-
-    // handlers
-    document.getElementById('toggleMore').addEventListener('click', () => {
-      const box = document.getElementById('moreBox');
-      const open = box.style.display !== 'none';
-      box.style.display = open ? 'none' : 'block';
-      document.getElementById('toggleMore').textContent = open ? 'View more' : 'Hide';
-    });
-    document.getElementById('saveBtn').addEventListener('click', onSave);
-    document.getElementById('applyBtn').addEventListener('click', () => {
-      document.getElementById('ratings').style.display='inline-flex';
-    });
-    document.getElementById('confirmApply').addEventListener('click', onApply);
-    document.getElementById('ignoreBtn').addEventListener('click', () => {
-      resultEl.style.display='none'; draft=null; lastCover=null; toast('Ignored. Nothing saved.');
-    });
-    document.getElementById('coverBtn').addEventListener('click', onCoverClick);
-  }
-
-  // ====== APPLICATIONS send ======
-  function toApplicationsPayload(a, opts){
-    return {
-      source_url: a.source_url || '',
-      canonical_job_url: a.canonical_job_url || a.canonical_url || canonicalize(a.source_url || ''),
-      title: a.title || '', company_name: a.company_name || '',
-      seniority: a.seniority || '', role_type: a.role_type || '', sector: a.sector || '',
-      contact_email: a.contact_email || '', date_posted: a.date_posted || '',
-      date_deadline: a.date_deadline || '', start_date: a.start_date || '',
-      salary_min: a.salary?.min || '', salary_max: a.salary?.max || '',
-      salary_currency: a.salary?.currency || '', salary_period: a.salary?.period || '',
-      salary_raw: a.salary?.salary_raw || a.salary_raw || '',
-      locations: Array.isArray(a.locations)? a.locations : [],
-      AI_fit_score: a.AI_fit_score ?? 0, AI_alignment_score: a.AI_alignment_score ?? 0,
-      AI_cv_filename: a.AI_cv_recommendation?.filename || a.AI_cv_filename || '',
-      AI_cv_reason:   a.AI_cv_recommendation?.reason   || a.AI_cv_reason   || '',
-      key_requirements: a.key_requirements || [], other_requirements: a.other_requirements || [],
-      fits: a.fits || [], gaps: a.gaps || [], job_summary: a.job_summary || '',
-      keywords: a.keywords || [], job_description: a.job_description || '',
-      status: opts.status,
-      applied_date: opts.status==='Applied' ? (opts.appliedDate || londonTodayISO()) : null,
-      application_effort_rating: opts.effort ?? null,
-      application_chance_rating: opts.chance ?? null,
-      cover_letter_url: a.cover_letter_url ?? null
-    };
-  }
-  async function sendApplications(env, payload){
-    const fd = new FormData();
-    for(const [k,v] of Object.entries(payload)){
-      if(Array.isArray(v)) fd.append(k, JSON.stringify(v));
-      else if(v==null)     fd.append(k, '');
-      else                 fd.append(k, String(v));
-    }
-    return postForm(URLS[env].applications, fd);
-  }
-  async function onSave(){
-    if(!draft) return;
-    try{
-      const payload = toApplicationsPayload(draft, { status:'Saved' });
-      await sendApplications(currentEnv, payload);
-      toast('Saved for later ✅');
-    }catch(e){ console.error(e); toast(`Save failed (${currentEnv})`); }
-  }
-  async function onApply(){
-    if(!draft) return;
-    try{
-      const effort = Number(document.getElementById('effort').value);
-      const chance = Number(document.getElementById('chance').value);
-      const payload = toApplicationsPayload(draft, {
-        status:'Applied',
-        effort: Number.isFinite(effort)?effort:null,
-        chance: Number.isFinite(chance)?chance:null,
-        appliedDate: londonTodayISO()
-      });
-      await sendApplications(currentEnv, payload);
-      toast('Marked as applied 🎉');
-    }catch(e){ console.error(e); toast(`Apply failed (${currentEnv})`); }
-  }
-
-  // ====== COVER LETTER & CV TWEAKS ======
-  async function onCoverClick(){
-    if(!draft) return toast('Analyse a job first');
-
-    const block  = document.getElementById('coverBlock');
-    const status = document.getElementById('coverStatus');
-    const outBox = document.getElementById('coverResult');
-    const coverBtn = document.getElementById('coverBtn');
-
-    block.style.display='block';
-    status.textContent='Generating cover letter & CV tips…';
-    outBox.style.display='none';
-    coverBtn.disabled = true;
-    coverBtn.classList.add('loading');
-
-    try{
-      const fd = new FormData();
-      // Send the full analysis JSON; your n8n Code node already normalises this.
-      fd.append('job_json', JSON.stringify(draft));
-      if(CV_FOLDER_ID) fd.append('cv_folder_id', CV_FOLDER_ID);
-      if(GUIDE_DOC_ID) fd.append('guide_doc_id', GUIDE_DOC_ID);
-
-      const data = await postForm(URLS[currentEnv].cover, fd);
-      lastCover = data || {};
-
-      // Expected from n8n:
-      // {
-      //   selected_cv: { filename, reason, doc_id?, doc_url? },
-      //   cv_tweaks: [ "...", ... ],
-      //   cover_letter: { plain_text, html?, doc_url?, doc_id? }
-      // }
-
-      const cv     = lastCover.selected_cv || {};
-      const tweaks = Array.isArray(lastCover.cv_tweaks) ? lastCover.cv_tweaks : [];
-      const letter = lastCover.cover_letter || {};
-
-      document.getElementById('cvName').textContent = cv.filename || '—';
-      document.getElementById('cvWhy').textContent  = cv.reason   || '—';
-
-      const link = letter.doc_url || cv.doc_url || '';
-      document.getElementById('coverDocLink').innerHTML = link
-        ? `<a target="_blank" rel="noopener" href="${escapeHtml(link)}">${escapeHtml(link)}</a>`
-        : '—';
-
-      document.getElementById('cvTweaks').innerHTML =
-        tweaks.length ? nl2pre(lines(tweaks)) : '<span class="muted">No tweaks suggested.</span>';
-
-      const preview = document.getElementById('coverPreview');
-      const plain   = letter.plain_text || '';
-      preview.innerHTML = plain ? nl2pre(plain) : (letter.html ? letter.html : '<span class="muted">No preview provided.</span>');
-
-      const openDocBtn = document.getElementById('openDoc');
-      if(link){
-        openDocBtn.style.display='inline-block';
-        openDocBtn.onclick = () => window.open(link,'_blank','noopener');
-      }else{
-        openDocBtn.style.display='none';
+  <script>
+    // ========= ENDPOINTS =========
+    const URLS = {
+      test: {
+        analyse:      'https://ogpheard.app.n8n.cloud/webhook-test/analyse',
+        applications: 'https://ogpheard.app.n8n.cloud/webhook-test/applications',
+        cover:        'https://ogpheard.app.n8n.cloud/webhook-test/cover'
+      },
+      prod: {
+        analyse:      'https://ogpheard.app.n8n.cloud/webhook/analyse',
+        applications: 'https://ogpheard.app.n8n.cloud/webhook/applications',
+        cover:        'https://ogpheard.app.n8n.cloud/webhook/cover'
       }
+    };
+    // Optional: pass Drive IDs to n8n (or hardcode inside n8n)
+    const CV_FOLDER_ID = '';   // e.g. '19L6t0a-NEvCrJmJqkJs3MQTq20VZ45fu'
+    const GUIDE_DOC_ID = '';   // e.g. '1CtPPxz6b6VP8tcBlXIR6ZiNDroHsST2kDGZuIIvnuIE'
 
-      document.getElementById('copyCover').onclick = async () => {
-        try{ await navigator.clipboard.writeText(plain || letter.html || ''); toast('Cover letter copied'); }
-        catch{ toast('Copy failed'); }
+    // ====== Elements
+    const envSelect = document.getElementById('envSelect');
+    const analyzeTab = document.getElementById('analyzeTab');
+    const applicationsTab = document.getElementById('applicationsTab');
+    const analyzePage = document.getElementById('analyzePage');
+    const applicationsPage = document.getElementById('applicationsPage');
+    const jobUrlInput = document.getElementById('jobUrl');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const resultCard = document.getElementById('resultCard');
+    const loadingState = document.getElementById('loadingState');
+    const resultContent = document.getElementById('resultContent');
+    const toastEl = document.getElementById('toast');
+
+    const jobTitleEl = document.getElementById('jobTitle');
+    const jobCompanyEl = document.getElementById('jobCompany');
+    const jobDetailsEl = document.getElementById('jobDetails');
+    const fitScoreEl = document.getElementById('fitScore');
+    const alignScoreEl = document.getElementById('alignScore');
+    const fitFillEl = document.getElementById('fitFill');
+    const alignFillEl = document.getElementById('alignFill');
+    const keywordsEl = document.getElementById('keywords');
+    const fitsEl = document.getElementById('fits');
+    const gapsEl = document.getElementById('gaps');
+    const summaryEl = document.getElementById('summary');
+
+    const saveBtn = document.getElementById('saveBtn');
+    const applyBtn = document.getElementById('applyBtn');
+    const ratingInputs = document.getElementById('ratingInputs');
+    const confirmApplyBtn = document.getElementById('confirmApply');
+    const effortInput = document.getElementById('effort');
+    const chanceInput = document.getElementById('chance');
+    const ignoreBtn = document.getElementById('ignoreBtn');
+
+    const coverBtn = document.getElementById('coverBtn');
+    const coverSection = document.getElementById('coverSection');
+    const coverStatus = document.getElementById('coverStatus');
+    const coverContent = document.getElementById('coverContent');
+    const cvNameEl = document.getElementById('cvName');
+    const cvWhyEl = document.getElementById('cvWhy');
+    const coverDocLinkEl = document.getElementById('coverDocLink');
+    const cvTweaksEl = document.getElementById('cvTweaks');
+    const coverPreviewEl = document.getElementById('coverPreview');
+    const copyCoverBtn = document.getElementById('copyCover');
+    const openDocBtn = document.getElementById('openDoc');
+
+    const toggleDetailsBtn = document.getElementById('toggleDetails');
+    const detailsContent = document.getElementById('detailsContent');
+    const fullDescriptionEl = document.getElementById('fullDescription');
+
+    const applicationsGrid = document.getElementById('applicationsGrid');
+    const statusFilter = document.getElementById('statusFilter');
+    const sortFilter = document.getElementById('sortFilter');
+
+    const statTotal = document.getElementById('statTotal');
+    const statApplied = document.getElementById('statApplied');
+    const statSaved = document.getElementById('statSaved');
+    const statResponses = document.getElementById('statResponses');
+
+    const modal = document.getElementById('applicationModal');
+    const modalOverlay = document.getElementById('modalOverlay');
+    const modalClose = document.getElementById('modalClose');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalBody = document.getElementById('modalBody');
+
+    // ====== State
+    const initialEnv = (new URLSearchParams(location.search).get('env') || 'test').toLowerCase();
+    envSelect.value = (initialEnv === 'prod' ? 'prod' : 'test');
+    let currentEnv = envSelect.value;
+
+    let draft = null;     // last analysis JSON
+    let lastCover = null; // last cover JSON
+
+    // Mock applications (used only for the Applications page demo list)
+    let applicationsList = [
+      { id:'1', title:'Graduate Software Developer', company:'TechFlow Solutions', status:'applied', appliedDate:'2024-01-15', location:'London, UK', salary:'£32,000 - £38,000', fitScore:85, alignmentScore:92, source:'LinkedIn', description:'Join our dynamic team as a Graduate Software Developer...', requirements:['Computer Science degree','JavaScript/TypeScript','React experience'], fits:['Strong JavaScript skills','React portfolio projects','CS degree from top university'], gaps:['Limited commercial experience','No backend development'], effortRating:8, chanceRating:7 },
+      { id:'2', title:'Junior Data Analyst', company:'DataInsights Ltd', status:'response', appliedDate:'2024-01-12', location:'Manchester, UK', salary:'£28,000 - £34,000', fitScore:78, alignmentScore:85, source:'Company Website', description:'Exciting opportunity for a Junior Data Analyst...', requirements:['Statistics/Math degree','Python/R','SQL experience'], fits:['Mathematics background','Python certification','SQL bootcamp completion'], gaps:['No industry experience','Limited visualization tools knowledge'], effortRating:9, chanceRating:8 },
+      { id:'3', title:'Graduate Product Manager', company:'InnovateTech', status:'saved', appliedDate:null, location:'Remote, UK', salary:'£35,000 - £42,000', fitScore:72, alignmentScore:88, source:'Glassdoor', description:'Looking for a Graduate Product Manager...', requirements:['Business/Engineering degree','Analytical mindset','Communication skills'], fits:['Business degree','Strong presentation skills','Internship experience'], gaps:['No product management experience','Limited tech background'], effortRating:null, chanceRating:null },
+      { id:'4', title:'Software Engineer Trainee', company:'Global Systems Inc', status:'applied', appliedDate:'2024-01-20', location:'Birmingham, UK', salary:'£30,000 - £36,000', fitScore:90, alignmentScore:82, source:'Indeed', description:'Comprehensive 12-month training program...', requirements:['STEM degree','Problem-solving skills','Programming fundamentals'], fits:['Computer Science degree','Strong algorithmic thinking','Open source contributions'], gaps:['Limited framework experience','No professional development experience'], effortRating:7, chanceRating:9 }
+    ];
+
+    // ====== Helpers
+    function toast(msg){ toastEl.textContent = msg; toastEl.classList.add('show'); setTimeout(()=>toastEl.classList.remove('show'), 2400); }
+    function londonTodayISO(){
+      const fmt = new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+      const y=fmt.find(p=>p.type==='year').value, m=fmt.find(p=>p.type==='month').value, d=fmt.find(p=>p.type==='day').value;
+      return `${y}-${m}-${d}`;
+    }
+    function asArray(v){ return Array.isArray(v) ? v : (v ? [v] : []); }
+    function bullets(arr){ return asArray(arr).map(x=>`• ${String(x)}`).join('\n'); }
+    function salaryText(a){
+      const s = a.salary || {};
+      if (s.salary_raw) return s.salary_raw;
+      if (s.min && s.max) return `${s.currency || ''} ${s.min}–${s.max} ${s.period || ''}`.trim();
+      if (s.min) return `${s.currency || ''} ${s.min} ${s.period || ''}`.trim();
+      return a.salary_raw || '';
+    }
+    async function postForm(url, fd){
+      const res = await fetch(url, { method:'POST', body: fd });
+      if (!res.ok){
+        const t = await res.text().catch(()=> '');
+        console.error('POST', url, res.status, t);
+        throw new Error(`HTTP ${res.status}`);
+      }
+      try { return await res.json(); } catch { return {}; }
+    }
+    function canonicalize(u){
+      try{
+        const url = new URL(String(u));
+        url.protocol = 'https:';
+        url.hostname = url.hostname.replace(/^www\./i,'').toLowerCase();
+        url.hash = '';
+        const keep = new Set(['gh_jid','jobId','vacancyId','rid','id','lever-origin']);
+        const q = new URLSearchParams(url.search);
+        [...q.keys()].forEach(k=>{
+          const kl=k.toLowerCase();
+          if (!keep.has(k) || /^utm_/.test(kl) || /(gclid|fbclid|ref|source|src|campaign|medium)$/i.test(kl)) q.delete(k);
+        });
+        const sorted = new URLSearchParams();
+        [...q.keys()].sort().forEach(k=>sorted.append(k, q.get(k)));
+        url.search = sorted.toString() ? `?${sorted.toString()}` : '';
+        if (url.pathname.length>1) url.pathname = url.pathname.replace(/\/+$/,'');
+        return url.toString();
+      }catch{ return u; }
+    }
+    function formatDate(d){ return d ? new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—'; }
+
+    // ====== Tabs
+    function switchTab(name){
+      document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+      document.querySelectorAll('.page-content').forEach(p=>p.classList.remove('active'));
+      document.getElementById(name+'Tab').classList.add('active');
+      document.getElementById(name+'Page').classList.add('active');
+      if (name === 'applications') renderApplications();
+      history.replaceState(null,'',`#${name}`);
+    }
+    analyzeTab.addEventListener('click',()=>switchTab('analyze'));
+    applicationsTab.addEventListener('click',()=>switchTab('applications'));
+    if (location.hash==='#applications') switchTab('applications');
+
+    // ====== Environment toggler
+    envSelect.addEventListener('change',()=>{ currentEnv = envSelect.value; toast(`Switched to ${currentEnv.toUpperCase()}`); });
+
+    // ====== Analyse flow
+    analyzeBtn.addEventListener('click', analyseUrl);
+    jobUrlInput.addEventListener('keydown',(e)=>{ if (e.key==='Enter') analyseUrl(); });
+    async function analyseUrl(){
+      const url = jobUrlInput.value.trim();
+      if (!/^https?:\/\//i.test(url)){ toast('Please paste a valid URL'); return; }
+
+      resultCard.style.display = 'block';
+      resultContent.style.display = 'none';
+      loadingState.style.display = 'flex';
+      analyzeBtn.disabled = true;
+
+      try{
+        const fd = new FormData();
+        fd.append('job_url', url);
+        const data = await postForm(URLS[currentEnv].analyse, fd);
+        const out = Array.isArray(data) ? data[0] : data;
+        if (!out) throw new Error('No analysis result');
+
+        draft = out; lastCover = null;
+        renderAnalysis(out);
+      }catch(e){
+        console.error(e);
+        resultCard.style.display='none';
+        toast(`Analysis failed (${currentEnv}). Check n8n is running & CORS.`);
+      }finally{
+        analyzeBtn.disabled = false;
+      }
+    }
+
+    function renderAnalysis(a){
+      loadingState.style.display='none';
+      resultContent.style.display='block';
+
+      const title = a.title || a.job?.title || 'Untitled role';
+      const company = a.company_name || a.job?.company_name || '';
+      const locs = asArray(a.locations || a.job?.locations).join(' • ');
+      const salTxt = salaryText(a);
+      const deadline = a.date_deadline || a.job?.date_deadline || '';
+      const start = a.start_date || a.job?.start_date || '';
+      const url = a.source_url || a.job?.source_url || '';
+
+      jobTitleEl.textContent = title;
+      jobCompanyEl.textContent = company;
+
+      jobDetailsEl.innerHTML = `
+        <div class="detail-item">
+          <div class="detail-label">Locations</div>
+          <div class="detail-value">${locs || '—'}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Salary</div>
+          <div class="detail-value">${salTxt || '—'}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Dates</div>
+          <div class="detail-value">${[start?`Start: ${start}`:'', deadline?`Deadline: ${deadline}`:''].filter(Boolean).join(' · ') || '—'}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">URL</div>
+          <div class="detail-value">${url ? `<a href="${url}" target="_blank" rel="noopener">${url}</a>` : '—'}</div>
+        </div>
+      `;
+
+      const fit = Math.max(0, Math.min(100, Number(a.AI_fit_score ?? 0)));
+      const align = Math.max(0, Math.min(100, Number(a.AI_alignment_score ?? 0)));
+      fitScoreEl.textContent = `${fit}%`; fitFillEl.style.width = `${fit}%`;
+      alignScoreEl.textContent = `${align}%`; alignFillEl.style.width = `${align}%`;
+
+      const kw = asArray(a.keywords || a.job?.keywords);
+      keywordsEl.innerHTML = kw.map(k=>`<span class="keyword">${String(k)}</span>`).join('');
+
+      fitsEl.textContent = bullets(a.fits || []);
+      gapsEl.textContent = bullets(a.gaps || []);
+      summaryEl.textContent = a.job_summary || a.summary || '';
+
+      fullDescriptionEl.textContent = a.job_description || '';
+      detailsContent.classList.remove('show');
+      toggleDetailsBtn.textContent = 'View more';
+      toggleDetailsBtn.onclick = ()=>{
+        const open = detailsContent.classList.contains('show');
+        detailsContent.classList.toggle('show', !open);
+        toggleDetailsBtn.textContent = open ? 'View more' : 'Hide';
       };
 
-      status.textContent='Generated ✓';
-      outBox.style.display='block';
-    }catch(e){
-      console.error(e);
-      status.textContent='Generation failed. Check n8n logs & CORS.';
-    }finally{
-      coverBtn.disabled = false;
-      coverBtn.classList.remove('loading');
+      // Bind actions
+      saveBtn.onclick = onSave;
+      applyBtn.onclick = ()=>{ ratingInputs.classList.add('show'); ratingInputs.setAttribute('aria-hidden','false'); };
+      confirmApplyBtn.onclick = onApply;
+      ignoreBtn.onclick = ()=>{ resultCard.style.display='none'; draft=null; lastCover=null; toast('Ignored. Nothing saved.'); };
+      coverBtn.onclick = onCoverClick;
     }
-  }
 
-  // events
-  analyseBtn.addEventListener('click', analyseUrl);
-  jobUrlInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') analyseUrl(); });
-</script>
+    // ====== Applications send
+    function toApplicationsPayload(a, opts){
+      const salary = a.salary || {};
+      return {
+        source_url: a.source_url || '',
+        canonical_job_url: a.canonical_job_url || a.canonical_url || canonicalize(a.source_url || ''),
+        title: a.title || '',
+        company_name: a.company_name || '',
+        seniority: a.seniority || '',
+        role_type: a.role_type || '',
+        sector: a.sector || '',
+        contact_email: a.contact_email || '',
+        date_posted: a.date_posted || '',
+        date_deadline: a.date_deadline || '',
+        start_date: a.start_date || '',
+        salary_min: salary.min || '',
+        salary_max: salary.max || '',
+        salary_currency: salary.currency || '',
+        salary_period: salary.period || '',
+        salary_raw: salary.salary_raw || a.salary_raw || '',
+        locations: Array.isArray(a.locations) ? a.locations : [],
+        AI_fit_score: a.AI_fit_score ?? 0,
+        AI_alignment_score: a.AI_alignment_score ?? 0,
+        AI_cv_filename: a.AI_cv_recommendation?.filename || a.AI_cv_filename || '',
+        AI_cv_reason: a.AI_cv_recommendation?.reason || a.AI_cv_reason || '',
+        key_requirements: a.key_requirements || [],
+        other_requirements: a.other_requirements || [],
+        fits: a.fits || [],
+        gaps: a.gaps || [],
+        job_summary: a.job_summary || '',
+        keywords: a.keywords || [],
+        job_description: a.job_description || '',
+        status: opts.status, // "Saved" | "Applied"
+        applied_date: opts.status === 'Applied' ? (opts.appliedDate || londonTodayISO()) : '',
+        application_effort_rating: opts.effort ?? '',
+        application_chance_rating: opts.chance ?? '',
+        status_update_date: londonTodayISO(),
+        cover_letter_url: a.cover_letter_url ?? ''
+      };
+    }
+    async function sendApplications(env, payload){
+      const fd = new FormData();
+      for (const [k,v] of Object.entries(payload)){
+        if (Array.isArray(v)) fd.append(k, JSON.stringify(v));
+        else fd.append(k, v == null ? '' : String(v));
+      }
+      return postForm(URLS[env].applications, fd);
+    }
+
+    async function onSave(){
+      if (!draft) return;
+      try{
+        const payload = toApplicationsPayload(draft, { status:'Saved' });
+        await sendApplications(currentEnv, payload);
+        toast('Saved for later ✅');
+        // demo: push to local list (so it appears under "Saved")
+        applicationsList.push({
+          id: String(Date.now()),
+          title: draft.title || 'Untitled role',
+          company: draft.company_name || '',
+          status: 'saved',
+          appliedDate: null,
+          location: asArray(draft.locations).join(' • ') || '—',
+          salary: salaryText(draft) || '—',
+          fitScore: Number(draft.AI_fit_score || 0),
+          alignmentScore: Number(draft.AI_alignment_score || 0),
+          source: (new URL(draft.source_url || 'http://example.com')).hostname,
+          description: draft.job_description || '',
+          requirements: asArray(draft.key_requirements || []),
+          fits: asArray(draft.fits || []),
+          gaps: asArray(draft.gaps || []),
+          effortRating: null,
+          chanceRating: null
+        });
+      }catch(e){ console.error(e); toast(`Save failed (${currentEnv})`); }
+    }
+
+    async function onApply(){
+      if (!draft) return;
+      try{
+        const effort = Number(effortInput.value);
+        const chance = Number(chanceInput.value);
+        const payload = toApplicationsPayload(draft, {
+          status:'Applied',
+          effort: Number.isFinite(effort) ? effort : '',
+          chance: Number.isFinite(chance) ? chance : '',
+          appliedDate: londonTodayISO()
+        });
+        await sendApplications(currentEnv, payload);
+        toast('Marked as applied 🎉');
+        ratingInputs.classList.remove('show'); ratingInputs.setAttribute('aria-hidden','true');
+
+        // demo: push/update local list
+        applicationsList.push({
+          id: String(Date.now()),
+          title: draft.title || 'Untitled role',
+          company: draft.company_name || '',
+          status: 'applied',
+          appliedDate: londonTodayISO(),
+          location: asArray(draft.locations).join(' • ') || '—',
+          salary: salaryText(draft) || '—',
+          fitScore: Number(draft.AI_fit_score || 0),
+          alignmentScore: Number(draft.AI_alignment_score || 0),
+          source: (new URL(draft.source_url || 'http://example.com')).hostname,
+          description: draft.job_description || '',
+          requirements: asArray(draft.key_requirements || []),
+          fits: asArray(draft.fits || []),
+          gaps: asArray(draft.gaps || []),
+          effortRating: effort,
+          chanceRating: chance
+        });
+      }catch(e){ console.error(e); toast(`Apply failed (${currentEnv})`); }
+    }
+
+    // ====== Cover letter & CV
+    async function onCoverClick(){
+      if (!draft) return toast('Analyse a job first');
+      coverSection.classList.add('show');
+      coverContent.classList.remove('show');
+      coverStatus.innerHTML = '<span class="spinner" aria-hidden="true"></span> Preparing cover letter & CV tips…';
+
+      try{
+        const fd = new FormData();
+        fd.append('job_json', JSON.stringify(draft));
+        if (CV_FOLDER_ID) fd.append('cv_folder_id', CV_FOLDER_ID);
+        if (GUIDE_DOC_ID) fd.append('guide_doc_id', GUIDE_DOC_ID);
+
+        const data = await postForm(URLS[currentEnv].cover, fd);
+        lastCover = Array.isArray(data) ? data[0] : data || {};
+
+        const cv = lastCover.selected_cv || {};
+        const tweaks = Array.isArray(lastCover.cv_tweaks) ? lastCover.cv_tweaks : [];
+        const letter = lastCover.cover_letter || {};
+
+        cvNameEl.textContent = cv.filename || '—';
+        cvWhyEl.textContent = cv.reason || '—';
+
+        const link = letter.doc_url || cv.doc_url;
+        coverDocLinkEl.innerHTML = link ? `<a href="${link}" target="_blank" rel="noopener">${link}</a>` : '—';
+
+        cvTweaksEl.textContent = tweaks.length ? bullets(tweaks) : 'No tweaks suggested.';
+        coverPreviewEl.textContent = letter.plain_text || (letter.html ? letter.html : 'No preview provided.');
+
+        if (link){
+          openDocBtn.style.display='inline-flex';
+          openDocBtn.onclick = ()=> window.open(link,'_blank','noopener');
+        } else {
+          openDocBtn.style.display='none';
+        }
+        copyCoverBtn.onclick = async ()=>{
+          try{ await navigator.clipboard.writeText(letter.plain_text || letter.html || ''); toast('Cover letter copied'); }
+          catch{ toast('Copy failed'); }
+        };
+
+        coverStatus.textContent = 'Generated ✓';
+        coverContent.classList.add('show');
+      }catch(e){
+        console.error(e);
+        coverStatus.textContent = 'Generation failed. Check n8n logs / CORS.';
+      }
+    }
+
+    // ====== Applications page (demo list)
+    function renderApplications(){
+      const statusVal = statusFilter.value;
+      const sortVal = sortFilter.value;
+
+      let arr = [...applicationsList];
+      if (statusVal !== 'all') arr = arr.filter(a => a.status === statusVal);
+
+      switch (sortVal){
+        case 'date-desc': arr.sort((a,b)=> new Date(b.appliedDate||'2000-01-01')-new Date(a.appliedDate||'2000-01-01')); break;
+        case 'date-asc':  arr.sort((a,b)=> new Date(a.appliedDate||'2000-01-01')-new Date(b.appliedDate||'2000-01-01')); break;
+        case 'fit-desc':  arr.sort((a,b)=> (b.fitScore||0)-(a.fitScore||0)); break;
+        case 'company':   arr.sort((a,b)=> (a.company||'').localeCompare(b.company||'')); break;
+      }
+
+      applicationsGrid.innerHTML = arr.map(app => `
+        <div class="application-card" onclick="openApplicationModal('${app.id}')">
+          <div class="application-status status-${app.status}">${app.status}</div>
+          <div class="application-header">
+            <div class="application-title">${escapeHtml(app.title)}</div>
+            <div class="application-company">${escapeHtml(app.company)}</div>
+            <div class="application-date">${app.appliedDate ? `Applied: ${formatDate(app.appliedDate)}` : 'Saved for later'}</div>
+          </div>
+          <div class="application-scores">
+            <div class="mini-score"><div class="mini-score-label">Fit</div><div class="mini-score-value">${app.fitScore ?? 0}%</div></div>
+            <div class="mini-score"><div class="mini-score-label">Alignment</div><div class="mini-score-value">${app.alignmentScore ?? 0}%</div></div>
+          </div>
+          <div class="application-meta">
+            <div class="application-location">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              ${escapeHtml(app.location || '—')}
+            </div>
+            <div class="application-salary">${escapeHtml(app.salary || '—')}</div>
+          </div>
+        </div>
+      `).join('');
+
+      statTotal.textContent = applicationsList.length;
+      statApplied.textContent = applicationsList.filter(a=>a.status==='applied').length;
+      statSaved.textContent = applicationsList.filter(a=>a.status==='saved').length;
+      statResponses.textContent = applicationsList.filter(a=>a.status==='response').length;
+    }
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+    window.openApplicationModal = function(id){
+      const app = applicationsList.find(a=>a.id===id);
+      if (!app) return;
+      modalTitle.textContent = app.title;
+      modalBody.innerHTML = `
+        <div class="job-header">
+          <div class="job-company" style="margin-bottom:1rem;">${escapeHtml(app.company)}</div>
+          <div class="job-details">
+            <div class="detail-item"><div class="detail-label">Status</div><div class="detail-value"><span class="application-status status-${app.status}">${app.status}</span></div></div>
+            <div class="detail-item"><div class="detail-label">Location</div><div class="detail-value">${escapeHtml(app.location || '—')}</div></div>
+            <div class="detail-item"><div class="detail-label">Salary</div><div class="detail-value">${escapeHtml(app.salary || '—')}</div></div>
+            <div class="detail-item"><div class="detail-label">Source</div><div class="detail-value">${escapeHtml(app.source || '—')}</div></div>
+          </div>
+        </div>
+
+        <div class="scores-section">
+          <div class="score-card">
+            <div class="score-label">AI Fit Score</div>
+            <div class="score-value">${app.fitScore ?? 0}%</div>
+            <div class="score-bar"><div class="score-fill" style="width:${app.fitScore ?? 0}%"></div></div>
+          </div>
+          <div class="score-card">
+            <div class="score-label">Alignment Score</div>
+            <div class="score-value">${app.alignmentScore ?? 0}%</div>
+            <div class="score-bar"><div class="score-fill" style="width:${app.alignmentScore ?? 0}%"></div></div>
+          </div>
+        </div>
+
+        ${Number.isFinite(app.effortRating) ? `
+          <div class="section">
+            <h3 class="section-title">Application effort</h3>
+            <div class="columns" style="grid-template-columns:1fr 1fr">
+              <div class="column"><h3>Effort rating</h3><div class="score-value" style="font-size:1.5rem">${app.effortRating}/10</div></div>
+              <div class="column"><h3>Chance rating</h3><div class="score-value" style="font-size:1.5rem">${app.chanceRating}/10</div></div>
+            </div>
+          </div>
+        `:''}
+
+        <div class="columns">
+          <div class="column">
+            <h3>✅ Perfect fits</h3>
+            <div class="list-content">${bullets(app.fits || []).replace(/\n/g,'<br/>')}</div>
+          </div>
+          <div class="column">
+            <h3>⚠️ Areas to address</h3>
+            <div class="list-content">${bullets(app.gaps || []).replace(/\n/g,'<br/>')}</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3 class="section-title">Job description</h3>
+          <div class="summary"><div>${escapeHtml(app.description || '')}</div></div>
+        </div>
+
+        <div class="section">
+          <h3 class="section-title">Requirements</h3>
+          <div class="keywords">${asArray(app.requirements).map(r=>`<span class="keyword">${escapeHtml(r)}</span>`).join('')}</div>
+        </div>
+      `;
+      modal.classList.add('show');
+      modal.setAttribute('aria-hidden','false');
+    };
+    function closeModal(){ modal.classList.remove('show'); modal.setAttribute('aria-hidden','true'); }
+    modalOverlay.addEventListener('click', closeModal);
+    modalClose.addEventListener('click', closeModal);
+    document.addEventListener('keydown',(e)=>{ if (e.key==='Escape' && modal.classList.contains('show')) closeModal(); });
+
+    // Initial render
+    renderApplications();
+  </script>
 </body>
 </html>
