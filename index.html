@@ -1,13 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Graduate Applications Assistant</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Charts (lightweight + responsive) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    :root {
+    :root{
       --primary-50:#eff6ff; --primary-100:#dbeafe; --primary-500:#3b82f6; --primary-600:#2563eb; --primary-700:#1d4ed8;
       --success-50:#f0fdf4; --success-500:#22c55e; --success-600:#16a34a;
       --warning-50:#fffbeb; --warning-500:#f59e0b; --warning-600:#d97706;
@@ -20,178 +22,165 @@
       --shadow-xl:0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
       --gradient-primary: linear-gradient(135deg,var(--primary-500),var(--primary-600));
       --gradient-success: linear-gradient(135deg,var(--success-500),var(--success-600));
-      --gradient-warning: linear-gradient(135deg,var(--warning-500),var(--warning-600));
       --gradient-danger: linear-gradient(135deg,var(--danger-500),var(--danger-600));
     }
     *{box-sizing:border-box;margin:0;padding:0}
     body{
       font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
       background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
-      min-height:100vh; padding:2rem 1rem; color:var(--gray-800); line-height:1.6;
+      min-height:100vh; padding:2rem 1rem; color:var(--gray-800);
     }
     .container{max-width:1200px;margin:0 auto}
-    .header,.applications-header{
-      background:rgba(255,255,255,0.95); backdrop-filter:blur(20px);
-      border:1px solid rgba(255,255,255,0.2); border-radius:24px; padding:2rem; margin-bottom:2rem; box-shadow:var(--shadow-xl);
+    .header,.panel{
+      background:rgba(255,255,255,.95); backdrop-filter:blur(20px);
+      border:1px solid rgba(255,255,255,.2); border-radius:24px; padding:2rem; box-shadow:var(--shadow-xl);
     }
-    .header-content{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:2rem}
+    .header{margin-bottom:2rem}
+    .header-content{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:2rem}
     .title{font-size:clamp(1.5rem,4vw,2.5rem);font-weight:700;background:var(--gradient-primary);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
     .nav-controls{display:flex;align-items:center;gap:2rem;flex-wrap:wrap}
     .nav-tabs{display:flex;background:var(--gray-100);border-radius:12px;padding:4px}
-    .nav-tab{display:flex;align-items:center;gap:.5rem;padding:.75rem 1.5rem;border:none;background:transparent;color:var(--gray-600);font-weight:500;border-radius:8px;cursor:pointer;transition:.3s}
+    .nav-tab{display:flex;align-items:center;gap:.5rem;padding:.75rem 1.25rem;border:none;background:transparent;color:var(--gray-600);font-weight:600;border-radius:10px;cursor:pointer;transition:.25s}
     .nav-tab:hover{background:var(--gray-200);color:var(--gray-800)}
     .nav-tab.active{background:#fff;color:var(--primary-600);box-shadow:var(--shadow-sm)}
     .env-selector{display:flex;align-items:center;gap:.75rem;background:var(--gray-50);padding:.75rem 1rem;border-radius:16px;border:1px solid var(--gray-200)}
-    .env-selector label{font-size:.875rem;font-weight:500;color:var(--gray-600)}
-    .env-selector select{background:#fff;border:1px solid var(--gray-300);border-radius:8px;padding:.5rem .75rem;font-size:.875rem;color:var(--gray-700);cursor:pointer}
-    .env-selector select:focus{outline:none;border-color:var(--primary-500);box-shadow:0 0 0 3px rgba(59,130,246,.1)}
+    .env-selector label{font-size:.9rem;color:var(--gray-600);font-weight:500}
+    .env-selector select{background:#fff;border:1px solid var(--gray-300);border-radius:8px;padding:.5rem .75rem;font-size:.9rem;color:var(--gray-700)}
     .page-content{display:none}
     .page-content.active{display:block}
 
     /* Analyse page */
     .search-section{position:relative}
-    .search-input{width:100%;padding:1rem 1.5rem;font-size:1rem;border:2px solid var(--gray-200);border-radius:16px;background:#fff;transition:.3s;outline:none}
+    .search-input{width:100%;padding:1rem 1.25rem;border:2px solid var(--gray-200);border-radius:16px;background:#fff;transition:.25s;outline:none}
     .search-input:focus{border-color:var(--primary-500);box-shadow:0 0 0 4px rgba(59,130,246,.1);transform:translateY(-2px)}
-    .search-button{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:var(--gradient-primary);color:#fff;border:none;padding:.75rem 1.5rem;border-radius:12px;font-weight:600;cursor:pointer;transition:.3s;box-shadow:var(--shadow-md)}
-    .search-button:hover:not(:disabled){transform:translateY(calc(-50% - 2px));box-shadow:var(--shadow-lg)}
-    .search-button:disabled{opacity:.6;cursor:not-allowed}
-    .helper-text{margin-top:1rem;font-size:.875rem;color:var(--gray-500);display:flex;align-items:center;gap:.5rem}
-    .result-card{background:rgba(255,255,255,.95);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.2);border-radius:24px;padding:2rem;box-shadow:var(--shadow-xl);display:none;animation:slideUp .6s ease-out}
+    .search-button{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:var(--gradient-primary);color:#fff;border:none;padding:.75rem 1.25rem;border-radius:12px;font-weight:700;cursor:pointer;box-shadow:var(--shadow-md);transition:.25s}
+    .search-button:hover:not(:disabled){transform:translateY(calc(-50% - 2px))}
+    .helper-text{margin-top:1rem;font-size:.9rem;color:var(--gray-500);display:flex;align-items:center;gap:.5rem}
+
+    .result-card{background:rgba(255,255,255,.95);border:1px solid rgba(255,255,255,.2);border-radius:24px;padding:2rem;box-shadow:var(--shadow-xl);display:none;animation:slideUp .6s ease-out;margin-top:1rem}
     @keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
-    .job-header{border-bottom:1px solid var(--gray-200);padding-bottom:2rem;margin-bottom:2rem}
-    .job-title{font-size:2rem;font-weight:700;color:var(--gray-900);margin-bottom:.5rem}
-    .job-company{font-size:1.25rem;color:var(--gray-600);margin-bottom:1.5rem}
-    .job-details{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem}
+    .job-header{border-bottom:1px solid var(--gray-200);padding-bottom:1.25rem;margin-bottom:1.25rem}
+    .job-title{font-size:2rem;font-weight:800;color:var(--gray-900)}
+    .job-company{font-size:1.15rem;color:var(--gray-600);margin:.5rem 0 1rem}
+    .job-details{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem}
     .detail-item{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:12px;padding:1rem}
-    .detail-label{font-size:.75rem;font-weight:600;color:var(--gray-500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem}
-    .detail-value{font-weight:500;color:var(--gray-700)}
+    .detail-label{font-size:.75rem;color:var(--gray-500);font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-bottom:.25rem}
     .detail-value a{color:var(--primary-600);text-decoration:none}
-    .scores-section{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.5rem;margin:2rem 0}
-    .score-card{background:#fff;border:1px solid var(--gray-200);border-radius:16px;padding:1.5rem;text-align:center;transition:.3s}
-    .score-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg)}
-    .score-label{font-weight:600;color:var(--gray-700);margin-bottom:1rem}
-    .score-value{font-size:2rem;font-weight:700;margin-bottom:1rem}
-    .score-bar{height:8px;background:var(--gray-200);border-radius:4px;overflow:hidden}
-    .score-fill{height:100%;border-radius:4px;transition:width 1s ease-out;background:var(--gradient-primary)}
-    .section{margin:2rem 0}
-    .section-title{font-size:1.5rem;font-weight:600;color:var(--gray-900);margin-bottom:1rem;display:flex;align-items:center;gap:.5rem}
-    .keywords{display:flex;flex-wrap:wrap;gap:.75rem}
-    .keyword{background:var(--primary-50);color:var(--primary-700);border:1px solid var(--primary-200);padding:.5rem 1rem;border-radius:20px;font-size:.875rem;font-weight:500}
-    .columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:2rem}
-    .column{background:#fff;border:1px solid var(--gray-200);border-radius:16px;padding:1.5rem;box-shadow:var(--shadow-sm)}
-    .column h3{color:var(--gray-800);margin-bottom:1rem;font-size:1.25rem}
+
+    .scores-section{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.25rem;margin:1.5rem 0}
+    .score-card{background:#fff;border:1px solid var(--gray-200);border-radius:16px;padding:1.25rem;text-align:center}
+    .score-label{color:var(--gray-700);font-weight:700;margin-bottom:.5rem}
+    .score-value{font-size:2rem;font-weight:800}
+    .score-bar{height:8px;background:var(--gray-200);border-radius:4px;overflow:hidden;margin-top:.5rem}
+    .score-fill{height:100%;background:var(--gradient-primary)}
+
+    .section{margin:1.5rem 0}
+    .section-title{font-size:1.25rem;font-weight:800;color:var(--gray-900);display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem}
+    .keywords{display:flex;flex-wrap:wrap;gap:.6rem}
+    .keyword{background:var(--primary-50);color:var(--primary-700);border:1px solid var(--primary-200);padding:.45rem .85rem;border-radius:22px;font-weight:600;font-size:.9rem}
+    .columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1.25rem}
+    .column{background:#fff;border:1px solid var(--gray-200);border-radius:16px;padding:1rem}
     .list-content{background:var(--gray-50);border-radius:8px;padding:1rem;white-space:pre-wrap;color:var(--gray-700)}
-    .summary{background:linear-gradient(135deg,var(--primary-50),var(--primary-100));border:1px solid var(--primary-200);border-radius:16px;padding:1.5rem;margin:2rem 0}
-    .actions{display:flex;flex-wrap:wrap;gap:1rem;margin:2rem 0;padding:2rem 0;border-top:1px solid var(--gray-200)}
-    .btn{padding:.75rem 1.5rem;border-radius:12px;font-weight:600;cursor:pointer;transition:.3s;border:none;display:flex;align-items:center;gap:.5rem;text-decoration:none;font-size:.875rem}
-    .btn-primary{background:var(--gradient-primary);color:#fff;box-shadow:var(--shadow-md)}
-    .btn-success{background:var(--gradient-success);color:#fff;box-shadow:var(--shadow-md)}
-    .btn-outline{background:#fff;color:var(--gray-700);border:2px solid var(--gray-300)}
-    .btn-danger{background:var(--gradient-danger);color:#fff;box-shadow:var(--shadow-md)}
+
+    .summary{background:linear-gradient(135deg,var(--primary-50),var(--primary-100));border:1px solid var(--primary-200);border-radius:16px;padding:1.25rem}
+
+    .actions{display:flex;flex-wrap:wrap;gap:.75rem;margin:1.25rem 0;padding-top:1.25rem;border-top:1px solid var(--gray-200)}
+    .btn{padding:.75rem 1.25rem;border-radius:12px;font-weight:800;cursor:pointer;border:none;display:flex;align-items:center;gap:.5rem;font-size:.9rem}
+    .btn-primary{background:var(--gradient-primary);color:#fff}
+    .btn-success{background:var(--gradient-success);color:#fff}
+    .btn-outline{background:#fff;color:var(--gray-800);border:2px solid var(--gray-300)}
+    .btn-danger{background:var(--gradient-danger);color:#fff}
     .btn:disabled{opacity:.6;cursor:not-allowed}
-    .rating-inputs{display:none;align-items:center;gap:1rem;margin-top:1rem;padding:1rem;background:var(--gray-50);border-radius:12px;border:1px solid var(--gray-200)}
+
+    .rating-inputs{display:none;align-items:center;gap:1rem;margin-top:.5rem;padding:1rem;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:12px}
     .rating-inputs.show{display:flex}
     .rating-input{display:flex;flex-direction:column;gap:.25rem}
-    .rating-input label{font-size:.875rem;font-weight:500;color:var(--gray-600)}
-    .rating-input input{padding:.5rem;border:1px solid var(--gray-300);border-radius:6px;width:80px}
-    .cover-section{display:none;margin-top:2rem;padding-top:2rem;border-top:1px solid var(--gray-200)}
-    .cover-section.show{display:block;animation:slideUp .6s ease-out}
-    .cover-status{display:flex;align-items:center;gap:.5rem;color:var(--gray-600);margin-bottom:1.5rem}
+    .rating-input input{padding:.5rem;border:1px solid var(--gray-300);border-radius:8px;width:80px}
+
+    .cover-section{display:none;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--gray-200)}
+    .cover-section.show{display:block}
+    .cover-status{display:flex;align-items:center;gap:.5rem;color:var(--gray-600)}
     .spinner{width:16px;height:16px;border:2px solid var(--gray-300);border-top:2px solid var(--primary-500);border-radius:50%;animation:spin 1s linear infinite}
-    @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+    @keyframes spin{to{transform:rotate(360deg)}}
     .cover-content{display:none}
     .cover-content.show{display:block}
-    .cover-preview{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:12px;padding:1.5rem;margin:1rem 0;white-space:pre-wrap;max-height:400px;overflow:auto}
-    .details-section{margin-top:2rem;border-top:1px solid var(--gray-200);padding-top:2rem}
-    .details-content{display:none;margin-top:1rem}
-    .details-content.show{display:block;animation:slideUp .4s ease-out}
-    .details-text{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:12px;padding:1.5rem;white-space:pre-wrap;max-height:600px;overflow:auto}
+    .cover-preview{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:12px;padding:1rem;white-space:pre-wrap;max-height:360px;overflow:auto}
 
-    /* Applications page */
-    .applications-title{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:2rem;margin-bottom:2rem}
-    .applications-title h2{font-size:2rem;font-weight:700;color:var(--gray-900)}
-    .applications-stats{display:flex;gap:2rem}
-    .stat-item{text-align:center;padding:1rem 1.5rem;background:var(--gray-50);border-radius:12px;border:1px solid var(--gray-200)}
-    .stat-number{display:block;font-size:1.5rem;font-weight:700;color:var(--primary-600)}
-    .stat-label{font-size:.875rem;color:var(--gray-600);font-weight:500}
-    .applications-filters{display:flex;gap:1rem;flex-wrap:wrap}
-    .filter-select{padding:.75rem 1rem;border:1px solid var(--gray-300);border-radius:12px;background:#fff;color:var(--gray-700);font-weight:500;cursor:pointer}
-    .applications-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:1.5rem}
-    .application-card{background:rgba(255,255,255,.95);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.2);border-radius:16px;padding:1.5rem;box-shadow:var(--shadow-md);cursor:pointer;transition:.3s;position:relative;overflow:hidden}
-    .application-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-xl)}
-    .application-status{position:absolute;top:1rem;right:1rem;padding:.25rem .75rem;border-radius:20px;font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+    .details-section{margin-top:1rem;border-top:1px solid var(--gray-200);padding-top:1rem}
+    .details-content{display:none;margin-top:.5rem}
+    .details-content.show{display:block}
+    .details-text{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:12px;padding:1rem;white-space:pre-wrap;max-height:600px;overflow:auto}
+
+    /* Applications & Saved */
+    .filters{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}
+    .filter-select{padding:.6rem .85rem;border:1px solid var(--gray-300);border-radius:10px;background:#fff;font-weight:600}
+    .applications-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:1.1rem}
+    .application-card{background:rgba(255,255,255,.95);border:1px solid rgba(255,255,255,.2);border-radius:16px;padding:1.1rem;box-shadow:var(--shadow-md);cursor:pointer;transition:.2s;position:relative}
+    .application-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+    .application-status{position:absolute;top:.75rem;right:.75rem;padding:.2rem .65rem;border-radius:20px;font-size:.72rem;font-weight:800;text-transform:uppercase}
     .status-applied{background:var(--success-50);color:var(--success-600);border:1px solid #bbf7d0}
     .status-saved{background:var(--primary-50);color:var(--primary-600);border:1px solid #bfdbfe}
     .status-response{background:var(--warning-50);color:var(--warning-600);border:1px solid #fde68a}
-    .application-header{margin-bottom:1rem;padding-right:4rem}
-    .application-title{font-size:1.25rem;font-weight:600;color:var(--gray-900);margin-bottom:.5rem;line-height:1.3}
-    .application-company{color:var(--primary-600);font-weight:500;margin-bottom:.5rem}
-    .application-date{font-size:.875rem;color:var(--gray-500)}
-    .application-scores{display:flex;gap:1rem;margin:1rem 0}
+    .application-title{font-size:1.1rem;font-weight:800;color:var(--gray-900)}
+    .application-company{color:var(--primary-600);font-weight:700;margin:.25rem 0}
+    .application-date{font-size:.85rem;color:var(--gray-500)}
+    .application-scores{display:flex;gap:1rem;margin:.75rem 0}
     .mini-score{flex:1;text-align:center}
-    .mini-score-label{font-size:.75rem;color:var(--gray-500);margin-bottom:.25rem}
-    .mini-score-value{font-weight:600;color:var(--primary-600)}
-    .application-meta{display:flex;justify-content:space-between;align-items:center;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--gray-200);font-size:.875rem;color:var(--gray-600)}
-    .application-location{display:flex;align-items:center;gap:.25rem}
-    .application-salary{font-weight:500}
+    .mini-score-label{font-size:.75rem;color:var(--gray-500)}
+    .mini-score-value{font-weight:800;color:var(--primary-600)}
+    .application-meta{display:flex;justify-content:space-between;align-items:center;margin-top:.6rem;padding-top:.6rem;border-top:1px solid var(--gray-200);font-size:.9rem;color:var(--gray-600)}
 
     /* Modal */
     .modal{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1000;display:none;align-items:center;justify-content:center;padding:2rem}
-    .modal.show{display:flex;animation:modalShow .3s ease-out}
-    @keyframes modalShow{from{opacity:0}to{opacity:1}}
-    .modal-overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);backdrop-filter:blur(4px)}
-    .modal-content{position:relative;background:#fff;border-radius:24px;box-shadow:var(--shadow-xl);max-width:800px;width:100%;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;animation:modalContentShow .3s ease-out}
-    @keyframes modalContentShow{from{opacity:0;transform:scale(.9) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}
-    .modal-header{display:flex;justify-content:space-between;align-items:center;padding:2rem 2rem 1rem;border-bottom:1px solid var(--gray-200)}
-    .modal-header h3{font-size:1.5rem;font-weight:600;color:var(--gray-900)}
-    .modal-close{background:none;border:none;color:var(--gray-400);cursor:pointer;padding:.5rem;border-radius:8px}
-    .modal-close:hover{background:var(--gray-100);color:var(--gray-600)}
-    .modal-body{padding:2rem;overflow-y:auto}
+    .modal.show{display:flex}
+    .modal-overlay{position:absolute;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(4px)}
+    .modal-content{position:relative;background:#fff;border-radius:24px;box-shadow:var(--shadow-xl);max-width:840px;width:100%;max-height:90vh;overflow:hidden;display:flex;flex-direction:column}
+    .modal-header{display:flex;justify-content:space-between;align-items:center;padding:1.25rem 1.5rem;border-bottom:1px solid var(--gray-200)}
+    .modal-body{padding:1.25rem;overflow:auto}
+    .modal-close{background:none;border:none;color:var(--gray-500);cursor:pointer;padding:.5rem;border-radius:8px}
+
+    /* Analytics */
+    .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin-bottom:1rem}
+    .kpi{background:#fff;border:1px solid var(--gray-200);border-radius:16px;padding:1rem}
+    .kpi-label{font-size:.85rem;color:var(--gray-500);font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+    .kpi-value{font-size:1.8rem;font-weight:900;margin-top:.35rem}
+    .charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1rem}
+
+    /* Add Application */
+    .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem}
+    .form-field{display:flex;flex-direction:column;gap:.35rem}
+    .form-field label{font-weight:700;color:var(--gray-700);font-size:.9rem}
+    .form-field input,.form-field textarea,.form-field select{
+      border:1px solid var(--gray-300);border-radius:10px;padding:.6rem .75rem;background:#fff;font-size:.95rem
+    }
+    .help{font-size:.8rem;color:var(--gray-500)}
+    .hr{height:1px;background:var(--gray-200);margin:1rem 0}
 
     /* Toast */
-    .toast{position:fixed;top:2rem;right:2rem;background:rgba(255,255,255,.95);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.2);color:var(--gray-800);padding:1rem 1.5rem;border-radius:12px;box-shadow:var(--shadow-xl);transform:translateX(400px);opacity:0;transition:.4s;z-index:1000;max-width:320px}
+    .toast{position:fixed;top:1.25rem;right:1.25rem;background:rgba(255,255,255,.95);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.2);color:var(--gray-800);padding:.9rem 1.1rem;border-radius:12px;box-shadow:var(--shadow-xl);transform:translateX(400px);opacity:0;transition:.35s;z-index:1200;max-width:320px}
     .toast.show{transform:translateX(0);opacity:1}
-
-    .loading-skeleton{display:flex;flex-direction:column;gap:1rem;padding:2rem 0}
-    .skeleton{height:20px;background:linear-gradient(90deg,var(--gray-200) 25%,var(--gray-100) 50%,var(--gray-200) 75%);background-size:200% 100%;animation:loading 1.5s infinite;border-radius:8px}
-    @keyframes loading{0%{background-position:200% 0}100%{background-position:-200% 0}}
-    .loading-skeleton .skeleton:nth-child(1){width:60%}
-    .loading-skeleton .skeleton:nth-child(2){width:40%}
-    .loading-skeleton .skeleton:nth-child(3){width:80%;height:80px}
-    .loading-skeleton .skeleton:nth-child(4){width:90%;height:40px}
 
     @media (max-width:768px){
       body{padding:1rem}
-      .header{padding:1.5rem}
-      .header-content{flex-direction:column;align-items:stretch}
+      .header{padding:1.25rem}
       .nav-controls{flex-direction:column;gap:1rem}
-      .applications-title{flex-direction:column;align-items:stretch;gap:1rem}
       .applications-grid{grid-template-columns:1fr}
-      .job-title{font-size:1.5rem}
-      .actions{flex-direction:column}
-      .btn{justify-content:center}
-      .toast{right:1rem;left:1rem;max-width:none}
-      .modal{padding:1rem}
-      .modal-content{max-height:95vh}
-      .modal-header,.modal-body{padding:1.5rem}
     }
   </style>
 </head>
 <body>
   <div class="container">
+    <!-- Header -->
     <div class="header">
       <div class="header-content">
         <h1 class="title">Graduate Applications Assistant</h1>
         <div class="nav-controls">
           <nav class="nav-tabs">
-            <button id="analyzeTab" class="nav-tab active" data-tab="analyze">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-              Analyze
-            </button>
-            <button id="applicationsTab" class="nav-tab" data-tab="applications">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
-              My Applications
-            </button>
+            <button id="analyzeTab" class="nav-tab active" data-tab="analyze">Analyze</button>
+            <button id="applicationsTab" class="nav-tab" data-tab="applications">My Applications</button>
+            <button id="savedTab" class="nav-tab" data-tab="saved">Saved</button>
+            <button id="analyticsTab" class="nav-tab" data-tab="analytics">Analytics</button>
+            <button id="addTab" class="nav-tab" data-tab="add">Add Application</button>
           </nav>
           <div class="env-selector">
             <label>Environment:</label>
@@ -204,200 +193,239 @@
       </div>
     </div>
 
-    <!-- Applications Page -->
+    <!-- Applications page -->
     <div id="applicationsPage" class="page-content">
-      <div class="applications-header">
-        <div class="applications-title">
-          <h2>My Applications</h2>
-          <div class="applications-stats">
-            <div class="stat-item"><span id="statTotal" class="stat-number">0</span><span class="stat-label">Total</span></div>
-            <div class="stat-item"><span id="statApplied" class="stat-number">0</span><span class="stat-label">Applied</span></div>
-            <div class="stat-item"><span id="statSaved" class="stat-number">0</span><span class="stat-label">Saved</span></div>
-            <div class="stat-item"><span id="statResponses" class="stat-number">0</span><span class="stat-label">Responses</span></div>
-          </div>
-        </div>
-        <div class="applications-filters">
+      <div class="panel">
+        <div class="filters">
           <select id="statusFilter" class="filter-select">
-            <option value="all">All Applications</option>
+            <option value="all">All statuses</option>
             <option value="applied">Applied</option>
+            <option value="response">Got response</option>
             <option value="saved">Saved</option>
-            <option value="response">Got Response</option>
           </select>
           <select id="sortFilter" class="filter-select">
-            <option value="date-desc">Newest First</option>
-            <option value="date-asc">Oldest First</option>
-            <option value="fit-desc">Best Fit First</option>
-            <option value="company">By Company</option>
+            <option value="date-desc">Newest first</option>
+            <option value="date-asc">Oldest first</option>
+            <option value="fit-desc">Best fit first</option>
+            <option value="company">By company</option>
           </select>
         </div>
+        <div id="applicationsGrid" class="applications-grid"></div>
       </div>
-      <div id="applicationsGrid" class="applications-grid"></div>
     </div>
 
-    <!-- Application Modal -->
-    <div id="applicationModal" class="modal" aria-hidden="true">
-      <div id="modalOverlay" class="modal-overlay"></div>
-      <div class="modal-content" role="dialog" aria-modal="true">
-        <div class="modal-header">
-          <h3 id="modalTitle">Application Details</h3>
-          <button id="modalClose" class="modal-close" aria-label="Close">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
+    <!-- Saved page -->
+    <div id="savedPage" class="page-content">
+      <div class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+          <h2 style="font-size:1.4rem;font-weight:900;color:var(--gray-900)">Saved for later</h2>
+          <select id="savedSort" class="filter-select">
+            <option value="date-desc">Newest first</option>
+            <option value="fit-desc">Best fit first</option>
+            <option value="company">By company</option>
+          </select>
         </div>
-        <div id="modalBody" class="modal-body"></div>
+        <div id="savedGrid" class="applications-grid"></div>
       </div>
     </div>
 
-    <!-- Analyse Page -->
+    <!-- Analytics page -->
+    <div id="analyticsPage" class="page-content">
+      <div class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1rem">
+          <h2 style="font-size:1.4rem;font-weight:900;color:var(--gray-900)">Application Analytics</h2>
+          <div style="display:flex;gap:.5rem;align-items:center">
+            <label class="help">Timeframe</label>
+            <select id="analyticsRange" class="filter-select">
+              <option value="all">All time</option>
+              <option value="90">Last 90 days</option>
+              <option value="30">Last 30 days</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="kpi-row">
+          <div class="kpi"><div class="kpi-label">Total applications</div><div id="kpiTotal" class="kpi-value">0</div></div>
+          <div class="kpi"><div class="kpi-label">Applied</div><div id="kpiApplied" class="kpi-value">0</div></div>
+          <div class="kpi"><div class="kpi-label">Responses</div><div id="kpiResponses" class="kpi-value">0</div></div>
+          <div class="kpi"><div class="kpi-label">Avg fit</div><div id="kpiAvgFit" class="kpi-value">0%</div></div>
+        </div>
+
+        <div class="charts-grid">
+          <canvas id="chartStatus"></canvas>
+          <canvas id="chartFitDist"></canvas>
+          <canvas id="chartCompany"></canvas>
+          <canvas id="chartTrend"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add application page -->
+    <div id="addPage" class="page-content">
+      <div class="panel">
+        <h2 style="font-size:1.4rem;font-weight:900;color:var(--gray-900);margin-bottom:1rem">Add application</h2>
+        <form id="addForm">
+          <div class="form-grid">
+            <div class="form-field"><label>Job title</label><input name="title" placeholder="e.g. Graduate GIS Consultant" required/></div>
+            <div class="form-field"><label>Company</label><input name="company_name" placeholder="e.g. Stantec" required/></div>
+            <div class="form-field"><label>Source URL</label><input type="url" name="source_url" placeholder="https://..." /></div>
+            <div class="form-field"><label>Locations (comma separated)</label><input name="locations" placeholder="Bristol, Cambridge"/></div>
+            <div class="form-field"><label>Status</label>
+              <select name="status">
+                <option value="Saved">Saved</option>
+                <option value="Applied">Applied</option>
+              </select>
+            </div>
+            <div class="form-field"><label>Applied date (YYYY-MM-DD)</label><input name="applied_date" placeholder="2025-08-29"/></div>
+            <div class="form-field"><label>Effort /10</label><input type="number" min="0" max="10" step="1" name="application_effort_rating"/></div>
+            <div class="form-field"><label>Chance /10</label><input type="number" min="0" max="10" step="1" name="application_chance_rating"/></div>
+
+            <div class="form-field"><label>AI Fit %</label><input type="number" min="0" max="100" step="1" name="AI_fit_score"/></div>
+            <div class="form-field"><label>AI Alignment %</label><input type="number" min="0" max="100" step="1" name="AI_alignment_score"/></div>
+            <div class="form-field"><label>Salary min</label><input type="number" name="salary_min"/></div>
+            <div class="form-field"><label>Salary max</label><input type="number" name="salary_max"/></div>
+            <div class="form-field"><label>Salary currency</label><input name="salary_currency" placeholder="£"/></div>
+            <div class="form-field"><label>Salary period</label><input name="salary_period" placeholder="per annum"/></div>
+
+            <div class="form-field"><label>Keywords (comma separated)</label><input name="keywords" placeholder="GIS, ArcGIS, QGIS"/></div>
+            <div class="form-field"><label>Fits (semicolon separated)</label><input name="fits" placeholder="Strong GIS modules; ArcGIS projects"/></div>
+            <div class="form-field"><label>Gaps (semicolon separated)</label><input name="gaps" placeholder="Limited commercial experience; …"/></div>
+
+            <div class="form-field"><label>Summary</label><textarea name="job_summary" rows="3" placeholder="Short summary…"></textarea></div>
+            <div class="form-field" style="grid-column:1/-1"><label>Description</label><textarea name="job_description" rows="5" placeholder="Full job description…"></textarea></div>
+          </div>
+
+          <div class="hr"></div>
+          <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+            <button class="btn btn-primary" type="submit">Save to n8n</button>
+            <button class="btn btn-outline" type="button" id="addMock">Quick add (local only)</button>
+          </div>
+          <p class="help" style="margin-top:.5rem">Arrays are parsed from your comma/semicolon entries. The form posts to your <strong>/applications</strong> webhook using the current environment.</p>
+        </form>
+      </div>
+    </div>
+
+    <!-- Analyze page -->
     <div id="analyzePage" class="page-content active">
-      <div class="search-section">
-        <input id="jobUrl" type="url" class="search-input" placeholder="Paste a job URL to analyze…" autocomplete="off"/>
-        <button id="analyzeBtn" class="search-button"><span id="analyzeText">Analyze</span></button>
-      </div>
-      <div class="helper-text">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-        Test uses <code>/webhook-test/*</code> endpoints. Production uses <code>/webhook/*</code> endpoints.
-      </div>
-
-      <div id="resultCard" class="result-card" aria-live="polite">
-        <div id="loadingState" class="loading-skeleton">
-          <div class="skeleton"></div>
-          <div class="skeleton"></div>
-          <div class="skeleton"></div>
-          <div class="skeleton"></div>
+      <div class="panel">
+        <div class="search-section">
+          <input id="jobUrl" type="url" class="search-input" placeholder="Paste a job URL to analyze…" autocomplete="off"/>
+          <button id="analyzeBtn" class="search-button"><span id="analyzeText">Analyze</span></button>
+        </div>
+        <div class="helper-text">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+          Test uses <code>/webhook-test/*</code>. Production uses <code>/webhook/*</code>.
         </div>
 
-        <div id="resultContent" style="display:none">
-          <div class="job-header">
-            <h2 id="jobTitle" class="job-title">Job Title</h2>
-            <div id="jobCompany" class="job-company">Company</div>
-            <div id="jobDetails" class="job-details"></div>
+        <div id="resultCard" class="result-card" aria-live="polite">
+          <div id="loadingState" style="display:none">
+            <div style="height:16px;background:var(--gray-200);border-radius:8px;margin:.5rem 0;animation:loading 1.5s infinite;background-size:200% 100%;background-image:linear-gradient(90deg,var(--gray-200) 25%,var(--gray-100) 50%,var(--gray-200) 75%)"></div>
+            <div style="height:16px;background:var(--gray-200);border-radius:8px;margin:.5rem 0;animation:loading 1.5s infinite;background-size:200% 100%;background-image:linear-gradient(90deg,var(--gray-200) 25%,var(--gray-100) 50%,var(--gray-200) 75%)"></div>
           </div>
 
-          <div class="scores-section">
-            <div class="score-card">
-              <div class="score-label">AI Fit Score</div>
-              <div id="fitScore" class="score-value">0%</div>
-              <div class="score-bar"><div id="fitFill" class="score-fill" style="width:0%"></div></div>
+          <div id="resultContent" style="display:none">
+            <div class="job-header">
+              <h2 id="jobTitle" class="job-title">Job Title</h2>
+              <div id="jobCompany" class="job-company">Company</div>
+              <div id="jobDetails" class="job-details"></div>
             </div>
-            <div class="score-card">
-              <div class="score-label">Alignment Score</div>
-              <div id="alignScore" class="score-value">0%</div>
-              <div class="score-bar"><div id="alignFill" class="score-fill" style="width:0%"></div></div>
-            </div>
-          </div>
 
-          <div class="section">
-            <h3 class="section-title">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-              Keywords
-            </h3>
-            <div id="keywords" class="keywords"></div>
-          </div>
-
-          <div class="columns">
-            <div class="column">
-              <h3>✅ Perfect Fits</h3>
-              <div id="fits" class="list-content"></div>
-            </div>
-            <div class="column">
-              <h3>⚠️ Areas to Address</h3>
-              <div id="gaps" class="list-content"></div>
-            </div>
-          </div>
-
-          <div class="section">
-            <h3 class="section-title">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14,2 14,8 20,8"/></svg>
-              Job Summary
-            </h3>
-            <div class="summary"><div id="summary"></div></div>
-          </div>
-
-          <div class="actions">
-            <button id="saveBtn" class="btn btn-primary">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
-              Save for later
-            </button>
-
-            <button id="applyBtn" class="btn btn-success">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
-              I applied!
-            </button>
-
-            <button id="coverBtn" class="btn btn-outline">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-                <polyline points="14,2 14,8 20,8"/>
-                <path d="M10 13l2 2 4-4"/>
-              </svg>
-              Cover letter & CV
-            </button>
-
-            <button id="ignoreBtn" class="btn btn-danger">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              Not interested
-            </button>
-          </div>
-
-          <div id="ratingInputs" class="rating-inputs" aria-hidden="true">
-            <div class="rating-input">
-              <label for="effort">Effort /10</label>
-              <input id="effort" type="number" min="0" max="10" step="1" value="7"/>
-            </div>
-            <div class="rating-input">
-              <label for="chance">Chance /10</label>
-              <input id="chance" type="number" min="0" max="10" step="1" value="6"/>
-            </div>
-            <button id="confirmApply" class="btn btn-success">Confirm</button>
-          </div>
-
-          <div id="coverSection" class="cover-section" aria-live="polite">
-            <div id="coverStatus" class="cover-status"><span class="spinner" aria-hidden="true"></span> Preparing cover letter & CV tips…</div>
-            <div id="coverContent" class="cover-content">
-              <div class="job-details" style="margin-bottom:1rem">
-                <div class="detail-item">
-                  <div class="detail-label">Selected CV</div>
-                  <div id="cvName" class="detail-value">—</div>
-                </div>
-                <div class="detail-item">
-                  <div class="detail-label">Why this CV</div>
-                  <div id="cvWhy" class="detail-value">—</div>
-                </div>
-                <div class="detail-item">
-                  <div class="detail-label">Cover letter doc</div>
-                  <div id="coverDocLink" class="detail-value">—</div>
-                </div>
+            <div class="scores-section">
+              <div class="score-card">
+                <div class="score-label">AI Fit Score</div>
+                <div id="fitScore" class="score-value">0%</div>
+                <div class="score-bar"><div id="fitFill" class="score-fill" style="width:0%"></div></div>
               </div>
-
-              <div class="section">
-                <h3 class="section-title">CV tweak suggestions</h3>
-                <div id="cvTweaks" class="list-content"></div>
+              <div class="score-card">
+                <div class="score-label">Alignment Score</div>
+                <div id="alignScore" class="score-value">0%</div>
+                <div class="score-bar"><div id="alignFill" class="score-fill" style="width:0%"></div></div>
               </div>
+            </div>
 
-              <div class="section">
-                <h3 class="section-title">Cover letter (preview)</h3>
-                <div id="coverPreview" class="cover-preview"></div>
-                <div style="display:flex;gap:.5rem;margin-top:.5rem">
-                  <button id="copyCover" class="btn btn-outline">Copy text</button>
-                  <button id="openDoc" class="btn btn-primary" style="display:none">Open Google Doc</button>
+            <div class="section">
+              <h3 class="section-title">Keywords</h3>
+              <div id="keywords" class="keywords"></div>
+            </div>
+
+            <div class="columns">
+              <div class="column">
+                <h3>✅ Perfect fits</h3>
+                <div id="fits" class="list-content"></div>
+              </div>
+              <div class="column">
+                <h3>⚠️ Areas to address</h3>
+                <div id="gaps" class="list-content"></div>
+              </div>
+            </div>
+
+            <div class="section">
+              <h3 class="section-title">Job summary</h3>
+              <div class="summary"><div id="summary"></div></div>
+            </div>
+
+            <div class="actions">
+              <button id="saveBtn" class="btn btn-primary">Save for later</button>
+              <button id="applyBtn" class="btn btn-success">I applied!</button>
+              <button id="coverBtn" class="btn btn-outline">Cover letter & CV</button>
+              <button id="ignoreBtn" class="btn btn-danger">Not interested</button>
+            </div>
+
+            <div id="ratingInputs" class="rating-inputs" aria-hidden="true">
+              <div class="rating-input"><label for="effort">Effort /10</label><input id="effort" type="number" min="0" max="10" step="1" value="7"/></div>
+              <div class="rating-input"><label for="chance">Chance /10</label><input id="chance" type="number" min="0" max="10" step="1" value="6"/></div>
+              <button id="confirmApply" class="btn btn-success">Confirm</button>
+            </div>
+
+            <div id="coverSection" class="cover-section" aria-live="polite">
+              <div id="coverStatus" class="cover-status"><span class="spinner"></span> Preparing cover letter & CV tips…</div>
+              <div id="coverContent" class="cover-content">
+                <div class="job-details" style="margin-bottom:.75rem">
+                  <div class="detail-item"><div class="detail-label">Selected CV</div><div id="cvName" class="detail-value">—</div></div>
+                  <div class="detail-item"><div class="detail-label">Why this CV</div><div id="cvWhy" class="detail-value">—</div></div>
+                  <div class="detail-item"><div class="detail-label">Cover letter doc</div><div id="coverDocLink" class="detail-value">—</div></div>
+                </div>
+                <div class="section">
+                  <h3 class="section-title">CV tweak suggestions</h3>
+                  <div id="cvTweaks" class="list-content"></div>
+                </div>
+                <div class="section">
+                  <h3 class="section-title">Cover letter (preview)</h3>
+                  <div id="coverPreview" class="cover-preview"></div>
+                  <div style="display:flex;gap:.5rem;margin-top:.5rem">
+                    <button id="copyCover" class="btn btn-outline">Copy text</button>
+                    <button id="openDoc" class="btn btn-primary" style="display:none">Open Google Doc</button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div class="details-section">
-            <button id="toggleDetails" class="btn btn-outline">View more</button>
-            <div id="detailsContent" class="details-content">
-              <h3 class="section-title">Full description</h3>
-              <div id="fullDescription" class="details-text"></div>
+            <div class="details-section">
+              <button id="toggleDetails" class="btn btn-outline">View more</button>
+              <div id="detailsContent" class="details-content">
+                <h3 class="section-title">Full description</h3>
+                <div id="fullDescription" class="details-text"></div>
+              </div>
             </div>
-          </div>
-        </div>
+          </div> <!-- /resultContent -->
+        </div> <!-- /resultCard -->
       </div>
-    </div><!-- /Analyze Page -->
-  </div><!-- /container -->
+    </div>
+  </div>
 
+  <!-- Modal -->
+  <div id="applicationModal" class="modal" aria-hidden="true">
+    <div id="modalOverlay" class="modal-overlay"></div>
+    <div class="modal-content" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h3 id="modalTitle" style="font-weight:900;color:var(--gray-900)">Application details</h3>
+        <button id="modalClose" class="modal-close" aria-label="Close">✕</button>
+      </div>
+      <div id="modalBody" class="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Toast -->
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script>
@@ -414,16 +442,27 @@
         cover:        'https://ogpheard.app.n8n.cloud/webhook/cover'
       }
     };
-    // Optional: pass Drive IDs to n8n (or hardcode inside n8n)
-    const CV_FOLDER_ID = '';   // e.g. '19L6t0a-NEvCrJmJqkJs3MQTq20VZ45fu'
-    const GUIDE_DOC_ID = '';   // e.g. '1CtPPxz6b6VP8tcBlXIR6ZiNDroHsST2kDGZuIIvnuIE'
+    const CV_FOLDER_ID = '';
+    const GUIDE_DOC_ID = '';
 
     // ====== Elements
     const envSelect = document.getElementById('envSelect');
+
+    // Tabs
     const analyzeTab = document.getElementById('analyzeTab');
     const applicationsTab = document.getElementById('applicationsTab');
+    const savedTab = document.getElementById('savedTab');
+    const analyticsTab = document.getElementById('analyticsTab');
+    const addTab = document.getElementById('addTab');
+
+    // Pages
     const analyzePage = document.getElementById('analyzePage');
     const applicationsPage = document.getElementById('applicationsPage');
+    const savedPage = document.getElementById('savedPage');
+    const analyticsPage = document.getElementById('analyticsPage');
+    const addPage = document.getElementById('addPage');
+
+    // Analyse page refs
     const jobUrlInput = document.getElementById('jobUrl');
     const analyzeBtn = document.getElementById('analyzeBtn');
     const resultCard = document.getElementById('resultCard');
@@ -442,6 +481,7 @@
     const fitsEl = document.getElementById('fits');
     const gapsEl = document.getElementById('gaps');
     const summaryEl = document.getElementById('summary');
+    const fullDescriptionEl = document.getElementById('fullDescription');
 
     const saveBtn = document.getElementById('saveBtn');
     const applyBtn = document.getElementById('applyBtn');
@@ -465,17 +505,28 @@
 
     const toggleDetailsBtn = document.getElementById('toggleDetails');
     const detailsContent = document.getElementById('detailsContent');
-    const fullDescriptionEl = document.getElementById('fullDescription');
 
+    // Applications & Saved
     const applicationsGrid = document.getElementById('applicationsGrid');
     const statusFilter = document.getElementById('statusFilter');
     const sortFilter = document.getElementById('sortFilter');
+    const savedGrid = document.getElementById('savedGrid');
+    const savedSort = document.getElementById('savedSort');
 
-    const statTotal = document.getElementById('statTotal');
-    const statApplied = document.getElementById('statApplied');
-    const statSaved = document.getElementById('statSaved');
-    const statResponses = document.getElementById('statResponses');
+    // Analytics
+    const analyticsRange = document.getElementById('analyticsRange');
+    const kpiTotal = document.getElementById('kpiTotal');
+    const kpiApplied = document.getElementById('kpiApplied');
+    const kpiResponses = document.getElementById('kpiResponses');
+    const kpiAvgFit = document.getElementById('kpiAvgFit');
 
+    let chartStatus, chartFitDist, chartCompany, chartTrend;
+
+    // Add application
+    const addForm = document.getElementById('addForm');
+    const addMockBtn = document.getElementById('addMock');
+
+    // Modal
     const modal = document.getElementById('applicationModal');
     const modalOverlay = document.getElementById('modalOverlay');
     const modalClose = document.getElementById('modalClose');
@@ -490,58 +541,48 @@
     let draft = null;     // last analysis JSON
     let lastCover = null; // last cover JSON
 
-    // Mock applications (used only for the Applications page demo list)
+    // --- Sample data (edit later / or load from Sheets) ---
     let applicationsList = [
-      { id:'1', title:'Graduate Software Developer', company:'TechFlow Solutions', status:'applied', appliedDate:'2024-01-15', location:'London, UK', salary:'£32,000 - £38,000', fitScore:85, alignmentScore:92, source:'LinkedIn', description:'Join our dynamic team as a Graduate Software Developer...', requirements:['Computer Science degree','JavaScript/TypeScript','React experience'], fits:['Strong JavaScript skills','React portfolio projects','CS degree from top university'], gaps:['Limited commercial experience','No backend development'], effortRating:8, chanceRating:7 },
-      { id:'2', title:'Junior Data Analyst', company:'DataInsights Ltd', status:'response', appliedDate:'2024-01-12', location:'Manchester, UK', salary:'£28,000 - £34,000', fitScore:78, alignmentScore:85, source:'Company Website', description:'Exciting opportunity for a Junior Data Analyst...', requirements:['Statistics/Math degree','Python/R','SQL experience'], fits:['Mathematics background','Python certification','SQL bootcamp completion'], gaps:['No industry experience','Limited visualization tools knowledge'], effortRating:9, chanceRating:8 },
-      { id:'3', title:'Graduate Product Manager', company:'InnovateTech', status:'saved', appliedDate:null, location:'Remote, UK', salary:'£35,000 - £42,000', fitScore:72, alignmentScore:88, source:'Glassdoor', description:'Looking for a Graduate Product Manager...', requirements:['Business/Engineering degree','Analytical mindset','Communication skills'], fits:['Business degree','Strong presentation skills','Internship experience'], gaps:['No product management experience','Limited tech background'], effortRating:null, chanceRating:null },
-      { id:'4', title:'Software Engineer Trainee', company:'Global Systems Inc', status:'applied', appliedDate:'2024-01-20', location:'Birmingham, UK', salary:'£30,000 - £36,000', fitScore:90, alignmentScore:82, source:'Indeed', description:'Comprehensive 12-month training program...', requirements:['STEM degree','Problem-solving skills','Programming fundamentals'], fits:['Computer Science degree','Strong algorithmic thinking','Open source contributions'], gaps:['Limited framework experience','No professional development experience'], effortRating:7, chanceRating:9 }
+      { id:'1', title:'Graduate Software Developer', company:'TechFlow Solutions', status:'applied', appliedDate:'2025-07-15', location:'London, UK', salary:'£32,000 - £38,000', fitScore:85, alignmentScore:92, source:'LinkedIn', description:'Join our dynamic team…', requirements:['CS degree','JS/TS','React'], fits:['Strong JS','React projects','Top uni'], gaps:['Limited commercial exp.','No backend'], effortRating:8, chanceRating:7 },
+      { id:'2', title:'Junior Data Analyst', company:'DataInsights Ltd', status:'response', appliedDate:'2025-06-12', location:'Manchester, UK', salary:'£28,000 - £34,000', fitScore:78, alignmentScore:85, source:'Company site', description:'Growing analytics team…', requirements:['Stats/Math','Python/R','SQL'], fits:['Math background','Python cert','SQL bootcamp'], gaps:['No industry exp.','Viz tools limited'], effortRating:9, chanceRating:8 },
+      { id:'3', title:'Graduate Product Manager', company:'InnovateTech', status:'saved', appliedDate:null, location:'Remote, UK', salary:'£35,000 - £42,000', fitScore:72, alignmentScore:88, source:'Glassdoor', description:'Shape our products…', requirements:['Biz/Eng','Analytical','Comms'], fits:['Business degree','Presentations','Internship'], gaps:['No PM exp.','Limited tech'], effortRating:null, chanceRating:null },
+      { id:'4', title:'Software Engineer Trainee', company:'Global Systems Inc', status:'applied', appliedDate:'2025-08-10', location:'Birmingham, UK', salary:'£30,000 - £36,000', fitScore:90, alignmentScore:82, source:'Indeed', description:'12-month training…', requirements:['STEM','Problem-solving','Programming'], fits:['CS degree','Algorithms','OSS'], gaps:['Limited framework','No professional dev'], effortRating:7, chanceRating:9 },
+      { id:'5', title:'Graduate GIS Consultant', company:'Stantec', status:'saved', appliedDate:null, location:'Bristol, UK', salary:'£28,000 - £33,000', fitScore:88, alignmentScore:94, source:'Careers site', description:'GIS analysis in water…', requirements:['GIS','ArcGIS','QGIS'], fits:['Perfect GIS record','ArcGIS experience','R programming'], gaps:['Limited industry'], effortRating:null, chanceRating:null }
     ];
 
     // ====== Helpers
     function toast(msg){ toastEl.textContent = msg; toastEl.classList.add('show'); setTimeout(()=>toastEl.classList.remove('show'), 2400); }
+    function asArray(v){ return Array.isArray(v) ? v : (v ? [v] : []); }
+    function bullets(arr){ return asArray(arr).map(x=>`• ${String(x)}`).join('\n'); }
     function londonTodayISO(){
       const fmt = new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
       const y=fmt.find(p=>p.type==='year').value, m=fmt.find(p=>p.type==='month').value, d=fmt.find(p=>p.type==='day').value;
       return `${y}-${m}-${d}`;
     }
-    function asArray(v){ return Array.isArray(v) ? v : (v ? [v] : []); }
-    function bullets(arr){ return asArray(arr).map(x=>`• ${String(x)}`).join('\n'); }
     function salaryText(a){
-      const s = a.salary || {};
+      const s=a.salary||{};
       if (s.salary_raw) return s.salary_raw;
-      if (s.min && s.max) return `${s.currency || ''} ${s.min}–${s.max} ${s.period || ''}`.trim();
-      if (s.min) return `${s.currency || ''} ${s.min} ${s.period || ''}`.trim();
-      return a.salary_raw || '';
-    }
-    async function postForm(url, fd){
-      const res = await fetch(url, { method:'POST', body: fd });
-      if (!res.ok){
-        const t = await res.text().catch(()=> '');
-        console.error('POST', url, res.status, t);
-        throw new Error(`HTTP ${res.status}`);
-      }
-      try { return await res.json(); } catch { return {}; }
+      if (s.min && s.max) return `${s.currency||''} ${s.min}–${s.max} ${s.period||''}`.trim();
+      if (s.min) return `${s.currency||''} ${s.min} ${s.period||''}`.trim();
+      return a.salary_raw || a.salary || '';
     }
     function canonicalize(u){
       try{
-        const url = new URL(String(u));
-        url.protocol = 'https:';
-        url.hostname = url.hostname.replace(/^www\./i,'').toLowerCase();
-        url.hash = '';
-        const keep = new Set(['gh_jid','jobId','vacancyId','rid','id','lever-origin']);
-        const q = new URLSearchParams(url.search);
-        [...q.keys()].forEach(k=>{
-          const kl=k.toLowerCase();
-          if (!keep.has(k) || /^utm_/.test(kl) || /(gclid|fbclid|ref|source|src|campaign|medium)$/i.test(kl)) q.delete(k);
-        });
-        const sorted = new URLSearchParams();
-        [...q.keys()].sort().forEach(k=>sorted.append(k, q.get(k)));
-        url.search = sorted.toString() ? `?${sorted.toString()}` : '';
-        if (url.pathname.length>1) url.pathname = url.pathname.replace(/\/+$/,'');
+        const url=new URL(String(u)); url.protocol='https:'; url.hostname=url.hostname.replace(/^www\./i,'').toLowerCase(); url.hash='';
+        const keep=new Set(['gh_jid','jobId','vacancyId','rid','id','lever-origin']);
+        const q=new URLSearchParams(url.search);
+        [...q.keys()].forEach(k=>{const kl=k.toLowerCase(); if(!keep.has(k)||/^utm_/.test(kl)||/(gclid|fbclid|ref|source|src|campaign|medium)$/i.test(kl)) q.delete(k);});
+        const sorted=new URLSearchParams(); [...q.keys()].sort().forEach(k=>sorted.append(k,q.get(k)));
+        url.search=sorted.toString()?`?${sorted.toString()}`:''; if(url.pathname.length>1) url.pathname=url.pathname.replace(/\/+$/,'');
         return url.toString();
-      }catch{ return u; }
+      }catch{return u;}
     }
+    async function postForm(url, fd){
+      const res = await fetch(url, { method:'POST', body: fd });
+      if (!res.ok){ const t=await res.text().catch(()=> ''); console.error('POST',url,res.status,t); throw new Error(`HTTP ${res.status}`); }
+      try{ return await res.json(); }catch{ return {}; }
+    }
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
     function formatDate(d){ return d ? new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—'; }
 
     // ====== Tabs
@@ -550,50 +591,45 @@
       document.querySelectorAll('.page-content').forEach(p=>p.classList.remove('active'));
       document.getElementById(name+'Tab').classList.add('active');
       document.getElementById(name+'Page').classList.add('active');
-      if (name === 'applications') renderApplications();
+
+      if (name==='applications') renderApplications();
+      if (name==='saved') renderSaved();
+      if (name==='analytics') renderAnalytics();
       history.replaceState(null,'',`#${name}`);
     }
-    analyzeTab.addEventListener('click',()=>switchTab('analyze'));
-    applicationsTab.addEventListener('click',()=>switchTab('applications'));
+    analyzeTab.onclick = () => switchTab('analyze');
+    applicationsTab.onclick = () => switchTab('applications');
+    savedTab.onclick = () => switchTab('saved');
+    analyticsTab.onclick = () => switchTab('analytics');
+    addTab.onclick = () => switchTab('add');
     if (location.hash==='#applications') switchTab('applications');
+    if (location.hash==='#saved') switchTab('saved');
+    if (location.hash==='#analytics') switchTab('analytics');
+    if (location.hash==='#add') switchTab('add');
 
-    // ====== Environment toggler
-    envSelect.addEventListener('change',()=>{ currentEnv = envSelect.value; toast(`Switched to ${currentEnv.toUpperCase()}`); });
+    envSelect.onchange = ()=>{ currentEnv = envSelect.value; toast(`Switched to ${currentEnv.toUpperCase()}`); };
 
     // ====== Analyse flow
-    analyzeBtn.addEventListener('click', analyseUrl);
+    analyzeBtn.onclick = analyseUrl;
     jobUrlInput.addEventListener('keydown',(e)=>{ if (e.key==='Enter') analyseUrl(); });
+
     async function analyseUrl(){
       const url = jobUrlInput.value.trim();
       if (!/^https?:\/\//i.test(url)){ toast('Please paste a valid URL'); return; }
-
-      resultCard.style.display = 'block';
-      resultContent.style.display = 'none';
-      loadingState.style.display = 'flex';
-      analyzeBtn.disabled = true;
-
+      resultCard.style.display='block'; loadingState.style.display='block'; resultContent.style.display='none'; analyzeBtn.disabled=true;
       try{
-        const fd = new FormData();
-        fd.append('job_url', url);
+        const fd = new FormData(); fd.append('job_url', url);
         const data = await postForm(URLS[currentEnv].analyse, fd);
         const out = Array.isArray(data) ? data[0] : data;
         if (!out) throw new Error('No analysis result');
-
-        draft = out; lastCover = null;
+        draft = out; lastCover=null;
         renderAnalysis(out);
-      }catch(e){
-        console.error(e);
-        resultCard.style.display='none';
-        toast(`Analysis failed (${currentEnv}). Check n8n is running & CORS.`);
-      }finally{
-        analyzeBtn.disabled = false;
-      }
+      }catch(e){ console.error(e); resultCard.style.display='none'; toast(`Analysis failed (${currentEnv}). Check n8n & CORS.`); }
+      finally{ analyzeBtn.disabled=false; }
     }
 
     function renderAnalysis(a){
-      loadingState.style.display='none';
-      resultContent.style.display='block';
-
+      loadingState.style.display='none'; resultContent.style.display='block';
       const title = a.title || a.job?.title || 'Untitled role';
       const company = a.company_name || a.job?.company_name || '';
       const locs = asArray(a.locations || a.job?.locations).join(' • ');
@@ -604,33 +640,20 @@
 
       jobTitleEl.textContent = title;
       jobCompanyEl.textContent = company;
-
       jobDetailsEl.innerHTML = `
-        <div class="detail-item">
-          <div class="detail-label">Locations</div>
-          <div class="detail-value">${locs || '—'}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">Salary</div>
-          <div class="detail-value">${salTxt || '—'}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">Dates</div>
-          <div class="detail-value">${[start?`Start: ${start}`:'', deadline?`Deadline: ${deadline}`:''].filter(Boolean).join(' · ') || '—'}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-label">URL</div>
-          <div class="detail-value">${url ? `<a href="${url}" target="_blank" rel="noopener">${url}</a>` : '—'}</div>
-        </div>
+        <div class="detail-item"><div class="detail-label">Locations</div><div class="detail-value">${escapeHtml(locs || '—')}</div></div>
+        <div class="detail-item"><div class="detail-label">Salary</div><div class="detail-value">${escapeHtml(salTxt || '—')}</div></div>
+        <div class="detail-item"><div class="detail-label">Dates</div><div class="detail-value">${[start?`Start: ${start}`:'',deadline?`Deadline: ${deadline}`:''].filter(Boolean).join(' · ') || '—'}</div></div>
+        <div class="detail-item"><div class="detail-label">URL</div><div class="detail-value">${url?`<a href="${url}" target="_blank" rel="noopener">${escapeHtml(url)}</a>`:'—'}</div></div>
       `;
 
       const fit = Math.max(0, Math.min(100, Number(a.AI_fit_score ?? 0)));
       const align = Math.max(0, Math.min(100, Number(a.AI_alignment_score ?? 0)));
-      fitScoreEl.textContent = `${fit}%`; fitFillEl.style.width = `${fit}%`;
-      alignScoreEl.textContent = `${align}%`; alignFillEl.style.width = `${align}%`;
+      fitScoreEl.textContent = `${fit}%`; fitFillEl.style.width=`${fit}%`;
+      alignScoreEl.textContent = `${align}%`; alignFillEl.style.width=`${align}%`;
 
       const kw = asArray(a.keywords || a.job?.keywords);
-      keywordsEl.innerHTML = kw.map(k=>`<span class="keyword">${String(k)}</span>`).join('');
+      keywordsEl.innerHTML = kw.map(k=>`<span class="keyword">${escapeHtml(k)}</span>`).join('');
 
       fitsEl.textContent = bullets(a.fits || []);
       gapsEl.textContent = bullets(a.gaps || []);
@@ -645,7 +668,6 @@
         toggleDetailsBtn.textContent = open ? 'View more' : 'Hide';
       };
 
-      // Bind actions
       saveBtn.onclick = onSave;
       applyBtn.onclick = ()=>{ ratingInputs.classList.add('show'); ratingInputs.setAttribute('aria-hidden','false'); };
       confirmApplyBtn.onclick = onApply;
@@ -653,7 +675,7 @@
       coverBtn.onclick = onCoverClick;
     }
 
-    // ====== Applications send
+    // ====== Applications send (to n8n)
     function toApplicationsPayload(a, opts){
       const salary = a.salary || {};
       return {
@@ -685,8 +707,8 @@
         job_summary: a.job_summary || '',
         keywords: a.keywords || [],
         job_description: a.job_description || '',
-        status: opts.status, // "Saved" | "Applied"
-        applied_date: opts.status === 'Applied' ? (opts.appliedDate || londonTodayISO()) : '',
+        status: opts.status,
+        applied_date: opts.status==='Applied' ? (opts.appliedDate || londonTodayISO()) : '',
         application_effort_rating: opts.effort ?? '',
         application_chance_rating: opts.chance ?? '',
         status_update_date: londonTodayISO(),
@@ -697,7 +719,7 @@
       const fd = new FormData();
       for (const [k,v] of Object.entries(payload)){
         if (Array.isArray(v)) fd.append(k, JSON.stringify(v));
-        else fd.append(k, v == null ? '' : String(v));
+        else fd.append(k, v==null ? '' : String(v));
       }
       return postForm(URLS[env].applications, fd);
     }
@@ -708,7 +730,6 @@
         const payload = toApplicationsPayload(draft, { status:'Saved' });
         await sendApplications(currentEnv, payload);
         toast('Saved for later ✅');
-        // demo: push to local list (so it appears under "Saved")
         applicationsList.push({
           id: String(Date.now()),
           title: draft.title || 'Untitled role',
@@ -719,7 +740,7 @@
           salary: salaryText(draft) || '—',
           fitScore: Number(draft.AI_fit_score || 0),
           alignmentScore: Number(draft.AI_alignment_score || 0),
-          source: (new URL(draft.source_url || 'http://example.com')).hostname,
+          source: (draft.source_url ? new URL(draft.source_url).hostname : '—'),
           description: draft.job_description || '',
           requirements: asArray(draft.key_requirements || []),
           fits: asArray(draft.fits || []),
@@ -737,15 +758,14 @@
         const chance = Number(chanceInput.value);
         const payload = toApplicationsPayload(draft, {
           status:'Applied',
-          effort: Number.isFinite(effort) ? effort : '',
-          chance: Number.isFinite(chance) ? chance : '',
+          effort: Number.isFinite(effort)?effort:'',
+          chance: Number.isFinite(chance)?chance:'',
           appliedDate: londonTodayISO()
         });
         await sendApplications(currentEnv, payload);
         toast('Marked as applied 🎉');
         ratingInputs.classList.remove('show'); ratingInputs.setAttribute('aria-hidden','true');
 
-        // demo: push/update local list
         applicationsList.push({
           id: String(Date.now()),
           title: draft.title || 'Untitled role',
@@ -756,7 +776,7 @@
           salary: salaryText(draft) || '—',
           fitScore: Number(draft.AI_fit_score || 0),
           alignmentScore: Number(draft.AI_alignment_score || 0),
-          source: (new URL(draft.source_url || 'http://example.com')).hostname,
+          source: (draft.source_url ? new URL(draft.source_url).hostname : '—'),
           description: draft.job_description || '',
           requirements: asArray(draft.key_requirements || []),
           fits: asArray(draft.fits || []),
@@ -772,67 +792,54 @@
       if (!draft) return toast('Analyse a job first');
       coverSection.classList.add('show');
       coverContent.classList.remove('show');
-      coverStatus.innerHTML = '<span class="spinner" aria-hidden="true"></span> Preparing cover letter & CV tips…';
-
+      coverStatus.innerHTML = '<span class="spinner"></span> Preparing cover letter & CV tips…';
       try{
         const fd = new FormData();
         fd.append('job_json', JSON.stringify(draft));
         if (CV_FOLDER_ID) fd.append('cv_folder_id', CV_FOLDER_ID);
         if (GUIDE_DOC_ID) fd.append('guide_doc_id', GUIDE_DOC_ID);
-
         const data = await postForm(URLS[currentEnv].cover, fd);
         lastCover = Array.isArray(data) ? data[0] : data || {};
-
         const cv = lastCover.selected_cv || {};
         const tweaks = Array.isArray(lastCover.cv_tweaks) ? lastCover.cv_tweaks : [];
         const letter = lastCover.cover_letter || {};
 
         cvNameEl.textContent = cv.filename || '—';
         cvWhyEl.textContent = cv.reason || '—';
-
         const link = letter.doc_url || cv.doc_url;
-        coverDocLinkEl.innerHTML = link ? `<a href="${link}" target="_blank" rel="noopener">${link}</a>` : '—';
-
+        coverDocLinkEl.innerHTML = link ? `<a href="${link}" target="_blank" rel="noopener">${escapeHtml(link)}</a>` : '—';
         cvTweaksEl.textContent = tweaks.length ? bullets(tweaks) : 'No tweaks suggested.';
         coverPreviewEl.textContent = letter.plain_text || (letter.html ? letter.html : 'No preview provided.');
-
-        if (link){
-          openDocBtn.style.display='inline-flex';
-          openDocBtn.onclick = ()=> window.open(link,'_blank','noopener');
-        } else {
-          openDocBtn.style.display='none';
-        }
-        copyCoverBtn.onclick = async ()=>{
-          try{ await navigator.clipboard.writeText(letter.plain_text || letter.html || ''); toast('Cover letter copied'); }
-          catch{ toast('Copy failed'); }
-        };
+        if (link){ openDocBtn.style.display='inline-flex'; openDocBtn.onclick = ()=>window.open(link,'_blank','noopener'); }
+        else openDocBtn.style.display='none';
+        copyCoverBtn.onclick = async ()=>{ try{ await navigator.clipboard.writeText(letter.plain_text || letter.html || ''); toast('Cover letter copied'); }catch{ toast('Copy failed'); } };
 
         coverStatus.textContent = 'Generated ✓';
         coverContent.classList.add('show');
-      }catch(e){
-        console.error(e);
-        coverStatus.textContent = 'Generation failed. Check n8n logs / CORS.';
-      }
+      }catch(e){ console.error(e); coverStatus.textContent = 'Generation failed. Check n8n logs / CORS.'; }
     }
 
-    // ====== Applications page (demo list)
+    // ====== Applications page
+    statusFilter.onchange = renderApplications;
+    sortFilter.onchange = renderApplications;
+
     function renderApplications(){
-      const statusVal = statusFilter.value;
-      const sortVal = sortFilter.value;
-
       let arr = [...applicationsList];
-      if (statusVal !== 'all') arr = arr.filter(a => a.status === statusVal);
+      const s = statusFilter.value;
+      if (s!=='all') arr = arr.filter(a=>a.status===s);
+      const sort = sortFilter.value;
+      if (sort==='date-desc') arr.sort((a,b)=> new Date(b.appliedDate||'2000-01-01') - new Date(a.appliedDate||'2000-01-01'));
+      if (sort==='date-asc')  arr.sort((a,b)=> new Date(a.appliedDate||'2000-01-01') - new Date(b.appliedDate||'2000-01-01'));
+      if (sort==='fit-desc')  arr.sort((a,b)=> (b.fitScore||0) - (a.fitScore||0));
+      if (sort==='company')   arr.sort((a,b)=> (a.company||'').localeCompare(b.company||''));
 
-      switch (sortVal){
-        case 'date-desc': arr.sort((a,b)=> new Date(b.appliedDate||'2000-01-01')-new Date(a.appliedDate||'2000-01-01')); break;
-        case 'date-asc':  arr.sort((a,b)=> new Date(a.appliedDate||'2000-01-01')-new Date(b.appliedDate||'2000-01-01')); break;
-        case 'fit-desc':  arr.sort((a,b)=> (b.fitScore||0)-(a.fitScore||0)); break;
-        case 'company':   arr.sort((a,b)=> (a.company||'').localeCompare(b.company||'')); break;
-      }
+      applicationsGrid.innerHTML = arr.map(app => cardHTML(app)).join('');
+    }
 
-      applicationsGrid.innerHTML = arr.map(app => `
+    function cardHTML(app){
+      return `
         <div class="application-card" onclick="openApplicationModal('${app.id}')">
-          <div class="application-status status-${app.status}">${app.status}</div>
+          <div class="application-status status-${app.status}">${escapeHtml(app.status)}</div>
           <div class="application-header">
             <div class="application-title">${escapeHtml(app.title)}</div>
             <div class="application-company">${escapeHtml(app.company)}</div>
@@ -840,24 +847,15 @@
           </div>
           <div class="application-scores">
             <div class="mini-score"><div class="mini-score-label">Fit</div><div class="mini-score-value">${app.fitScore ?? 0}%</div></div>
-            <div class="mini-score"><div class="mini-score-label">Alignment</div><div class="mini-score-value">${app.alignmentScore ?? 0}%</div></div>
+            <div class="mini-score"><div class="mini-score-label">Align</div><div class="mini-score-value">${app.alignmentScore ?? 0}%</div></div>
           </div>
           <div class="application-meta">
-            <div class="application-location">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              ${escapeHtml(app.location || '—')}
-            </div>
-            <div class="application-salary">${escapeHtml(app.salary || '—')}</div>
+            <div>${escapeHtml(app.location || '—')}</div>
+            <div style="font-weight:800">${escapeHtml(app.salary || '—')}</div>
           </div>
         </div>
-      `).join('');
-
-      statTotal.textContent = applicationsList.length;
-      statApplied.textContent = applicationsList.filter(a=>a.status==='applied').length;
-      statSaved.textContent = applicationsList.filter(a=>a.status==='saved').length;
-      statResponses.textContent = applicationsList.filter(a=>a.status==='response').length;
+      `;
     }
-    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
     window.openApplicationModal = function(id){
       const app = applicationsList.find(a=>a.id===id);
@@ -865,69 +863,254 @@
       modalTitle.textContent = app.title;
       modalBody.innerHTML = `
         <div class="job-header">
-          <div class="job-company" style="margin-bottom:1rem;">${escapeHtml(app.company)}</div>
+          <div class="job-company" style="margin-bottom:1rem">${escapeHtml(app.company)}</div>
           <div class="job-details">
             <div class="detail-item"><div class="detail-label">Status</div><div class="detail-value"><span class="application-status status-${app.status}">${app.status}</span></div></div>
-            <div class="detail-item"><div class="detail-label">Location</div><div class="detail-value">${escapeHtml(app.location || '—')}</div></div>
-            <div class="detail-item"><div class="detail-label">Salary</div><div class="detail-value">${escapeHtml(app.salary || '—')}</div></div>
-            <div class="detail-item"><div class="detail-label">Source</div><div class="detail-value">${escapeHtml(app.source || '—')}</div></div>
+            <div class="detail-item"><div class="detail-label">Location</div><div class="detail-value">${escapeHtml(app.location||'—')}</div></div>
+            <div class="detail-item"><div class="detail-label">Salary</div><div class="detail-value">${escapeHtml(app.salary||'—')}</div></div>
+            <div class="detail-item"><div class="detail-label">Source</div><div class="detail-value">${escapeHtml(app.source||'—')}</div></div>
           </div>
         </div>
-
         <div class="scores-section">
-          <div class="score-card">
-            <div class="score-label">AI Fit Score</div>
-            <div class="score-value">${app.fitScore ?? 0}%</div>
-            <div class="score-bar"><div class="score-fill" style="width:${app.fitScore ?? 0}%"></div></div>
-          </div>
-          <div class="score-card">
-            <div class="score-label">Alignment Score</div>
-            <div class="score-value">${app.alignmentScore ?? 0}%</div>
-            <div class="score-bar"><div class="score-fill" style="width:${app.alignmentScore ?? 0}%"></div></div>
-          </div>
+          <div class="score-card"><div class="score-label">AI Fit</div><div class="score-value">${app.fitScore ?? 0}%</div><div class="score-bar"><div class="score-fill" style="width:${app.fitScore ?? 0}%"></div></div></div>
+          <div class="score-card"><div class="score-label">Alignment</div><div class="score-value">${app.alignmentScore ?? 0}%</div><div class="score-bar"><div class="score-fill" style="width:${app.alignmentScore ?? 0}%"></div></div></div>
         </div>
-
         ${Number.isFinite(app.effortRating) ? `
-          <div class="section">
-            <h3 class="section-title">Application effort</h3>
-            <div class="columns" style="grid-template-columns:1fr 1fr">
-              <div class="column"><h3>Effort rating</h3><div class="score-value" style="font-size:1.5rem">${app.effortRating}/10</div></div>
-              <div class="column"><h3>Chance rating</h3><div class="score-value" style="font-size:1.5rem">${app.chanceRating}/10</div></div>
-            </div>
-          </div>
-        `:''}
-
+          <div class="columns" style="margin-bottom:1rem">
+            <div class="column"><h3>Effort rating</h3><div class="score-value" style="font-size:1.4rem">${app.effortRating}/10</div></div>
+            <div class="column"><h3>Chance rating</h3><div class="score-value" style="font-size:1.4rem">${app.chanceRating}/10</div></div>
+          </div>`:``}
         <div class="columns">
-          <div class="column">
-            <h3>✅ Perfect fits</h3>
-            <div class="list-content">${bullets(app.fits || []).replace(/\n/g,'<br/>')}</div>
-          </div>
-          <div class="column">
-            <h3>⚠️ Areas to address</h3>
-            <div class="list-content">${bullets(app.gaps || []).replace(/\n/g,'<br/>')}</div>
-          </div>
+          <div class="column"><h3>✅ Fits</h3><div class="list-content">${bullets(app.fits||[]).replace(/\n/g,'<br/>')}</div></div>
+          <div class="column"><h3>⚠️ Gaps</h3><div class="list-content">${bullets(app.gaps||[]).replace(/\n/g,'<br/>')}</div></div>
         </div>
-
-        <div class="section">
-          <h3 class="section-title">Job description</h3>
-          <div class="summary"><div>${escapeHtml(app.description || '')}</div></div>
-        </div>
-
-        <div class="section">
-          <h3 class="section-title">Requirements</h3>
-          <div class="keywords">${asArray(app.requirements).map(r=>`<span class="keyword">${escapeHtml(r)}</span>`).join('')}</div>
-        </div>
+        <div class="section"><h3 class="section-title">Job description</h3><div class="summary"><div>${escapeHtml(app.description||'')}</div></div></div>
+        <div class="section"><h3 class="section-title">Requirements</h3><div class="keywords">${asArray(app.requirements).map(r=>`<span class="keyword">${escapeHtml(r)}</span>`).join('')}</div></div>
       `;
-      modal.classList.add('show');
-      modal.setAttribute('aria-hidden','false');
+      modal.classList.add('show'); modal.setAttribute('aria-hidden','false');
     };
     function closeModal(){ modal.classList.remove('show'); modal.setAttribute('aria-hidden','true'); }
-    modalOverlay.addEventListener('click', closeModal);
-    modalClose.addEventListener('click', closeModal);
-    document.addEventListener('keydown',(e)=>{ if (e.key==='Escape' && modal.classList.contains('show')) closeModal(); });
+    modalOverlay.onclick = closeModal; modalClose.onclick = closeModal; document.addEventListener('keydown',(e)=>{ if (e.key==='Escape' && modal.classList.contains('show')) closeModal(); });
 
-    // Initial render
-    renderApplications();
+    // ====== Saved page
+    savedSort.onchange = renderSaved;
+    function renderSaved(){
+      let arr = applicationsList.filter(a=>a.status==='saved');
+      const s = savedSort.value;
+      if (s==='date-desc') arr.sort((a,b)=> new Date(b.createdDate||b.appliedDate||'2000-01-01') - new Date(a.createdDate||a.appliedDate||'2000-01-01'));
+      if (s==='fit-desc')  arr.sort((a,b)=> (b.fitScore||0)-(a.fitScore||0));
+      if (s==='company')   arr.sort((a,b)=> (a.company||'').localeCompare(b.company||''));
+      savedGrid.innerHTML = arr.map(app => `
+        <div class="application-card">
+          <div class="application-status status-${app.status}">${escapeHtml(app.status)}</div>
+          <div class="application-title">${escapeHtml(app.title)}</div>
+          <div class="application-company">${escapeHtml(app.company)}</div>
+          <div class="application-meta"><div>${escapeHtml(app.location||'—')}</div><div>${escapeHtml(app.salary||'—')}</div></div>
+          <div style="display:flex;gap:.5rem;margin-top:.6rem">
+            <button class="btn btn-primary" onclick="openApplicationModal('${app.id}')">View</button>
+            <button class="btn btn-success" onclick="markSavedApplied('${app.id}')">Mark applied</button>
+          </div>
+        </div>
+      `).join('');
+    }
+    window.markSavedApplied = async function(id){
+      const app = applicationsList.find(a=>a.id===id);
+      if (!app) return;
+      // Update local
+      app.status = 'applied';
+      app.appliedDate = londonTodayISO();
+      app.effortRating = app.effortRating ?? 7;
+      app.chanceRating = app.chanceRating ?? 6;
+      // Send to n8n
+      try{
+        const payload = {
+          source_url:'',
+          canonical_job_url:'',
+          title: app.title, company_name: app.company,
+          seniority:'', role_type:'', sector:'', contact_email:'',
+          date_posted:'', date_deadline:'', start_date:'',
+          salary_min:'', salary_max:'', salary_currency:'', salary_period:'', salary_raw:app.salary||'',
+          locations: asArray(app.location ? app.location.split(' • ') : []),
+          AI_fit_score: app.fitScore || 0,
+          AI_alignment_score: app.alignmentScore || 0,
+          AI_cv_filename:'', AI_cv_reason:'',
+          key_requirements: asArray(app.requirements||[]),
+          other_requirements: [],
+          fits: asArray(app.fits||[]),
+          gaps: asArray(app.gaps||[]),
+          job_summary:'', keywords: [],
+          job_description: app.description || '',
+          status: 'Applied',
+          applied_date: app.appliedDate,
+          application_effort_rating: app.effortRating,
+          application_chance_rating: app.chanceRating,
+          status_update_date: londonTodayISO(),
+          cover_letter_url:''
+        };
+        await sendApplications(currentEnv, payload);
+        toast('Marked applied ✅');
+        renderSaved(); renderApplications(); renderAnalytics();
+      }catch(e){ console.error(e); toast('Failed to update n8n'); }
+    };
+
+    // ====== Analytics page
+    analyticsRange.onchange = renderAnalytics;
+
+    function filterByRange(list, days){
+      if (days==='all') return list;
+      const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-Number(days));
+      return list.filter(a => {
+        const d = a.appliedDate || a.createdDate;
+        return d ? new Date(d) >= cutoff : true; // keep saved ones
+      });
+    }
+
+    function destroyChart(c){ if (c) { c.destroy(); } }
+
+    function renderAnalytics(){
+      const range = analyticsRange.value;
+      const data = filterByRange(applicationsList, range);
+
+      // KPIs
+      const total = data.length;
+      const applied = data.filter(a=>a.status==='applied').length;
+      const responses = data.filter(a=>a.status==='response').length;
+      const avgFit = Math.round(data.reduce((s,a)=>s + (a.fitScore||0),0) / (total || 1));
+      kpiTotal.textContent = String(total);
+      kpiApplied.textContent = String(applied);
+      kpiResponses.textContent = String(responses);
+      kpiAvgFit.textContent = `${avgFit}%`;
+
+      // Prepare aggregates
+      const byStatus = data.reduce((m,a)=> (m[a.status]=(m[a.status]||0)+1, m), {});
+      const fitBuckets = { '0–49':0,'50–69':0,'70–84':0,'85–100':0 };
+      data.forEach(a=>{
+        const f = a.fitScore||0;
+        if (f<50) fitBuckets['0–49']++; else if (f<70) fitBuckets['50–69']++; else if (f<85) fitBuckets['70–84']++; else fitBuckets['85–100']++;
+      });
+      const byCompany = data.reduce((m,a)=> (m[a.company]=(m[a.company]||0)+1, m), {});
+      const topCompanies = Object.entries(byCompany).sort((a,b)=>b[1]-a[1]).slice(0,7);
+
+      const byMonth = {};
+      data.forEach(a=>{
+        const d = a.appliedDate || a.createdDate;
+        if (!d) return;
+        const month = new Date(d).toISOString().slice(0,7);
+        byMonth[month] = (byMonth[month]||0)+1;
+      });
+      const monthsSorted = Object.keys(byMonth).sort();
+
+      // Charts
+      const ctxStatus = document.getElementById('chartStatus').getContext('2d');
+      const ctxFit = document.getElementById('chartFitDist').getContext('2d');
+      const ctxCompany = document.getElementById('chartCompany').getContext('2d');
+      const ctxTrend = document.getElementById('chartTrend').getContext('2d');
+
+      destroyChart(chartStatus); destroyChart(chartFitDist); destroyChart(chartCompany); destroyChart(chartTrend);
+
+      chartStatus = new Chart(ctxStatus,{
+        type:'pie',
+        data:{ labels:Object.keys(byStatus), datasets:[{ data:Object.values(byStatus) }] },
+        options:{ plugins:{ legend:{ position:'bottom' }, title:{ display:true, text:'By status' } } }
+      });
+
+      chartFitDist = new Chart(ctxFit,{
+        type:'bar',
+        data:{ labels:Object.keys(fitBuckets), datasets:[{ data:Object.values(fitBuckets) }] },
+        options:{ plugins:{ legend:{ display:false }, title:{ display:true, text:'Fit score distribution' } }, scales:{ y:{ beginAtZero:true } } }
+      });
+
+      chartCompany = new Chart(ctxCompany,{
+        type:'bar',
+        data:{ labels:topCompanies.map(x=>x[0]), datasets:[{ data:topCompanies.map(x=>x[1]) }] },
+        options:{ plugins:{ legend:{ display:false }, title:{ display:true, text:'Top companies applied/saved' } }, indexAxis:'y', scales:{ x:{ beginAtZero:true } } }
+      });
+
+      chartTrend = new Chart(ctxTrend,{
+        type:'line',
+        data:{ labels:monthsSorted, datasets:[{ data:monthsSorted.map(m=>byMonth[m]), tension:.3, fill:false }] },
+        options:{ plugins:{ legend:{ display:false }, title:{ display:true, text:'Applications over time' } }, scales:{ y:{ beginAtZero:true } } }
+      });
+    }
+
+    // ====== Add application page
+    addForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const fd = new FormData(addForm);
+      // Build payload in the format your n8n expects
+      const status = fd.get('status') || 'Saved';
+      const payload = {
+        source_url: fd.get('source_url') || '',
+        canonical_job_url: canonicalize(fd.get('source_url') || ''),
+        title: fd.get('title') || '',
+        company_name: fd.get('company_name') || '',
+        seniority:'', role_type:'', sector:'', contact_email:'',
+        date_posted:'', date_deadline:'', start_date:'',
+        salary_min: fd.get('salary_min') || '',
+        salary_max: fd.get('salary_max') || '',
+        salary_currency: fd.get('salary_currency') || '',
+        salary_period: fd.get('salary_period') || '',
+        salary_raw: '',
+        locations: (fd.get('locations')||'').split(',').map(s=>s.trim()).filter(Boolean),
+        AI_fit_score: Number(fd.get('AI_fit_score')||0),
+        AI_alignment_score: Number(fd.get('AI_alignment_score')||0),
+        AI_cv_filename:'', AI_cv_reason:'',
+        key_requirements: [],
+        other_requirements: [],
+        fits: (fd.get('fits')||'').split(';').map(s=>s.trim()).filter(Boolean),
+        gaps: (fd.get('gaps')||'').split(';').map(s=>s.trim()).filter(Boolean),
+        job_summary: fd.get('job_summary')||'',
+        keywords: (fd.get('keywords')||'').split(',').map(s=>s.trim()).filter(Boolean),
+        job_description: fd.get('job_description')||'',
+        status,
+        applied_date: status==='Applied' ? (fd.get('applied_date')||londonTodayISO()) : '',
+        application_effort_rating: fd.get('application_effort_rating')||'',
+        application_chance_rating: fd.get('application_chance_rating')||'',
+        status_update_date: londonTodayISO(),
+        cover_letter_url:''
+      };
+      try{
+        await sendApplications(currentEnv, payload);
+        toast('Saved to n8n ✅');
+        // Also add locally
+        applicationsList.push({
+          id:String(Date.now()),
+          title:payload.title, company:payload.company_name, status:payload.status.toLowerCase(),
+          appliedDate: payload.applied_date || null,
+          location: payload.locations.join(' • '),
+          salary: [payload.salary_currency, payload.salary_min && ' ' + payload.salary_min, payload.salary_max && '–' + payload.salary_max, payload.salary_period && ' ' + payload.salary_period].filter(Boolean).join('') || '—',
+          fitScore: payload.AI_fit_score, alignmentScore: payload.AI_alignment_score,
+          source: (payload.source_url ? new URL(payload.source_url).hostname : '—'),
+          description: payload.job_description, requirements: payload.key_requirements,
+          fits: payload.fits, gaps: payload.gaps,
+          effortRating: payload.application_effort_rating ? Number(payload.application_effort_rating) : null,
+          chanceRating: payload.application_chance_rating ? Number(payload.application_chance_rating) : null,
+          createdDate: londonTodayISO()
+        });
+        addForm.reset();
+        renderApplications(); renderSaved(); renderAnalytics();
+      }catch(e){ console.error(e); toast('Failed to save to n8n'); }
+    });
+
+    addMockBtn.onclick = ()=>{
+      const id = String(Date.now());
+      applicationsList.push({
+        id, title:'Example role', company:'Example Co', status:'saved', appliedDate:null, location:'Remote',
+        salary:'£30,000 - £35,000', fitScore:80, alignmentScore:87, source:'Manual',
+        description:'Example description…', requirements:['Req A','Req B'], fits:['Fit A'], gaps:['Gap A'],
+        effortRating:null, chanceRating:null, createdDate:londonTodayISO()
+      });
+      toast('Added locally');
+      renderSaved(); renderAnalytics();
+    };
+
+    // ====== Init renders
+    renderApplications(); renderSaved(); renderAnalytics();
+
+    // ====== Analyse button disables loading skeleton on first view
+    document.addEventListener('DOMContentLoaded',()=>{
+      currentEnv = envSelect.value;
+    });
   </script>
 </body>
 </html>
