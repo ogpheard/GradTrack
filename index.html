@@ -787,6 +787,9 @@
     function toast(msg){ toastEl.textContent = msg; toastEl.classList.add('show'); setTimeout(()=>toastEl.classList.remove('show'), 2400); }
     function asArray(v){ return Array.isArray(v) ? v : (v ? [v] : []); }
     function bullets(arr){ return asArray(arr).map(x=>`• ${String(x)}`).join('\n'); }
+    function statusChanged(prev, next){
+      return String(prev || '').trim() !== String(next || '').trim();
+    }
     function londonTodayISO(){
       const fmt = new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
       const y=fmt.find(p=>p.type==='year').value, m=fmt.find(p=>p.type==='month').value, d=fmt.find(p=>p.type==='day').value;
@@ -1081,6 +1084,10 @@
             <div style="font-weight:800">${escapeHtml(app.salary || '—')}</div>
           </div>
           <div style="margin-top:.6rem; display:flex; gap:.5rem;">
+            <button class="btn btn-primary btn-sm"
+              onclick="event.stopPropagation(); openEditModal('${app.id}')">
+              ✏️ Edit
+            </button>
             <button class="btn btn-danger btn-sm"
               onclick="event.stopPropagation(); requestDelete('${app.id}', 'applied')">
               🗑️ Delete
@@ -1130,28 +1137,26 @@
       modal.classList.add('show'); modal.setAttribute('aria-hidden','false');
     };
 
-    function arrayToCSV(arr){ return Array.isArray(arr) ? arr.join(', ') : (arr || ''); }
-    function arrayToSemi(arr){ return Array.isArray(arr) ? arr.join('; ') : (arr || ''); }
-
     function openEditModal(id){
       const raw = getRawRowById(id);
       if (!raw){ toast('Could not load item'); return; }
 
       const card = toCardShape(raw);
-      const status = raw.status || (card.status==='applied' ? 'Applied' : 'Saved');
+      const prevStatus = raw.status || (card.status==='applied' ? 'Applied' : 'Saved');
 
       modalTitle.textContent = `Edit: ${raw.title || 'Untitled role'}`;
       modalBody.innerHTML = `
         <form id="editForm" class="form-grid">
-          <!-- Hidden identifiers: keep the same id so Workflow 5 upserts -->
+          <!-- identifiers (used by n8n to upsert) -->
           <input type="hidden" name="application_id" value="${escapeHtml(raw.application_id || '')}"/>
           <input type="hidden" name="canonical_job_url" value="${escapeHtml(raw.canonical_job_url || '')}"/>
           <input type="hidden" name="source_url" value="${escapeHtml(raw.source_url || '')}"/>
+          <input type="hidden" name="__prev_status" value="${escapeHtml(prevStatus)}"/>
 
           <div class="form-field"><label>Status</label>
             <select name="status">
-              <option ${status==='Saved'?'selected':''}>Saved</option>
-              <option ${status==='Applied'?'selected':''}>Applied</option>
+              <option ${prevStatus==='Saved'?'selected':''}>Saved</option>
+              <option ${prevStatus==='Applied'?'selected':''}>Applied</option>
             </select>
           </div>
 
@@ -1161,14 +1166,13 @@
           <div class="form-field"><label>Company</label>
             <input name="company_name" value="${escapeHtml(raw.company_name||'')}"/>
           </div>
-
           <div class="form-field"><label>Locations (comma)</label>
-            <input name="locations" value="${escapeHtml(arrayToCSV(raw.locations))}"/>
+            <input name="locations" value="${escapeHtml(Array.isArray(raw.locations)? raw.locations.join(', ') : (raw.locations||''))}"/>
           </div>
 
           <div class="form-field"><label>Applied date (YYYY-MM-DD)</label>
             <input name="applied_date" value="${escapeHtml(raw.applied_date||'')}"/>
-            <div class="help">If status is "Applied" and this is empty, backend sets today (London).</div>
+            <div class="help">If status becomes “Applied” and this is blank, we’ll set today (London).</div>
           </div>
 
           <div class="form-field"><label>Salary min</label>
@@ -1198,13 +1202,13 @@
           </div>
 
           <div class="form-field" style="grid-column:1/-1"><label>Fits (semicolon)</label>
-            <input name="fits" value="${escapeHtml(arrayToSemi(raw.fits))}"/>
+            <input name="fits" value="${escapeHtml(Array.isArray(raw.fits)? raw.fits.join('; ') : (raw.fits||''))}"/>
           </div>
           <div class="form-field" style="grid-column:1/-1"><label>Gaps (semicolon)</label>
-            <input name="gaps" value="${escapeHtml(arrayToSemi(raw.gaps))}"/>
+            <input name="gaps" value="${escapeHtml(Array.isArray(raw.gaps)? raw.gaps.join('; ') : (raw.gaps||''))}"/>
           </div>
           <div class="form-field" style="grid-column:1/-1"><label>Keywords (comma)</label>
-            <input name="keywords" value="${escapeHtml(arrayToCSV(raw.keywords))}"/>
+            <input name="keywords" value="${escapeHtml(Array.isArray(raw.keywords)? raw.keywords.join(', ') : (raw.keywords||''))}"/>
           </div>
 
           <div class="form-field" style="grid-column:1/-1"><label>Summary</label>
@@ -1215,7 +1219,7 @@
           </div>
 
           <div class="hr"></div>
-          <div style="display:flex;gap:.5rem">
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap">
             <button class="btn btn-primary" type="submit">Save changes</button>
             <button class="btn btn-outline" type="button" id="cancelEdit">Cancel</button>
           </div>
@@ -1228,14 +1232,25 @@
         e.preventDefault();
         const fd = new FormData(e.target);
 
-        // Convert list inputs → JSON string arrays (Workflow 5 parses them)
-        const toArray = (s,splitOn)=> (s||'').split(splitOn).map(x=>x.trim()).filter(Boolean);
+        // Read + normalise list inputs → JSON string arrays for n8n
+        const toArray = (s, splitOn) => (s||'').split(splitOn).map(x=>x.trim()).filter(Boolean);
         const locations = JSON.stringify(toArray(fd.get('locations'), ','));
         const fits      = JSON.stringify(toArray(fd.get('fits'), ';'));
         const gaps      = JSON.stringify(toArray(fd.get('gaps'), ';'));
         const keywords  = JSON.stringify(toArray(fd.get('keywords'), ','));
 
-        // Payload expected by Workflow 5
+        // Status-change logic
+        const newStatus = fd.get('status') || 'Saved';
+        const oldStatus = fd.get('__prev_status') || '';
+        const changed = statusChanged(oldStatus, newStatus);
+
+        // applied_date guard when becoming Applied
+        let appliedDate = fd.get('applied_date') || '';
+        if (newStatus === 'Applied' && !appliedDate) {
+          appliedDate = londonTodayISO();
+        }
+
+        // Build payload expected by /updater (all fields in body.*)
         const payload = new FormData();
         const fields = {
           application_id: fd.get('application_id') || '',
@@ -1244,7 +1259,7 @@
 
           title: fd.get('title') || '',
           company_name: fd.get('company_name') || '',
-          status: fd.get('status') || 'Saved',
+          status: newStatus,
 
           locations, fits, gaps, keywords,
 
@@ -1258,17 +1273,21 @@
           application_effort_rating: fd.get('application_effort_rating') || '',
           application_chance_rating: fd.get('application_chance_rating') || '',
 
-          applied_date: fd.get('applied_date') || '',
+          applied_date: appliedDate,
+          // Only stamp when status actually changed:
+          status_update_date: changed ? londonTodayISO() : '',
 
           job_summary: fd.get('job_summary') || '',
-          job_description: fd.get('job_description') || ''
+          job_description: fd.get('job_description') || '',
+          cover_letter_url: raw.cover_letter_url || ''
         };
-        Object.entries(fields).forEach(([k,v])=> payload.append(k,v));
+
+        Object.entries(fields).forEach(([k,v]) => payload.append(k, v));
 
         try{
           const res = await fetch(URLS[currentEnv].update, { method:'POST', body: payload });
           if (!res.ok) throw new Error('HTTP '+res.status);
-          await res.json().catch(()=> ({})); // ignore body if plain text
+          await res.json().catch(()=> ({}));
           toast('Saved changes ✓');
           closeModal();
           await refreshData(true);
@@ -1282,6 +1301,16 @@
     }
     function closeModal(){ modal.classList.remove('show'); modal.setAttribute('aria-hidden','true'); }
     modalOverlay.onclick = closeModal; modalClose.onclick = closeModal; document.addEventListener('keydown',(e)=>{ if (e.key==='Escape' && modal.classList.contains('show')) closeModal(); });
+
+    // subtle modal pop
+    const modalContent = document.querySelector('#applicationModal .modal-content');
+    document.addEventListener('click', (e)=>{
+      if (modal.classList.contains('show') && modalContent){
+        modalContent.style.transform = 'scale(1.0)';
+        modalContent.style.transition = 'transform 180ms ease';
+        requestAnimationFrame(()=> modalContent.style.transform = 'scale(1.0)'); // noop but keeps API hookable
+      }
+    });
 
     // ====== Saved page
     savedSort.onchange = renderSaved;
@@ -1297,9 +1326,10 @@
           <div class="application-title">${escapeHtml(app.title)}</div>
           <div class="application-company">${escapeHtml(app.company)}</div>
           <div class="application-meta"><div>${escapeHtml(app.location||'—')}</div><div>${escapeHtml(app.salary||'—')}</div></div>
-          <div style="display:flex;gap:.5rem;margin-top:.6rem">
-            <button class="btn btn-primary" onclick="openApplicationModal('${app.id}')">View</button>
-            <button class="btn btn-success" onclick="markSavedApplied('${app.id}')">Mark applied</button>
+          <div style="display:flex;gap:.5rem;margin-top:.6rem;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" onclick="openApplicationModal('${app.id}')">View</button>
+            <button class="btn btn-primary btn-sm" onclick="openEditModal('${app.id}')">✏️ Edit</button>
+            <button class="btn btn-success btn-sm" onclick="markSavedApplied('${app.id}')">Mark applied</button>
             <button class="btn btn-danger btn-sm" onclick="requestDelete('${app.id}', 'saved')">🗑️ Delete</button>
           </div>
         </div>
