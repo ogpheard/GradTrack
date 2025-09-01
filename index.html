@@ -106,6 +106,8 @@
     .btn-outline{background:#fff;color:var(--gray-800);border:2px solid var(--gray-300)}
     .btn-danger{background:var(--gradient-danger);color:#fff}
     .btn:disabled{opacity:.6;cursor:not-allowed}
+    .btn-sm{ padding:.45rem .7rem; border-radius:10px; font-weight:700; font-size:.8rem }
+    .icon{ width:16px; height:16px; display:inline-block; vertical-align:-2px }
 
     .rating-inputs{display:none;align-items:center;gap:1rem;margin-top:.5rem;padding:1rem;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:12px}
     .rating-inputs.show{display:flex}
@@ -460,6 +462,26 @@
     </div>
   </div>
 
+  <!-- Confirm Delete Modal -->
+  <div id="confirmDeleteModal" class="modal" aria-hidden="true">
+    <div class="modal-overlay" id="confirmDeleteOverlay"></div>
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="confirmDeleteTitle">
+      <div class="modal-header">
+        <h3 id="confirmDeleteTitle" style="font-weight:900;color:var(--gray-900)">Delete this entry?</h3>
+        <button id="confirmDeleteClose" class="modal-close" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirmDeleteSummary" style="margin-bottom:1rem;color:var(--gray-700)"></p>
+        <div class="hr"></div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <button id="confirmDeleteBtn" class="btn btn-danger">Delete</button>
+          <button id="cancelDeleteBtn" class="btn btn-outline">Cancel</button>
+        </div>
+        <p class="help" style="margin-top:.5rem">This will permanently remove the row from Google Sheets.</p>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast -->
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
@@ -471,6 +493,7 @@
         applications: 'https://ogpheard.app.n8n.cloud/webhook-test/applications',
         cover:        'https://ogpheard.app.n8n.cloud/webhook-test/cover',
         list:         'https://ogpheard.app.n8n.cloud/webhook-test/apps/list',
+        delete:       'https://ogpheard.app.n8n.cloud/webhook-test/apps/delete',
         update:       'https://ogpheard.app.n8n.cloud/webhook-test/updater'
       },
       prod: {
@@ -478,6 +501,7 @@
         applications: 'https://ogpheard.app.n8n.cloud/webhook/applications',
         cover:        'https://ogpheard.app.n8n.cloud/webhook/cover',
         list:         'https://ogpheard.app.n8n.cloud/webhook/apps/list',
+        delete:       'https://ogpheard.app.n8n.cloud/webhook/apps/delete',
         update:       'https://ogpheard.app.n8n.cloud/webhook/updater'
       }
     };
@@ -573,6 +597,96 @@
     const modalClose = document.getElementById('modalClose');
     const modalTitle = document.getElementById('modalTitle');
     const modalBody = document.getElementById('modalBody');
+
+    // ====== Delete modal refs
+    const confirmDeleteModal = document.getElementById('confirmDeleteModal');
+    const confirmDeleteOverlay = document.getElementById('confirmDeleteOverlay');
+    const confirmDeleteClose = document.getElementById('confirmDeleteClose');
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+    const confirmDeleteSummary = document.getElementById('confirmDeleteSummary');
+
+    // Holds the pending delete payload
+    let pendingDelete = null;
+
+    // Map UI status -> API status
+    function apiStatusFor(sourceOrStatus){
+      const s = (typeof sourceOrStatus === 'string') ? sourceOrStatus : (sourceOrStatus?.status || '');
+      return (String(s).toLowerCase() === 'saved') ? 'Saved' : 'Applied';
+    }
+
+    // Derive delete payload from a card item
+    function buildDeletePayloadFromCard(app, sourceHint){
+      const id = app.id || '';
+      const isUrl = /^https?:\/\//i.test(id);
+      const payload = {
+        status: apiStatusFor(sourceHint || app.status),
+        reason: 'user delete via UI'
+      };
+      if (isUrl) payload.canonical_job_url = id;
+      else payload.application_id = id;
+      return payload;
+    }
+
+    // Call delete API
+    async function apiDelete(env, payload){
+      const res = await fetch(URLS[env].delete, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const text = await res.text();
+      let json; try{ json = JSON.parse(text); }catch{ json = { raw:text }; }
+      if (!res.ok || json?.ok === false){
+        const msg = json?.error || `HTTP ${res.status}`;
+        throw new Error(msg);
+      }
+      return json;
+    }
+
+    // Modal open/close
+    function openDeleteConfirm(app, sourceHint){
+      const sheetLabel = apiStatusFor(sourceHint || app.status);
+      confirmDeleteSummary.innerHTML = `
+        <strong>${escapeHtml(app.title || 'Untitled')}</strong><br/>
+        ${escapeHtml(app.company || '—')}<br/>
+        <span class="help">Sheet: ${sheetLabel === 'Applied' ? 'Applications (Applied)' : 'Applications (Saved)'}</span>
+      `;
+      pendingDelete = buildDeletePayloadFromCard(app, sourceHint);
+      confirmDeleteModal.classList.add('show');
+      confirmDeleteModal.setAttribute('aria-hidden','false');
+    }
+    function closeDeleteConfirm(){
+      confirmDeleteModal.classList.remove('show');
+      confirmDeleteModal.setAttribute('aria-hidden','true');
+      pendingDelete = null;
+    }
+    confirmDeleteOverlay.onclick = closeDeleteConfirm;
+    confirmDeleteClose.onclick = closeDeleteConfirm;
+    cancelDeleteBtn.onclick = closeDeleteConfirm;
+    document.addEventListener('keydown',(e)=>{ if (e.key==='Escape' && confirmDeleteModal.classList.contains('show')) closeDeleteConfirm(); });
+
+    // Perform deletion
+    confirmDeleteBtn.onclick = async ()=>{
+      if (!pendingDelete) return;
+      const prevText = confirmDeleteBtn.textContent;
+      confirmDeleteBtn.textContent = 'Deleting…';
+      confirmDeleteBtn.disabled = true;
+      cancelDeleteBtn.disabled = true;
+      try{
+        await apiDelete(currentEnv, pendingDelete);
+        closeDeleteConfirm();
+        toast('Deleted ✓');
+        await refreshData(true);
+      }catch(e){
+        console.error(e);
+        toast(`Delete failed: ${e.message || e}`);
+      }finally{
+        confirmDeleteBtn.textContent = prevText;
+        confirmDeleteBtn.disabled = false;
+        cancelDeleteBtn.disabled = false;
+      }
+    };
 
     // ====== State
     const initialEnv = (new URLSearchParams(location.search).get('env') || 'test').toLowerCase();
@@ -951,9 +1065,9 @@
 
     function cardHTML(app){
       return `
-        <div class="application-card">
+        <div class="application-card" onclick="openApplicationModal('${app.id}')">
           <div class="application-status status-${app.status}">${escapeHtml(app.status)}</div>
-          <div class="application-header" onclick="openApplicationModal('${app.id}')">
+          <div class="application-header">
             <div class="application-title">${escapeHtml(app.title)}</div>
             <div class="application-company">${escapeHtml(app.company)}</div>
             <div class="application-date">${app.appliedDate ? `Applied: ${formatDate(app.appliedDate)}` : 'Saved for later'}</div>
@@ -966,9 +1080,11 @@
             <div>${escapeHtml(app.location || '—')}</div>
             <div style="font-weight:800">${escapeHtml(app.salary || '—')}</div>
           </div>
-          <div style="display:flex;gap:.5rem;margin-top:.6rem">
-            <button class="btn btn-primary" onclick="openApplicationModal('${app.id}')">View</button>
-            <button class="btn btn-outline" onclick="openEditModal('${app.id}')">Edit</button>
+          <div style="margin-top:.6rem; display:flex; gap:.5rem;">
+            <button class="btn btn-danger btn-sm"
+              onclick="event.stopPropagation(); requestDelete('${app.id}', 'applied')">
+              🗑️ Delete
+            </button>
           </div>
         </div>
       `;
@@ -1183,8 +1299,8 @@
           <div class="application-meta"><div>${escapeHtml(app.location||'—')}</div><div>${escapeHtml(app.salary||'—')}</div></div>
           <div style="display:flex;gap:.5rem;margin-top:.6rem">
             <button class="btn btn-primary" onclick="openApplicationModal('${app.id}')">View</button>
-            <button class="btn btn-outline" onclick="openEditModal('${app.id}')">Edit</button>
             <button class="btn btn-success" onclick="markSavedApplied('${app.id}')">Mark applied</button>
+            <button class="btn btn-danger btn-sm" onclick="requestDelete('${app.id}', 'saved')">🗑️ Delete</button>
           </div>
         </div>
       `).join('');
@@ -1221,6 +1337,22 @@
         toast('Marked applied ✅');
         await refreshData(true);
       }catch(e){ console.error(e); toast('Failed to update n8n'); }
+    };
+
+    window.requestDelete = function(id, sourceHint){
+      // Try Applications first
+      let app = applicationsList.find(a=>a.id===id);
+      if (!app && (sourceHint && String(sourceHint).toLowerCase() === 'saved')){
+        // Pull from saved live list
+        app = appsLive.saved.map(toCardShape).find(a=>a.id===id);
+      }
+      if (!app){
+        // Fallback: search both collections
+        app = (appsLive.applied.map(toCardShape).find(a=>a.id===id)
+          || appsLive.saved.map(toCardShape).find(a=>a.id===id));
+      }
+      if (!app){ toast('Could not find that item in the UI'); return; }
+      openDeleteConfirm(app, sourceHint);
     };
 
     // ====== Analytics page
