@@ -57,6 +57,21 @@
     .search-button:hover:not(:disabled){transform:translateY(calc(-50% - 2px))}
     .helper-text{margin-top:1rem;font-size:.9rem;color:var(--gray-500);display:flex;align-items:center;gap:.5rem}
 
+    /* Pasted JD input */
+    .paste-wrap{margin-top:1rem;display:flex;flex-direction:column;gap:.5rem}
+    #jobText{
+      width:100%; min-height:7.5rem; max-height:16rem; /* ~6–10 rows */
+      padding:1rem 1.25rem; border:2px solid var(--gray-200); border-radius:16px;
+      background:#fff; outline:none; resize:vertical; overflow:auto;
+      transition:.25s;
+    }
+    #jobText:focus{border-color:var(--primary-500); box-shadow:0 0 0 4px rgba(59,130,246,.1); transform:translateY(-2px)}
+    #jobSourceUrl{
+      width:100%; padding:.8rem 1rem; border:2px solid var(--gray-200); border-radius:12px; background:#fff;
+    }
+    .input-hint{display:flex;justify-content:space-between;align-items:center;gap:.75rem; color:var(--gray-500); font-size:.85rem}
+    .mono{font-variant-numeric:tabular-nums}
+
     .result-card{background:rgba(255,255,255,.95);border:1px solid rgba(255,255,255,.2);border-radius:24px;padding:2rem;box-shadow:var(--shadow-xl);display:none;animation:slideUp .6s ease-out;margin-top:1rem}
     @keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
     .job-header{border-bottom:1px solid var(--gray-200);padding-bottom:1.25rem;margin-bottom:1.25rem}
@@ -309,7 +324,27 @@
     <div id="analyzePage" class="page-content active">
       <div class="panel">
         <div class="search-section">
-          <input id="jobUrl" type="url" class="search-input" placeholder="Paste a job URL to analyze…" autocomplete="off"/>
+          <!-- Pasted JD -->
+          <div class="paste-wrap">
+            <label for="jobText" class="detail-label" style="display:block;margin-bottom:.25rem">Paste job description (required)</label>
+            <textarea id="jobText" placeholder="Cmd/Ctrl+A then Cmd/Ctrl+C on the job page, and paste here…" autocomplete="off"></textarea>
+            <div class="input-hint">
+              <span>We’ll extract title, company, salary, locations, keywords, etc.</span>
+              <span id="jobCharCount" class="mono">0 / 30000</span>
+            </div>
+          </div>
+
+          <!-- Optional URL -->
+          <div class="paste-wrap" style="margin-top:.75rem">
+            <label for="jobSourceUrl" class="detail-label" style="display:block;margin-bottom:.25rem">Source URL (optional)</label>
+            <input id="jobSourceUrl" type="url" placeholder="https://example.com/jobs/role" autocomplete="off"/>
+            <div class="input-hint">
+              <span>Helps with canonical URL & employer attribution.</span>
+              <span class="mono">Optional</span>
+            </div>
+          </div>
+
+          <!-- Action -->
           <button id="analyzeBtn" class="search-button"><span id="analyzeText">Analyze</span></button>
         </div>
         <div class="helper-text">
@@ -467,12 +502,14 @@
     const addPage = document.getElementById('addPage');
 
     // Analyse page refs
-    const jobUrlInput = document.getElementById('jobUrl');
+    const jobText = document.getElementById('jobText');
+    const jobSourceUrl = document.getElementById('jobSourceUrl');
     const analyzeBtn = document.getElementById('analyzeBtn');
     const resultCard = document.getElementById('resultCard');
     const loadingState = document.getElementById('loadingState');
     const resultContent = document.getElementById('resultContent');
     const toastEl = document.getElementById('toast');
+    const jobCharCount = document.getElementById('jobCharCount');
 
     const jobTitleEl = document.getElementById('jobTitle');
     const jobCompanyEl = document.getElementById('jobCompany');
@@ -693,21 +730,50 @@
 
     // ====== Analyse flow
     analyzeBtn.onclick = analyseUrl;
-    jobUrlInput.addEventListener('keydown',(e)=>{ if (e.key==='Enter') analyseUrl(); });
+    // (No Enter-on-URL listener anymore; we use Cmd/Ctrl+Enter in textarea)
+
+    const MAX_CHARS = 30000;
+    jobText.addEventListener('input', () => {
+      let v = jobText.value || '';
+      if (v.length > MAX_CHARS) {
+        jobText.value = v.slice(0, MAX_CHARS);
+        toast('Text truncated to 30,000 characters');
+      }
+      jobCharCount.textContent = `${jobText.value.length} / ${MAX_CHARS}`;
+    });
+
+    // Cmd/Ctrl + Enter to analyze
+    jobText.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') analyseUrl();
+    });
 
     async function analyseUrl(){
-      const url = jobUrlInput.value.trim();
-      if (!/^https?:\/\//i.test(url)){ toast('Please paste a valid URL'); return; }
-      resultCard.style.display='block'; loadingState.style.display='block'; resultContent.style.display='none'; analyzeBtn.disabled=true;
+      const text = (jobText.value || '').trim();
+      const src = (jobSourceUrl.value || '').trim();
+      if (!text) { toast('Please paste the job description'); return; }
+
+      resultCard.style.display='block';
+      loadingState.style.display='block';
+      resultContent.style.display='none';
+      analyzeBtn.disabled = true;
+
       try{
-        const fd = new FormData(); fd.append('job_url', url);
+        const fd = new FormData();
+        fd.append('job_text', text);
+        if (src) fd.append('source_url', src);
+
         const data = await postForm(URLS[currentEnv].analyse, fd);
         const out = Array.isArray(data) ? data[0] : data;
         if (!out) throw new Error('No analysis result');
-        draft = out; lastCover=null;
+        draft = out; lastCover = null;
         renderAnalysis(out);
-      }catch(e){ console.error(e); resultCard.style.display='none'; toast(`Analysis failed (${currentEnv}). Check n8n & CORS.`); }
-      finally{ analyzeBtn.disabled=false; }
+      }catch(e){
+        console.error(e);
+        resultCard.style.display='none';
+        toast(`Analysis failed (${currentEnv}). Check n8n & CORS.`);
+      }finally{
+        analyzeBtn.disabled = false;
+      }
     }
 
     function renderAnalysis(a){
