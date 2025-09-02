@@ -23,17 +23,26 @@
       --gradient-primary: linear-gradient(135deg,var(--primary-500),var(--primary-600));
       --gradient-success: linear-gradient(135deg,var(--success-500),var(--success-600));
       --gradient-danger: linear-gradient(135deg,var(--danger-500),var(--danger-600));
+      --shadow-2xl:0 25px 50px -12px rgb(0 0 0 / 0.25);
+      --gradient-blue: linear-gradient(135deg, #667eea 0%, #4facfe 100%);
+      --gradient-green: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      --gradient-purple: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+      --glass-bg: rgba(255,255,255,0.1);
+      --glass-border: rgba(255,255,255,0.2);
     }
     *{box-sizing:border-box;margin:0;padding:0}
     body{
       font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+      background:var(--gradient-purple);
       min-height:100vh; padding:2rem 1rem; color:var(--gray-800);
     }
     .container{max-width:1200px;margin:0 auto}
     .header,.panel{
       background:rgba(255,255,255,.95); backdrop-filter:blur(20px);
-      border:1px solid rgba(255,255,255,.2); border-radius:24px; padding:2rem; box-shadow:var(--shadow-xl);
+      border:1px solid rgba(255,255,255,.2); border-radius:24px; padding:2rem; box-shadow:var(--shadow-2xl); position:relative; overflow:hidden;
+    }
+    .panel::before{
+      content:'';position:absolute;top:0;left:0;right:0;height:4px;background:var(--gradient-blue);border-radius:24px 24px 0 0;
     }
     .header{margin-bottom:2rem}
     .header-content{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:2rem}
@@ -157,11 +166,40 @@
     .modal-close{background:none;border:none;color:var(--gray-500);cursor:pointer;padding:.5rem;border-radius:8px}
 
     /* Analytics */
-    .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin-bottom:1rem}
-    .kpi{background:#fff;border:1px solid var(--gray-200);border-radius:16px;padding:1rem}
-    .kpi-label{font-size:.85rem;color:var(--gray-500);font-weight:700;letter-spacing:.04em;text-transform:uppercase}
-    .kpi-value{font-size:1.8rem;font-weight:900;margin-top:.35rem}
-    .charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1rem}
+    .analytics-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2.5rem;flex-wrap:wrap;gap:1rem}
+    .analytics-title{font-size:2.25rem;font-weight:800;background:var(--gradient-blue);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:.75rem}
+    .analytics-title::before{content:"📊";font-size:2rem}
+
+    .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.5rem;margin-bottom:2.5rem}
+    .kpi{background:rgba(255,255,255,0.9);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.3);border-radius:20px;padding:2rem;position:relative;overflow:hidden;transition:all .3s cubic-bezier(.4,0,.2,1);cursor:pointer}
+    .kpi:hover{transform:translateY(-8px);box-shadow:var(--shadow-2xl);border-color:rgba(255,255,255,0.4)}
+    .kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:var(--gradient-blue);transform:scaleX(0);transition:transform .3s ease}
+    .kpi:hover::before{transform:scaleX(1)}
+    .kpi-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem}
+    .kpi-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;background:var(--gradient-blue)}
+    .kpi-trend{display:flex;align-items:center;gap:.25rem;font-size:.875rem;font-weight:600}
+    .trend-up{color:var(--success-600)}
+    .trend-down{color:var(--danger-600)}
+    .trend-neutral{color:var(--gray-500)}
+    .kpi-label{font-size:.875rem;color:var(--gray-600);font-weight:600;letter-spacing:.025em;text-transform:uppercase;margin-bottom:.5rem}
+    .kpi-value{font-size:2.5rem;font-weight:900;line-height:1;background:var(--gradient-blue);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+    .kpi-subtitle{font-size:.875rem;color:var(--gray-500);margin-top:.5rem}
+
+    .charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:2rem;margin-top:1rem}
+    .chart-container{background:rgba(255,255,255,0.9);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.3);border-radius:20px;padding:1.5rem;position:relative;overflow:hidden;transition:all .3s cubic-bezier(.4,0,.2,1);min-height:400px}
+    .chart-container:hover{transform:translateY(-4px);box-shadow:var(--shadow-xl)}
+    .chart-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid var(--gray-200)}
+    .chart-title{font-size:1.25rem;font-weight:700;color:var(--gray-900)}
+    .chart-subtitle{font-size:.875rem;color:var(--gray-500);margin-top:.25rem}
+    .chart-canvas{height:300px !important;position:relative}
+
+    .filter-controls{display:flex;align-items:center;gap:1rem;background:rgba(255,255,255,0.7);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.3);border-radius:16px;padding:.75rem 1.25rem}
+    .filter-label{font-size:.875rem;color:var(--gray-600);font-weight:600}
+    .filter-select{background:rgba(255,255,255,0.9);border:1px solid var(--gray-300);border-radius:12px;padding:.625rem .875rem;font-size:.875rem;font-weight:600;color:var(--gray-700);transition:all .2s ease}
+    .filter-select:focus{outline:none;border-color:var(--primary-500);box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
+
+    @keyframes slideInUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+    .animate-slide-in{animation:slideInUp .6s cubic-bezier(.4,0,.2,1)}
 
     /* Add Application */
     .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem}
@@ -248,11 +286,11 @@
 
     <!-- Analytics page -->
     <div id="analyticsPage" class="page-content">
-      <div class="panel">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1rem">
-          <h2 style="font-size:1.4rem;font-weight:900;color:var(--gray-900)">Application Analytics</h2>
-          <div style="display:flex;gap:.5rem;align-items:center">
-            <label class="help">Timeframe</label>
+      <div class="panel animate-slide-in">
+        <div class="analytics-header">
+          <h2 class="analytics-title">Application Analytics</h2>
+          <div class="filter-controls">
+            <span class="filter-label">Timeframe</span>
             <select id="analyticsRange" class="filter-select">
               <option value="all">All time</option>
               <option value="90">Last 90 days</option>
@@ -263,28 +301,86 @@
 
         <div class="kpi-row">
           <div class="kpi">
+            <div class="kpi-header">
+              <div class="kpi-icon">📝</div>
+              <div id="kpiTrendApps" class="kpi-trend trend-neutral">— 0%</div>
+            </div>
             <div class="kpi-label">Total applications</div>
             <div id="kpiTotalApps" class="kpi-value">0</div>
+            <div class="kpi-subtitle">In range</div>
           </div>
+
           <div class="kpi">
+            <div class="kpi-header">
+              <div class="kpi-icon">📬</div>
+              <div id="kpiTrendResponses" class="kpi-trend trend-neutral">— 0%</div>
+            </div>
             <div class="kpi-label">Total responses</div>
             <div id="kpiTotalResponses" class="kpi-value">0</div>
+            <div id="kpiResponsesSubtitle" class="kpi-subtitle">0% response rate</div>
           </div>
+
           <div class="kpi">
+            <div class="kpi-header">
+              <div class="kpi-icon">📊</div>
+              <div id="kpiTrendAvgPerDay" class="kpi-trend trend-neutral">— 0%</div>
+            </div>
             <div class="kpi-label">Avg apps / day</div>
             <div id="kpiAvgPerDay" class="kpi-value">0</div>
+            <div id="kpiAvgPerDaySubtitle" class="kpi-subtitle">Daily average</div>
           </div>
+
           <div class="kpi">
+            <div class="kpi-header">
+              <div class="kpi-icon">⏱️</div>
+              <div id="kpiTrendRespTime" class="kpi-trend trend-neutral">— 0d</div>
+            </div>
             <div class="kpi-label">Avg time to response</div>
             <div id="kpiAvgRespTime" class="kpi-value">—</div>
+            <div class="kpi-subtitle">Average days</div>
           </div>
         </div>
 
-        <div class="charts-grid" style="min-height:520px">
-          <div style="height:300px"><canvas id="chartAppsLine"></canvas></div>
-          <div style="height:300px"><canvas id="chartStatusPie"></canvas></div>
-          <div style="height:300px"><canvas id="chartSectorBar"></canvas></div>
-          <div style="height:300px"><canvas id="chartRoleTypeBar"></canvas></div>
+        <div class="charts-grid">
+          <div class="chart-container">
+            <div class="chart-header">
+              <div>
+                <div class="chart-title">Applications Over Time</div>
+                <div class="chart-subtitle">Daily application count</div>
+              </div>
+            </div>
+            <canvas id="chartAppsLine" class="chart-canvas"></canvas>
+          </div>
+
+          <div class="chart-container">
+            <div class="chart-header">
+              <div>
+                <div class="chart-title">Status Distribution</div>
+                <div class="chart-subtitle">Current application status</div>
+              </div>
+            </div>
+            <canvas id="chartStatusPie" class="chart-canvas"></canvas>
+          </div>
+
+          <div class="chart-container">
+            <div class="chart-header">
+              <div>
+                <div class="chart-title">Applications by Sector</div>
+                <div class="chart-subtitle">Industry breakdown</div>
+              </div>
+            </div>
+            <canvas id="chartSectorBar" class="chart-canvas"></canvas>
+          </div>
+
+          <div class="chart-container">
+            <div class="chart-header">
+              <div>
+                <div class="chart-title">Role Types</div>
+                <div class="chart-subtitle">Position categories</div>
+              </div>
+            </div>
+            <canvas id="chartRoleTypeBar" class="chart-canvas"></canvas>
+          </div>
         </div>
       </div>
     </div>
@@ -596,8 +692,39 @@
     const kpiTotalResponses = document.getElementById('kpiTotalResponses');
     const kpiAvgPerDay = document.getElementById('kpiAvgPerDay');
     const kpiAvgRespTime = document.getElementById('kpiAvgRespTime');
+    const kpiTrendApps = document.getElementById('kpiTrendApps');
+    const kpiTrendResponses = document.getElementById('kpiTrendResponses');
+    const kpiTrendAvgPerDay = document.getElementById('kpiTrendAvgPerDay');
+    const kpiTrendRespTime = document.getElementById('kpiTrendRespTime');
+    const kpiResponsesSubtitle = document.getElementById('kpiResponsesSubtitle');
+    const kpiAvgPerDaySubtitle = document.getElementById('kpiAvgPerDaySubtitle');
 
     let chartAppsLine, chartStatusPie, chartSectorBar, chartRoleTypeBar;
+
+    const chartDefaults = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            usePointStyle: true,
+            padding: 20,
+            font: { family: 'Inter', size: 12, weight: '600' }
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0,0,0,0.8)',
+          titleColor: 'white',
+          bodyColor: 'white',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          cornerRadius: 8,
+          displayColors: false
+        }
+      },
+      animation: { duration: 1000, easing: 'easeInOutCubic' }
+    };
 
     // Add application
     const addForm = document.getElementById('addForm');
@@ -1473,13 +1600,11 @@
 
       // ---- KPIs ----
       const totalApps = rowsInRange.length;
-
       const totalResponses = rowsInRange.filter(isResponse).length;
+      const daysSpan = Math.max(1, Math.round(daysBetween(start, end) + 1));
+      const avgPerDay = totalApps / daysSpan;
 
-      const daysSpan = Math.max(1, Math.round(daysBetween(start, end) + 1)); // inclusive
-      const avgPerDay = (totalApps / daysSpan);
-      
-      // Avg time to response (use first_response_date, else status_update_date)
+      // Avg time to response
       const respDurations = rowsInRange
         .filter(isResponse)
         .map(r => {
@@ -1490,16 +1615,54 @@
           return Number.isFinite(d) && d >= 0 ? d : null;
         })
         .filter(d => d != null);
-
       const avgRespTime = respDurations.length
         ? (respDurations.reduce((a,b)=>a+b,0) / respDurations.length)
         : null;
+
+      // Previous period for trends
+      const prevEnd = new Date(start.getTime() - 86400000);
+      const prevStart = new Date(prevEnd.getTime() - (daysSpan - 1) * 86400000);
+      const rowsPrev = rows.filter(r => inRange(r.applied_date, prevStart, prevEnd));
+      const prevTotalApps = rowsPrev.length;
+      const prevTotalResponses = rowsPrev.filter(isResponse).length;
+      const prevAvgPerDay = prevTotalApps / daysSpan;
+      const prevRespDurations = rowsPrev
+        .filter(isResponse)
+        .map(r => {
+          const appliedAt = parseISO(r.applied_date);
+          const responseAt = parseISO(r.first_response_date || r.status_update_date);
+          if (!appliedAt || !responseAt) return null;
+          const d = daysBetween(appliedAt, responseAt);
+          return Number.isFinite(d) && d >= 0 ? d : null;
+        })
+        .filter(d => d != null);
+      const prevAvgRespTime = prevRespDurations.length
+        ? (prevRespDurations.reduce((a,b)=>a+b,0) / prevRespDurations.length)
+        : null;
+
+      function setTrend(el, delta, unit='%'){
+        let cls='trend-neutral', arrow='—';
+        if (delta > 0.01){ cls='trend-up'; arrow='↗'; }
+        else if (delta < -0.01){ cls='trend-down'; arrow='↘'; }
+        const val = Math.abs(delta).toFixed(unit==='%'?0:1);
+        const sign = delta > 0 ? '+' : delta < 0 ? '-' : '0';
+        el.textContent = `${arrow} ${sign}${val}${unit}`;
+        el.className = `kpi-trend ${cls}`;
+      }
 
       // Write KPIs
       kpiTotalApps.textContent = String(totalApps);
       kpiTotalResponses.textContent = String(totalResponses);
       kpiAvgPerDay.textContent = avgPerDay.toFixed(2);
       kpiAvgRespTime.textContent = (avgRespTime == null) ? '—' : `${avgRespTime.toFixed(1)}d`;
+      const respRate = totalApps ? (totalResponses / totalApps) * 100 : 0;
+      kpiResponsesSubtitle.textContent = `${respRate.toFixed(0)}% response rate`;
+      kpiAvgPerDaySubtitle.textContent = `Over ${daysSpan} days`;
+
+      setTrend(kpiTrendApps, prevTotalApps ? ((totalApps - prevTotalApps)/prevTotalApps)*100 : 0);
+      setTrend(kpiTrendResponses, prevTotalResponses ? ((totalResponses - prevTotalResponses)/prevTotalResponses)*100 : 0);
+      setTrend(kpiTrendAvgPerDay, prevAvgPerDay ? ((avgPerDay - prevAvgPerDay)/prevAvgPerDay)*100 : 0);
+      setTrend(kpiTrendRespTime, (prevAvgRespTime != null && avgRespTime != null) ? (avgRespTime - prevAvgRespTime) : 0, 'd');
 
       // ---- Datasets for charts ----
 
@@ -1552,41 +1715,87 @@
 
       chartAppsLine = new Chart(document.getElementById('chartAppsLine').getContext('2d'), {
         type: 'line',
-        data: { labels: lineLabels, datasets: [{ data: lineData, tension: 0.3 }] },
+        data: {
+          labels: lineLabels,
+          datasets: [{
+            data: lineData,
+            tension: 0.4,
+            borderColor: '#667eea',
+            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+            borderWidth: 3,
+            fill: true,
+            pointBackgroundColor: '#667eea',
+            pointBorderColor: 'white',
+            pointBorderWidth: 2,
+            pointRadius: 6,
+            pointHoverRadius: 8
+          }]
+        },
         options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: false }, title: { display: true, text: 'Applications over time' } },
-          scales: { y: { beginAtZero: true } }
+          ...chartDefaults,
+          scales: {
+            y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { family: 'Inter', weight: '500' } } },
+            x: { grid: { display: false }, ticks: { font: { family: 'Inter', weight: '500' } } }
+          }
         }
       });
 
       chartStatusPie = new Chart(document.getElementById('chartStatusPie').getContext('2d'), {
-        type: 'pie',
-        data: { labels: pieLabels, datasets: [{ data: pieData }] },
+        type: 'doughnut',
+        data: {
+          labels: pieLabels,
+          datasets: [{
+            data: pieData,
+            backgroundColor: ['#667eea', '#4facfe', '#38ef7d', '#f093fb', '#f5576c'],
+            borderWidth: 0,
+            hoverOffset: 10
+          }]
+        },
         options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { position: 'bottom' }, title: { display: true, text: 'Status distribution' } }
+          ...chartDefaults,
+          cutout: '60%'
         }
       });
 
       chartSectorBar = new Chart(document.getElementById('chartSectorBar').getContext('2d'), {
         type: 'bar',
-        data: { labels: sectorLabels, datasets: [{ data: sectorData }] },
+        data: {
+          labels: sectorLabels,
+          datasets: [{
+            data: sectorData,
+            backgroundColor: ['#667eea', '#4facfe', '#38ef7d', '#f093fb', '#f5576c'],
+            borderRadius: 8,
+            borderSkipped: false
+          }]
+        },
         options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: false }, title: { display: true, text: 'Applications per sector' } },
-          scales: { y: { beginAtZero: true } }
+          ...chartDefaults,
+          plugins: { ...chartDefaults.plugins, legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+            x: { grid: { display: false } }
+          }
         }
       });
 
       chartRoleTypeBar = new Chart(document.getElementById('chartRoleTypeBar').getContext('2d'), {
         type: 'bar',
-        data: { labels: roleLabels, datasets: [{ data: roleData }] },
+        data: {
+          labels: roleLabels,
+          datasets: [{
+            data: roleData,
+            backgroundColor: '#667eea',
+            borderRadius: 8
+          }]
+        },
         options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: false }, title: { display: true, text: 'Applications per role type' } },
+          ...chartDefaults,
           indexAxis: 'y',
-          scales: { x: { beginAtZero: true } }
+          plugins: { ...chartDefaults.plugins, legend: { display: false } },
+          scales: {
+            x: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+            y: { grid: { display: false } }
+          }
         }
       });
     }
@@ -1649,6 +1858,16 @@
 
     // ====== Init renders
     (async ()=>{ await refreshData(); startPolling(); })();
+
+    // KPI hover micro-interactions
+    document.querySelectorAll('.kpi').forEach(kpi => {
+      kpi.addEventListener('mouseenter', () => {
+        kpi.style.transform = 'translateY(-8px) scale(1.02)';
+      });
+      kpi.addEventListener('mouseleave', () => {
+        kpi.style.transform = 'translateY(0) scale(1)';
+      });
+    });
 
     // ====== Analyse button disables loading skeleton on first view
     document.addEventListener('DOMContentLoaded',()=>{
