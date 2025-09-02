@@ -149,6 +149,8 @@
     .status-response{background:var(--warning-50);color:var(--warning-600);border:1px solid #fde68a}
     .application-title{font-size:1.1rem;font-weight:800;color:var(--gray-900)}
     .application-company{color:var(--primary-600);font-weight:700;margin:.25rem 0}
+    .application-detail{font-size:.85rem;color:var(--gray-600);margin-top:.25rem}
+
     .application-date{font-size:.85rem;color:var(--gray-500)}
     .application-scores{display:flex;gap:1rem;margin:.75rem 0}
     .mini-score{flex:1;text-align:center}
@@ -859,6 +861,10 @@
         title: r.title || 'Untitled role',
         company: r.company_name || '',
         status: String(r.status || '').toLowerCase(),
+        sector: r.sector || '',
+        roleType: r.role_type || '',
+        startDate: r.start_date || null,
+        statusUpdateDate: r.status_update_date || null,
         appliedDate: r.applied_date || null,
         location: locs || '—',
         salary: salary || '—',
@@ -896,6 +902,8 @@
           ...appsLive.applied.map(toCardShape),
           ...appsLive.saved.map(toCardShape)
         ];
+        const statusSet = [...new Set(flat.map(a=>a.status).filter(Boolean))].sort();
+        assignStatusColors(statusSet);
         applicationsList = flat.filter(a => a.status !== 'saved');
 
         if (!silent) toast('Data refreshed');
@@ -970,6 +978,19 @@
     const RESP_EXCLUDE = new Set(['saved']);         // always exclude
     const APPLIED_NAME = 'applied';                   // string used in status
     const toLower = s => String(s || '').trim().toLowerCase();
+
+    const STATUS_COLOR_PALETTE = ['#667eea', '#4facfe', '#38ef7d', '#f093fb', '#f5576c', '#9ca3af', '#a78bfa', '#fdba74'];
+    let STATUS_COLORS = {};
+    function assignStatusColors(statuses){
+      STATUS_COLORS = {};
+      statuses.forEach((s, idx)=>{
+        STATUS_COLORS[s] = STATUS_COLOR_PALETTE[idx % STATUS_COLOR_PALETTE.length];
+      });
+    }
+    function statusStyle(s){
+      const c = STATUS_COLORS[toLower(s)] || '#9ca3af';
+      return `background:${c};color:#fff;`;
+    }
 
     function isSaved(row){ return toLower(row.status) === 'saved'; }
     function isApplied(row){ return toLower(row.status) === APPLIED_NAME; }
@@ -1261,35 +1282,26 @@
       if (sort==='fit-desc')  arr.sort((a,b)=> (b.fitScore||0) - (a.fitScore||0));
       if (sort==='company')   arr.sort((a,b)=> (a.company||'').localeCompare(b.company||''));
 
-      applicationsGrid.innerHTML = arr.map(app => cardHTML(app)).join('');
+      applicationsGrid.innerHTML = arr.map(app => cardHTML(app,false)).join('');
     }
 
-    function cardHTML(app){
+    function cardHTML(app, isSaved=false){
+      const statusText = app.status ? app.status[0].toUpperCase() + app.status.slice(1) : '';
       return `
         <div class="application-card" onclick="openApplicationModal('${app.id}')">
-          <div class="application-status status-${app.status}">${escapeHtml(app.status)}</div>
-          <div class="application-header">
-            <div class="application-title">${escapeHtml(app.title)}</div>
-            <div class="application-company">${escapeHtml(app.company)}</div>
-            <div class="application-date">${app.appliedDate ? `Applied: ${formatDate(app.appliedDate)}` : 'Saved for later'}</div>
-          </div>
-          <div class="application-scores">
-            <div class="mini-score"><div class="mini-score-label">Fit</div><div class="mini-score-value">${app.fitScore ?? 0}%</div></div>
-            <div class="mini-score"><div class="mini-score-label">Align</div><div class="mini-score-value">${app.alignmentScore ?? 0}%</div></div>
-          </div>
-          <div class="application-meta">
-            <div>${escapeHtml(app.location || '—')}</div>
-            <div style="font-weight:800">${escapeHtml(app.salary || '—')}</div>
-          </div>
-          <div style="margin-top:.6rem; display:flex; gap:.5rem;">
+          <div class="application-status" style="${statusStyle(app.status)}">${escapeHtml(statusText)}</div>
+          <div class="application-title">${escapeHtml(app.title)}</div>
+          <div class="application-company">${escapeHtml(app.company)}</div>
+          <div class="application-detail">Sector: ${escapeHtml(app.sector || '—')}</div>
+          <div class="application-detail">Role Type: ${escapeHtml(app.roleType || '—')}</div>
+          <div class="application-detail">Start Date: ${formatDate(app.startDate)}</div>
+          <div class="application-detail">Status Updated: ${formatDate(app.statusUpdateDate)}</div>
+          <div style="margin-top:.6rem; display:flex; gap:.5rem; flex-wrap:wrap;">
             <button class="btn btn-primary btn-sm"
-              onclick="event.stopPropagation(); openEditModal('${app.id}')">
-              ✏️ Edit
-            </button>
+              onclick="event.stopPropagation(); openEditModal('${app.id}')">✏️ Edit</button>
+            ${isSaved ? `<button class="btn btn-success btn-sm" onclick="event.stopPropagation(); markSavedApplied('${app.id}')">Mark applied</button>` : ''}
             <button class="btn btn-danger btn-sm"
-              onclick="event.stopPropagation(); requestDelete('${app.id}', 'applied')">
-              🗑️ Delete
-            </button>
+              onclick="event.stopPropagation(); requestDelete('${app.id}', '${isSaved ? 'saved' : 'applied'}')">🗑️ Delete</button>
           </div>
         </div>
       `;
@@ -1548,20 +1560,7 @@
       if (s==='date-desc') arr.sort((a,b)=> new Date(b.appliedDate||'2000-01-01') - new Date(a.appliedDate||'2000-01-01'));
       if (s==='fit-desc')  arr.sort((a,b)=> (b.fitScore||0)-(a.fitScore||0));
       if (s==='company')   arr.sort((a,b)=> (a.company||'').localeCompare(b.company||''));
-      savedGrid.innerHTML = arr.map(app => `
-        <div class="application-card">
-          <div class="application-status status-${app.status}">${escapeHtml(app.status)}</div>
-          <div class="application-title">${escapeHtml(app.title)}</div>
-          <div class="application-company">${escapeHtml(app.company)}</div>
-          <div class="application-meta"><div>${escapeHtml(app.location||'—')}</div><div>${escapeHtml(app.salary||'—')}</div></div>
-          <div style="display:flex;gap:.5rem;margin-top:.6rem;flex-wrap:wrap">
-            <button class="btn btn-primary btn-sm" onclick="openApplicationModal('${app.id}')">View</button>
-            <button class="btn btn-primary btn-sm" onclick="openEditModal('${app.id}')">✏️ Edit</button>
-            <button class="btn btn-success btn-sm" onclick="markSavedApplied('${app.id}')">Mark applied</button>
-            <button class="btn btn-danger btn-sm" onclick="requestDelete('${app.id}', 'saved')">🗑️ Delete</button>
-          </div>
-        </div>
-      `).join('');
+      savedGrid.innerHTML = arr.map(app => cardHTML(app,true)).join('');
     }
     window.markSavedApplied = async function(id){
       const app = appsLive.saved.map(toCardShape).find(a=>a.id===id);
@@ -1724,6 +1723,7 @@
       });
       const pieLabels = Object.keys(statusCounts).sort();
       const pieData = pieLabels.map(k => statusCounts[k]);
+      const pieColors = pieLabels.map(k => STATUS_COLORS[toLower(k)] || '#9ca3af');
 
       // 3) Bar: per sector
       const sectorCounts = {};
@@ -1782,7 +1782,7 @@
           labels: pieLabels,
           datasets: [{
             data: pieData,
-            backgroundColor: ['#667eea', '#4facfe', '#38ef7d', '#f093fb', '#f5576c'],
+            backgroundColor: pieColors,
             borderWidth: 0,
             hoverOffset: 10
           }]
