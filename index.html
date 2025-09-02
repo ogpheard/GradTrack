@@ -958,6 +958,12 @@
       try{ return await res.json(); }catch{ return {}; }
     }
     function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function sanitizeHtml(html){
+      const div = document.createElement('div');
+      div.innerHTML = html;
+      div.querySelectorAll('script,style').forEach(e=>e.remove());
+      return div.innerHTML;
+    }
     function formatDate(d){ return d ? new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—'; }
 
     // ---- Analytics helpers (exclude Saved everywhere) ----
@@ -1116,7 +1122,7 @@
       gapsEl.textContent = bullets(a.gaps || []);
       summaryEl.textContent = a.job_summary || a.summary || '';
 
-      fullDescriptionEl.textContent = a.job_description || '';
+      fullDescriptionEl.innerHTML = sanitizeHtml(a.job_description || '').replace(/\n/g,'<br/>');
       detailsContent.classList.remove('show');
       toggleDetailsBtn.textContent = 'View more';
       toggleDetailsBtn.onclick = ()=>{
@@ -1290,41 +1296,71 @@
     }
 
     window.openApplicationModal = function(id){
-      let app = applicationsList.find(a=>a.id===id);
-      if (!app) app = appsLive.saved.map(toCardShape).find(a=>a.id===id);
-      if (!app) return;
-      modalTitle.textContent = app.title;
+      const raw = getRawRowById(id);
+      if (!raw) return;
+
+      modalTitle.textContent = raw.title || 'Untitled role';
+
+      const bullet = arr => asArray(arr).map(x=>`• ${escapeHtml(x)}`).join('<br/>') || '—';
+      const detailFields = [
+        ['Source URL', raw.source_url ? `<a href="${escapeHtml(raw.source_url)}" target="_blank" rel="noopener">${escapeHtml(raw.source_url)}</a>` : '—'],
+        ['Title', raw.title],
+        ['Company Name', raw.company_name],
+        ['Seniority', raw.seniority],
+        ['Role Type', raw.role_type],
+        ['Sector', raw.sector],
+        ['Contact Email', raw.contact_email],
+        ['Date Posted', formatDate(raw.date_posted)],
+        ['Date Deadline', formatDate(raw.date_deadline)],
+        ['Start Date', formatDate(raw.start_date)],
+        ['Salary Min', raw.salary_min],
+        ['Salary Max', raw.salary_max],
+        ['Salary Currency', raw.salary_currency],
+        ['Salary Period', raw.salary_period],
+        ['Salary Raw', raw.salary_raw],
+        ['Locations', Array.isArray(raw.locations) ? escapeHtml(raw.locations.join(', ')) : escapeHtml(raw.locations || '')],
+        ['AI Fit Score', raw.AI_fit_score],
+        ['AI Alignment Score', raw.AI_alignment_score],
+        ['AI CV Filename', raw.AI_cv_filename],
+        ['AI CV Reason', raw.AI_cv_reason],
+        ['Status', raw.status],
+        ['Applied Date', formatDate(raw.applied_date)],
+        ['Application Effort Rating', raw.application_effort_rating],
+        ['Application Chance Rating', raw.application_chance_rating],
+        ['Status Update Date', formatDate(raw.status_update_date)]
+      ];
+
+      const detailsHtml = detailFields.map(([label, value])=>{
+        let v = value;
+        if (v === undefined || v === null || v === '' || (typeof v === 'string' && v.trim()==='')) v = '—';
+        return `<div class="detail-item"><div class="detail-label">${label}</div><div class="detail-value">${v}</div></div>`;
+      }).join('');
+
+      const fit = Math.max(0, Math.min(100, Number(raw.AI_fit_score || 0)));
+      const align = Math.max(0, Math.min(100, Number(raw.AI_alignment_score || 0)));
+
       modalBody.innerHTML = `
-        <div class="job-header">
-          <div class="job-company" style="margin-bottom:1rem">${escapeHtml(app.company)}</div>
-          <div class="job-details">
-            <div class="detail-item"><div class="detail-label">Status</div><div class="detail-value"><span class="application-status status-${app.status}">${app.status}</span></div></div>
-            <div class="detail-item"><div class="detail-label">Location</div><div class="detail-value">${escapeHtml(app.location||'—')}</div></div>
-            <div class="detail-item"><div class="detail-label">Salary</div><div class="detail-value">${escapeHtml(app.salary||'—')}</div></div>
-            <div class="detail-item"><div class="detail-label">Source</div><div class="detail-value">${escapeHtml(app.source||'—')}</div></div>
-          </div>
-        </div>
+        <div class="job-details">${detailsHtml}</div>
         <div class="scores-section">
-          <div class="score-card"><div class="score-label">AI Fit</div><div class="score-value">${app.fitScore ?? 0}%</div><div class="score-bar"><div class="score-fill" style="width:${app.fitScore ?? 0}%"></div></div></div>
-          <div class="score-card"><div class="score-label">Alignment</div><div class="score-value">${app.alignmentScore ?? 0}%</div><div class="score-bar"><div class="score-fill" style="width:${app.alignmentScore ?? 0}%"></div></div></div>
+          <div class="score-card"><div class="score-label">AI Fit</div><div class="score-value">${fit}%</div><div class="score-bar"><div class="score-fill" style="width:${fit}%"></div></div></div>
+          <div class="score-card"><div class="score-label">Alignment</div><div class="score-value">${align}%</div><div class="score-bar"><div class="score-fill" style="width:${align}%"></div></div></div>
         </div>
-        ${Number.isFinite(app.effortRating) ? `
-          <div class="columns" style="margin-bottom:1rem">
-            <div class="column"><h3>Effort rating</h3><div class="score-value" style="font-size:1.4rem">${app.effortRating}/10</div></div>
-            <div class="column"><h3>Chance rating</h3><div class="score-value" style="font-size:1.4rem">${app.chanceRating}/10</div></div>
-          </div>`:``}
-        <div class="columns">
-          <div class="column"><h3>✅ Fits</h3><div class="list-content">${bullets(app.fits||[]).replace(/\n/g,'<br/>')}</div></div>
-          <div class="column"><h3>⚠️ Gaps</h3><div class="list-content">${bullets(app.gaps||[]).replace(/\n/g,'<br/>')}</div></div>
+        <div class="columns" style="margin-top:1rem">
+          <div class="column"><h3>Key requirements</h3><div class="list-content">${bullet(raw.key_requirements)}</div></div>
+          <div class="column"><h3>Other requirements</h3><div class="list-content">${bullet(raw.other_requirements)}</div></div>
         </div>
-        <div class="section"><h3 class="section-title">Job description</h3><div class="summary"><div>${escapeHtml(app.description||'')}</div></div></div>
-        <div class="section"><h3 class="section-title">Requirements</h3><div class="keywords">${asArray(app.requirements).map(r=>`<span class="keyword">${escapeHtml(r)}</span>`).join('')}</div></div>
-      `;
-      modalBody.innerHTML += `
+        <div class="columns" style="margin-top:1rem">
+          <div class="column"><h3>✅ Fits</h3><div class="list-content">${bullet(raw.fits)}</div></div>
+          <div class="column"><h3>⚠️ Gaps</h3><div class="list-content">${bullet(raw.gaps)}</div></div>
+        </div>
+        <div class="section"><h3 class="section-title">Job summary</h3><div class="summary"><div>${escapeHtml(raw.job_summary||'—')}</div></div></div>
+        <div class="section"><h3 class="section-title">Keywords</h3><div class="keywords">${asArray(raw.keywords).map(k=>`<span class="keyword">${escapeHtml(k)}</span>`).join('') || '—'}</div></div>
+        <div class="section"><h3 class="section-title">Job description</h3><div class="summary"><div>${sanitizeHtml(raw.job_description||'').replace(/\n/g,'<br/>') || '—'}</div></div></div>
         <div style="display:flex;gap:.5rem;margin-top:1rem">
           <button class="btn btn-primary" id="editBtn">Edit</button>
         </div>
       `;
+
       document.getElementById('editBtn').onclick = ()=> openEditModal(id);
       modal.classList.add('show'); modal.setAttribute('aria-hidden','false');
     };
