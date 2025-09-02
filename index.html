@@ -144,9 +144,20 @@
     .application-card{background:rgba(255,255,255,.95);border:1px solid rgba(255,255,255,.2);border-radius:16px;padding:1.1rem;box-shadow:var(--shadow-md);cursor:pointer;transition:.2s;position:relative}
     .application-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
     .application-status{position:absolute;top:.75rem;right:.75rem;padding:.2rem .65rem;border-radius:20px;font-size:.72rem;font-weight:800;text-transform:uppercase}
-    .status-applied{background:var(--success-50);color:var(--success-600);border:1px solid #bbf7d0}
-    .status-saved{background:var(--primary-50);color:var(--primary-600);border:1px solid #bfdbfe}
-    .status-response{background:var(--warning-50);color:var(--warning-600);border:1px solid #fde68a}
+      .status-applied{background:var(--success-50);color:var(--success-600);border:1px solid #bbf7d0}
+      .status-saved{background:var(--primary-50);color:var(--primary-600);border:1px solid #bfdbfe}
+      .status-response{background:var(--warning-50);color:var(--warning-600);border:1px solid #fde68a}
+      /* Extended status chips */
+      .status-default{ background:var(--gray-100); color:var(--gray-700); border:1px solid var(--gray-300); }
+      .status-oa{ background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe; }            /* indigo */
+      .status-hirevue{ background:#f5f3ff; color:#6d28d9; border:1px solid #ddd6fe; }        /* violet */
+      .status-interview{ background:#ecfeff; color:#0891b2; border:1px solid #a5f3fc; }      /* cyan */
+      .status-offer{ background:var(--success-50); color:var(--success-600); border:1px solid #bbf7d0; }
+      .status-rejected{ background:var(--danger-50); color:var(--danger-600); border:1px solid #fecaca; }
+      .status-ghosted{ background:var(--gray-100); color:var(--gray-600); border:1px solid var(--gray-300); }
+      .status-withdrew{ background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; }       /* slate */
+      .status-onhold{ background:var(--warning-50); color:var(--warning-600); border:1px solid #fde68a; }
+      .status-roleclosed{ background:#f3f4f6; color:#4b5563; border:1px solid #e5e7eb; }
     .application-title{font-size:1.1rem;font-weight:800;color:var(--gray-900)}
     .application-company{color:var(--primary-600);font-weight:700;margin:.25rem 0}
     .application-detail{font-size:.85rem;color:var(--gray-600);margin-top:.25rem}
@@ -254,12 +265,7 @@
     <div id="applicationsPage" class="page-content">
       <div class="panel">
         <div class="filters">
-          <select id="statusFilter" class="filter-select">
-            <option value="all">All statuses</option>
-            <option value="applied">Applied</option>
-            <option value="response">Got response</option>
-            <option value="saved">Saved</option>
-          </select>
+          <select id="statusFilter" class="filter-select"></select>
           <select id="sortFilter" class="filter-select">
             <option value="date-desc">Newest first</option>
             <option value="date-asc">Oldest first</option>
@@ -398,10 +404,7 @@
             <div class="form-field"><label>Source URL</label><input type="url" name="source_url" placeholder="https://..." /></div>
             <div class="form-field"><label>Locations (comma separated)</label><input name="locations" placeholder="Bristol, Cambridge"/></div>
             <div class="form-field"><label>Status</label>
-              <select name="status">
-                <option value="Saved">Saved</option>
-                <option value="Applied">Applied</option>
-              </select>
+              <select name="status"></select>
             </div>
             <div class="form-field"><label>Applied date (YYYY-MM-DD)</label><input name="applied_date" placeholder="2025-08-29"/></div>
             <div class="form-field"><label>Effort /10</label><input type="number" min="0" max="10" step="1" name="application_effort_rating"/></div>
@@ -618,6 +621,77 @@
     const CV_FOLDER_ID = '';
     const GUIDE_DOC_ID = '';
 
+    // ===== Status catalogs
+    const STATUS_STARTER = [
+      { value: 'saved',       label: 'Saved' },
+      { value: 'applied',     label: 'Applied' },
+      { value: 'oa',          label: 'Online assessment' },
+      { value: 'hirevue',     label: 'Video interview (HireVue)' },
+      { value: 'interview',   label: 'Interview' },
+      { value: 'response',    label: 'Got response' },
+      { value: 'offer',       label: 'Offer' },
+      { value: 'rejected',    label: 'Rejected' },
+      { value: 'ghosted',     label: 'Ghosted' },
+      { value: 'withdrew',    label: 'Withdrew' },
+      { value: 'on-hold',     label: 'On hold' },
+      { value: 'role-closed', label: 'Role closed' }
+    ];
+    const STATUS_ADVANCED = [];
+    // Use ONLY the starter set for now:
+    const STATUS_OPTIONS = [...STATUS_STARTER];
+
+    // Style class per slug
+    const STATUS_STYLE = {
+      saved: 'status-saved',
+      applied: 'status-applied',
+      response: 'status-response',
+      oa: 'status-oa',
+      hirevue: 'status-hirevue',
+      interview: 'status-interview',
+      offer: 'status-offer',
+      rejected: 'status-rejected',
+      ghosted: 'status-ghosted',
+      withdrew: 'status-withdrew',
+      'on-hold': 'status-onhold',
+      'role-closed': 'status-roleclosed',
+      default: 'status-default'
+    };
+
+    // Normalise to slug
+    function normaliseStatus(s){
+      return String(s || '').trim().toLowerCase();
+    }
+    // Find display label for a slug (fallback: Title Case)
+    function statusLabel(slug){
+      const found = STATUS_OPTIONS.find(o => o.value === slug);
+      if (found) return found.label;
+      return slug.replace(/(^|-)\w/g, m => m.toUpperCase()).replaceAll('-', ' ');
+    }
+
+    // Backend sheet routing helper
+    // Only 'saved' -> 'Saved', 'applied' -> 'Applied'. Everything else currently ends up in Saved sheet on backend.
+    function apiStatusFor(sourceOrStatus){
+      const s = normaliseStatus(typeof sourceOrStatus === 'string' ? sourceOrStatus : sourceOrStatus?.status);
+      return s === 'saved' ? 'Saved' : (s === 'applied' ? 'Applied' : 'Saved'); // matches current n8n IF logic
+    }
+
+    // Outgoing status string (human-friendly) to send to n8n in payloads
+    function apiOutgoingStatus(slug){
+      if (slug === 'saved') return 'Saved';
+      if (slug === 'applied') return 'Applied';
+      return statusLabel(slug); // readable label for everything else
+    }
+
+    // Sets used by Analytics
+const APPLIED_LIKE = new Set(STATUS_OPTIONS.map(o => o.value).filter(v => v !== 'saved'));
+const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','rejected','on-hold','role-closed']);
+
+    function renderStatusSelect(selectEl, current='saved'){
+      selectEl.innerHTML = STATUS_OPTIONS
+        .map(o => `<option value="${o.value}" ${o.value===current?'selected':''}>${o.label}</option>`)
+        .join('');
+    }
+
     // ====== Elements
     const envSelect = document.getElementById('envSelect');
 
@@ -688,6 +762,15 @@
     const savedGrid = document.getElementById('savedGrid');
     const savedSort = document.getElementById('savedSort');
 
+    function renderStatusFilter(){
+      const opts = ['all', ...STATUS_OPTIONS.map(o => o.value)];
+      statusFilter.innerHTML = opts.map(v => {
+        const label = v==='all' ? 'All statuses' : statusLabel(v);
+        return `<option value="${v}">${label}</option>`;
+      }).join('');
+    }
+    renderStatusFilter();
+
     // Analytics
     const analyticsRange = document.getElementById('analyticsRange');
     const kpiTotalApps = document.getElementById('kpiTotalApps');
@@ -732,6 +815,10 @@
     const addForm = document.getElementById('addForm');
     const addMockBtn = document.getElementById('addMock');
 
+    // Populate Add Application status
+    const addStatusSelect = addForm.querySelector('select[name="status"]');
+    renderStatusSelect(addStatusSelect, 'saved');
+
     // Modal
     const modal = document.getElementById('applicationModal');
     const modalOverlay = document.getElementById('modalOverlay');
@@ -749,12 +836,6 @@
 
     // Holds the pending delete payload
     let pendingDelete = null;
-
-    // Map UI status -> API status
-    function apiStatusFor(sourceOrStatus){
-      const s = (typeof sourceOrStatus === 'string') ? sourceOrStatus : (sourceOrStatus?.status || '');
-      return (String(s).toLowerCase() === 'saved') ? 'Saved' : 'Applied';
-    }
 
     // Derive delete payload from a card item
     function buildDeletePayloadFromCard(app, sourceHint){
@@ -856,11 +937,15 @@
          (r.salary_max ? `–${r.salary_max}` : '') +
          (r.salary_period ? ` ${r.salary_period}` : '')).trim();
 
+      const rawStatus = normaliseStatus(r.status);
+      const mapped = STATUS_OPTIONS.find(o => normaliseStatus(o.label) === rawStatus || o.value === rawStatus);
+      const status = mapped ? mapped.value : rawStatus;
+
       return {
         id: r.application_id || r.canonical_job_url || String(Math.random()),
         title: r.title || 'Untitled role',
         company: r.company_name || '',
-        status: String(r.status || '').toLowerCase(),
+        status,
         sector: r.sector || '',
         roleType: r.role_type || '',
         startDate: r.start_date || null,
@@ -974,11 +1059,7 @@
     }
     function formatDate(d){ return d ? new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—'; }
 
-    // ---- Analytics helpers (exclude Saved everywhere) ----
-    const RESP_EXCLUDE = new Set(['saved']);         // always exclude
-    const APPLIED_NAME = 'applied';                   // string used in status
-    const toLower = s => String(s || '').trim().toLowerCase();
-
+    // ---- Analytics helpers ----
     const STATUS_COLOR_PALETTE = ['#667eea', '#4facfe', '#38ef7d', '#f093fb', '#f5576c', '#9ca3af', '#a78bfa', '#fdba74'];
     let STATUS_COLORS = {};
     function assignStatusColors(statuses){
@@ -986,17 +1067,6 @@
       statuses.forEach((s, idx)=>{
         STATUS_COLORS[s] = STATUS_COLOR_PALETTE[idx % STATUS_COLOR_PALETTE.length];
       });
-    }
-    function statusStyle(s){
-      const c = STATUS_COLORS[toLower(s)] || '#9ca3af';
-      return `background:${c};color:#fff;`;
-    }
-
-    function isSaved(row){ return toLower(row.status) === 'saved'; }
-    function isApplied(row){ return toLower(row.status) === APPLIED_NAME; }
-    function isResponse(row){ 
-      const s = toLower(row.status);
-      return !RESP_EXCLUDE.has(s) && s !== APPLIED_NAME && s.length > 0;
     }
 
     function parseISO(d){
@@ -1275,7 +1345,7 @@
     function renderApplications(){
       let arr = [...applicationsList];
       const s = statusFilter.value;
-      if (s!=='all') arr = arr.filter(a=>a.status===s);
+      if (s !== 'all') arr = arr.filter(a => normaliseStatus(a.status) === s);
       const sort = sortFilter.value;
       if (sort==='date-desc') arr.sort((a,b)=> new Date(b.appliedDate||'2000-01-01') - new Date(a.appliedDate||'2000-01-01'));
       if (sort==='date-asc')  arr.sort((a,b)=> new Date(a.appliedDate||'2000-01-01') - new Date(b.appliedDate||'2000-01-01'));
@@ -1286,10 +1356,14 @@
     }
 
     function cardHTML(app, isSaved=false){
-      const statusText = app.status ? app.status[0].toUpperCase() + app.status.slice(1) : '';
       return `
         <div class="application-card" onclick="openApplicationModal('${app.id}')">
-          <div class="application-status" style="${statusStyle(app.status)}">${escapeHtml(statusText)}</div>
+          ${(() => {
+            const slug = normaliseStatus(app.status);
+            const cls  = STATUS_STYLE[slug] || STATUS_STYLE.default;
+            const lab  = statusLabel(slug);
+            return `<div class="application-status ${cls}">${escapeHtml(lab)}</div>`;
+          })()}
           <div class="application-title">${escapeHtml(app.title)}</div>
           <div class="application-company">${escapeHtml(app.company)}</div>
           <div class="application-detail">Sector: ${escapeHtml(app.sector || '—')}</div>
@@ -1310,6 +1384,7 @@
     window.openApplicationModal = function(id){
       const raw = getRawRowById(id);
       if (!raw) return;
+      const card = toCardShape(raw);
 
       modalTitle.textContent = raw.title || 'Untitled role';
 
@@ -1335,7 +1410,12 @@
         ['AI Alignment Score', raw.AI_alignment_score],
         ['AI CV Filename', raw.AI_cv_filename],
         ['AI CV Reason', raw.AI_cv_reason],
-        ['Status', raw.status],
+        ['Status', (() => {
+          const slug = card.status;
+          const cls = STATUS_STYLE[slug] || STATUS_STYLE.default;
+          const lab = statusLabel(slug);
+          return `<div class="application-status ${cls}">${escapeHtml(lab)}</div>`;
+        })()],
         ['Applied Date', formatDate(raw.applied_date)],
         ['Application Effort Rating', raw.application_effort_rating],
         ['Application Chance Rating', raw.application_chance_rating],
@@ -1394,10 +1474,7 @@
           <input type="hidden" name="__prev_status" value="${escapeHtml(prevStatus)}"/>
 
           <div class="form-field"><label>Status</label>
-            <select name="status">
-              <option ${prevStatus==='Saved'?'selected':''}>Saved</option>
-              <option ${prevStatus==='Applied'?'selected':''}>Applied</option>
-            </select>
+            <select name="status"></select>
           </div>
 
           <div class="form-field"><label>Title</label>
@@ -1465,6 +1542,8 @@
           </div>
         </form>
       `;
+      const statusEl = document.querySelector('#editForm select[name="status"]');
+      renderStatusSelect(statusEl, normaliseStatus(prevStatus));
 
       document.getElementById('cancelEdit').onclick = closeModal;
 
@@ -1480,13 +1559,14 @@
         const keywords  = JSON.stringify(toArray(fd.get('keywords'), ','));
 
         // Status-change logic
-        const newStatus = fd.get('status') || 'Saved';
+        const statusSlug = normaliseStatus(fd.get('status') || 'saved');
+        const newStatus = apiOutgoingStatus(statusSlug);
         const oldStatus = fd.get('__prev_status') || '';
         const changed = statusChanged(oldStatus, newStatus);
 
         // applied_date guard when becoming Applied
         let appliedDate = fd.get('applied_date') || '';
-        if (newStatus === 'Applied' && !appliedDate) {
+        if (statusSlug === 'applied' && !appliedDate) {
           appliedDate = londonTodayISO();
         }
 
@@ -1618,30 +1698,25 @@
     function destroyChart(c){ if (c) c.destroy(); }
 
     function renderAnalytics(){
-      // Build non-Saved dataset from live state
-      const allApplied = Array.isArray(appsLive.applied) ? appsLive.applied : [];
-      // Exclude Saved entirely
-      const rows = allApplied.filter(r => !isSaved(r));
+      const data = Array.isArray(appsLive.applied) ? appsLive.applied : [];
 
-      // Collect all applied_date candidates for range anchoring
-      const appliedDates = rows
+      const appliedDates = data
         .map(r => parseISO(r.applied_date))
         .filter(Boolean);
 
       const { start, end } = rangeDates(analyticsRange.value, appliedDates);
 
-      // Filter by timeframe using applied_date
-      const rowsInRange = rows.filter(r => inRange(r.applied_date, start, end));
+      const rowsInRange = data.filter(r => inRange(r.applied_date, start, end));
 
       // ---- KPIs ----
-      const totalApps = rowsInRange.length;
-      const totalResponses = rowsInRange.filter(isResponse).length;
+      const totalApps = rowsInRange.filter(r => APPLIED_LIKE.has(normaliseStatus(r.status))).length;
+      const totalResponses = rowsInRange.filter(r => RESPONDED_SET.has(normaliseStatus(r.status))).length;
       const daysSpan = Math.max(1, Math.round(daysBetween(start, end) + 1));
       const avgPerDay = totalApps / daysSpan;
 
       // Avg time to response
       const respDurations = rowsInRange
-        .filter(isResponse)
+        .filter(r => RESPONDED_SET.has(normaliseStatus(r.status)))
         .map(r => {
           const appliedAt = parseISO(r.applied_date);
           const responseAt = parseISO(r.first_response_date || r.status_update_date);
@@ -1657,12 +1732,12 @@
       // Previous period for trends
       const prevEnd = new Date(start.getTime() - 86400000);
       const prevStart = new Date(prevEnd.getTime() - (daysSpan - 1) * 86400000);
-      const rowsPrev = rows.filter(r => inRange(r.applied_date, prevStart, prevEnd));
-      const prevTotalApps = rowsPrev.length;
-      const prevTotalResponses = rowsPrev.filter(isResponse).length;
+      const rowsPrev = data.filter(r => inRange(r.applied_date, prevStart, prevEnd));
+      const prevTotalApps = rowsPrev.filter(r => APPLIED_LIKE.has(normaliseStatus(r.status))).length;
+      const prevTotalResponses = rowsPrev.filter(r => RESPONDED_SET.has(normaliseStatus(r.status))).length;
       const prevAvgPerDay = prevTotalApps / daysSpan;
       const prevRespDurations = rowsPrev
-        .filter(isResponse)
+        .filter(r => RESPONDED_SET.has(normaliseStatus(r.status)))
         .map(r => {
           const appliedAt = parseISO(r.applied_date);
           const responseAt = parseISO(r.first_response_date || r.status_update_date);
@@ -1718,12 +1793,13 @@
       // 2) Pie: status distribution (within range)
       const statusCounts = {};
       rowsInRange.forEach(r => {
-        const s = toLower(r.status);
+        const s = normaliseStatus(r.status);
         statusCounts[s] = (statusCounts[s] || 0) + 1;
       });
-      const pieLabels = Object.keys(statusCounts).sort();
-      const pieData = pieLabels.map(k => statusCounts[k]);
-      const pieColors = pieLabels.map(k => STATUS_COLORS[toLower(k)] || '#9ca3af');
+      const pieSlugLabels = Object.keys(statusCounts).sort();
+      const pieData = pieSlugLabels.map(k => statusCounts[k]);
+      const pieColors = pieSlugLabels.map(k => STATUS_COLORS[k] || '#9ca3af');
+      const pieLabels = pieSlugLabels.map(statusLabel);
 
       // 3) Bar: per sector
       const sectorCounts = {};
@@ -1841,7 +1917,8 @@
       e.preventDefault();
       const fd = new FormData(addForm);
       // Build payload in the format your n8n expects
-      const status = fd.get('status') || 'Saved';
+      const statusSlug = normaliseStatus(fd.get('status') || 'saved');
+      const status = apiOutgoingStatus(statusSlug);
       const payload = {
         source_url: fd.get('source_url') || '',
         canonical_job_url: canonicalize(fd.get('source_url') || ''),
@@ -1866,7 +1943,7 @@
         keywords: (fd.get('keywords')||'').split(',').map(s=>s.trim()).filter(Boolean),
         job_description: fd.get('job_description')||'',
         status,
-        applied_date: status==='Applied' ? (fd.get('applied_date')||londonTodayISO()) : '',
+        applied_date: statusSlug === 'applied' ? (fd.get('applied_date')||londonTodayISO()) : '',
         application_effort_rating: fd.get('application_effort_rating')||'',
         application_chance_rating: fd.get('application_chance_rating')||'',
         status_update_date: londonTodayISO(),
