@@ -262,17 +262,29 @@
         </div>
 
         <div class="kpi-row">
-          <div class="kpi"><div class="kpi-label">Total applications</div><div id="kpiTotal" class="kpi-value">0</div></div>
-          <div class="kpi"><div class="kpi-label">Applied</div><div id="kpiApplied" class="kpi-value">0</div></div>
-          <div class="kpi"><div class="kpi-label">Responses</div><div id="kpiResponses" class="kpi-value">0</div></div>
-          <div class="kpi"><div class="kpi-label">Avg fit</div><div id="kpiAvgFit" class="kpi-value">0%</div></div>
+          <div class="kpi">
+            <div class="kpi-label">Total applications</div>
+            <div id="kpiTotalApps" class="kpi-value">0</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Total responses</div>
+            <div id="kpiTotalResponses" class="kpi-value">0</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Avg apps / day</div>
+            <div id="kpiAvgPerDay" class="kpi-value">0</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Avg time to response</div>
+            <div id="kpiAvgRespTime" class="kpi-value">—</div>
+          </div>
         </div>
 
-        <div class="charts-grid">
-          <canvas id="chartStatus"></canvas>
-          <canvas id="chartFitDist"></canvas>
-          <canvas id="chartCompany"></canvas>
-          <canvas id="chartTrend"></canvas>
+        <div class="charts-grid" style="min-height:520px">
+          <div style="height:300px"><canvas id="chartAppsLine"></canvas></div>
+          <div style="height:300px"><canvas id="chartStatusPie"></canvas></div>
+          <div style="height:300px"><canvas id="chartSectorBar"></canvas></div>
+          <div style="height:300px"><canvas id="chartRoleTypeBar"></canvas></div>
         </div>
       </div>
     </div>
@@ -580,12 +592,12 @@
 
     // Analytics
     const analyticsRange = document.getElementById('analyticsRange');
-    const kpiTotal = document.getElementById('kpiTotal');
-    const kpiApplied = document.getElementById('kpiApplied');
-    const kpiResponses = document.getElementById('kpiResponses');
-    const kpiAvgFit = document.getElementById('kpiAvgFit');
+    const kpiTotalApps = document.getElementById('kpiTotalApps');
+    const kpiTotalResponses = document.getElementById('kpiTotalResponses');
+    const kpiAvgPerDay = document.getElementById('kpiAvgPerDay');
+    const kpiAvgRespTime = document.getElementById('kpiAvgRespTime');
 
-    let chartStatus, chartFitDist, chartCompany, chartTrend;
+    let chartAppsLine, chartStatusPie, chartSectorBar, chartRoleTypeBar;
 
     // Add application
     const addForm = document.getElementById('addForm');
@@ -689,8 +701,8 @@
     };
 
     // ====== State
-    const initialEnv = (new URLSearchParams(location.search).get('env') || 'test').toLowerCase();
-    envSelect.value = (initialEnv === 'prod' ? 'prod' : 'test');
+    const initialEnv = (new URLSearchParams(location.search).get('env') || 'prod').toLowerCase();
+    envSelect.value = (initialEnv === 'test' ? 'test' : 'prod');
     let currentEnv = envSelect.value;
 
     let draft = null;     // last analysis JSON
@@ -820,6 +832,59 @@
     }
     function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
     function formatDate(d){ return d ? new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—'; }
+
+    // ---- Analytics helpers (exclude Saved everywhere) ----
+    const RESP_EXCLUDE = new Set(['saved']);         // always exclude
+    const APPLIED_NAME = 'applied';                   // string used in status
+    const toLower = s => String(s || '').trim().toLowerCase();
+
+    function isSaved(row){ return toLower(row.status) === 'saved'; }
+    function isApplied(row){ return toLower(row.status) === APPLIED_NAME; }
+    function isResponse(row){ 
+      const s = toLower(row.status);
+      return !RESP_EXCLUDE.has(s) && s !== APPLIED_NAME && s.length > 0;
+    }
+
+    function parseISO(d){
+      // Accept YYYY-MM-DD or ISO; return Date or null
+      if (!d) return null;
+      const dt = new Date(d);
+      return Number.isNaN(+dt) ? null : dt;
+    }
+
+    function daysBetween(a, b){
+      const ms = b - a;
+      return ms / (1000 * 60 * 60 * 24);
+    }
+
+    function dateKey(d){  // YYYY-MM-DD
+      return d.toISOString().slice(0,10);
+    }
+
+    function rangeDates(rangeValue, dataDates){
+      // rangeValue: 'all' | '90' | '30'
+      const today = new Date();
+      today.setHours(0,0,0,0);
+
+      if (rangeValue === 'all'){
+        // If "all", span from earliest applied_date seen (else 30 days window)
+        const minDate = dataDates.length ? new Date(Math.min(...dataDates)) : new Date(today - 29*86400000);
+        minDate.setHours(0,0,0,0);
+        return { start: minDate, end: today };
+      }
+
+      const days = Number(rangeValue);
+      const start = new Date(today - (days-1)*86400000);
+      start.setHours(0,0,0,0);
+      return { start, end: today };
+    }
+
+    function inRange(dateStr, start, end){
+      const d = parseISO(dateStr);
+      if (!d) return false;
+      const x = new Date(d); x.setHours(0,0,0,0);
+      return x >= start && x <= end;
+    }
 
     // ====== Tabs
     function switchTab(name){
@@ -1388,84 +1453,141 @@
     // ====== Analytics page
     analyticsRange.onchange = renderAnalytics;
 
-    function filterByRange(list, days){
-      if (days==='all') return list;
-      const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-Number(days));
-      return list.filter(a => {
-        const d = a.appliedDate || a.createdDate;
-        return d ? new Date(d) >= cutoff : true; // keep saved ones
-      });
-    }
-
-    function destroyChart(c){ if (c) { c.destroy(); } }
+    function destroyChart(c){ if (c) c.destroy(); }
 
     function renderAnalytics(){
-      const range = analyticsRange.value;
-      const flat = [
-        ...appsLive.applied.map(toCardShape),
-        ...appsLive.saved.map(toCardShape)
-      ];
-      const data = filterByRange(flat, range);
+      // Build non-Saved dataset from live state
+      const allApplied = Array.isArray(appsLive.applied) ? appsLive.applied : [];
+      // Exclude Saved entirely
+      const rows = allApplied.filter(r => !isSaved(r));
 
-      // KPIs
-      const total = data.length;
-      const applied = data.filter(a=>a.status==='applied').length;
-      const responses = data.filter(a=>a.status==='response').length;
-      const avgFit = Math.round(data.reduce((s,a)=>s + (a.fitScore||0),0) / (total || 1));
-      kpiTotal.textContent = String(total);
-      kpiApplied.textContent = String(applied);
-      kpiResponses.textContent = String(responses);
-      kpiAvgFit.textContent = `${avgFit}%`;
+      // Collect all applied_date candidates for range anchoring
+      const appliedDates = rows
+        .map(r => parseISO(r.applied_date))
+        .filter(Boolean);
 
-      // Prepare aggregates
-      const byStatus = data.reduce((m,a)=> (m[a.status]=(m[a.status]||0)+1, m), {});
-      const fitBuckets = { '0–49':0,'50–69':0,'70–84':0,'85–100':0 };
-      data.forEach(a=>{
-        const f = a.fitScore||0;
-        if (f<50) fitBuckets['0–49']++; else if (f<70) fitBuckets['50–69']++; else if (f<85) fitBuckets['70–84']++; else fitBuckets['85–100']++;
-      });
-      const byCompany = data.reduce((m,a)=> (m[a.company]=(m[a.company]||0)+1, m), {});
-      const topCompanies = Object.entries(byCompany).sort((a,b)=>b[1]-a[1]).slice(0,7);
+      const { start, end } = rangeDates(analyticsRange.value, appliedDates);
 
-      const byMonth = {};
-      data.forEach(a=>{
-        const d = a.appliedDate || a.createdDate;
+      // Filter by timeframe using applied_date
+      const rowsInRange = rows.filter(r => inRange(r.applied_date, start, end));
+
+      // ---- KPIs ----
+      const totalApps = rowsInRange.length;
+
+      const totalResponses = rowsInRange.filter(isResponse).length;
+
+      const daysSpan = Math.max(1, Math.round(daysBetween(start, end) + 1)); // inclusive
+      const avgPerDay = (totalApps / daysSpan);
+      
+      // Avg time to response (use first_response_date, else status_update_date)
+      const respDurations = rowsInRange
+        .filter(isResponse)
+        .map(r => {
+          const appliedAt = parseISO(r.applied_date);
+          const responseAt = parseISO(r.first_response_date || r.status_update_date);
+          if (!appliedAt || !responseAt) return null;
+          const d = daysBetween(appliedAt, responseAt);
+          return Number.isFinite(d) && d >= 0 ? d : null;
+        })
+        .filter(d => d != null);
+
+      const avgRespTime = respDurations.length
+        ? (respDurations.reduce((a,b)=>a+b,0) / respDurations.length)
+        : null;
+
+      // Write KPIs
+      kpiTotalApps.textContent = String(totalApps);
+      kpiTotalResponses.textContent = String(totalResponses);
+      kpiAvgPerDay.textContent = avgPerDay.toFixed(2);
+      kpiAvgRespTime.textContent = (avgRespTime == null) ? '—' : `${avgRespTime.toFixed(1)}d`;
+
+      // ---- Datasets for charts ----
+
+      // 1) Line: daily total applications (count by applied_date)
+      const dayCounts = {};
+      for (let d = new Date(start); d <= end; d = new Date(d.getTime() + 86400000)){
+        dayCounts[dateKey(d)] = 0;
+      }
+      rowsInRange.forEach(r => {
+        const d = parseISO(r.applied_date);
         if (!d) return;
-        const month = new Date(d).toISOString().slice(0,7);
-        byMonth[month] = (byMonth[month]||0)+1;
+        const k = dateKey(d);
+        if (k in dayCounts) dayCounts[k] += 1;
       });
-      const monthsSorted = Object.keys(byMonth).sort();
+      const lineLabels = Object.keys(dayCounts).sort();
+      const lineData = lineLabels.map(k => dayCounts[k]);
 
-      // Charts
-      const ctxStatus = document.getElementById('chartStatus').getContext('2d');
-      const ctxFit = document.getElementById('chartFitDist').getContext('2d');
-      const ctxCompany = document.getElementById('chartCompany').getContext('2d');
-      const ctxTrend = document.getElementById('chartTrend').getContext('2d');
+      // 2) Pie: status distribution (within range)
+      const statusCounts = {};
+      rowsInRange.forEach(r => {
+        const s = toLower(r.status);
+        statusCounts[s] = (statusCounts[s] || 0) + 1;
+      });
+      const pieLabels = Object.keys(statusCounts).sort();
+      const pieData = pieLabels.map(k => statusCounts[k]);
 
-      destroyChart(chartStatus); destroyChart(chartFitDist); destroyChart(chartCompany); destroyChart(chartTrend);
+      // 3) Bar: per sector
+      const sectorCounts = {};
+      rowsInRange.forEach(r => {
+        const key = (r.sector && String(r.sector).trim()) ? r.sector : 'Unknown';
+        sectorCounts[key] = (sectorCounts[key] || 0) + 1;
+      });
+      const sectorLabels = Object.keys(sectorCounts).sort((a,b)=> sectorCounts[b]-sectorCounts[a]).slice(0,12);
+      const sectorData = sectorLabels.map(k => sectorCounts[k]);
 
-      chartStatus = new Chart(ctxStatus,{
-        type:'pie',
-        data:{ labels:Object.keys(byStatus), datasets:[{ data:Object.values(byStatus) }] },
-        options:{ plugins:{ legend:{ position:'bottom' }, title:{ display:true, text:'By status' } } }
+      // 4) Bar: per role_type
+      const roleCounts = {};
+      rowsInRange.forEach(r => {
+        const key = (r.role_type && String(r.role_type).trim()) ? r.role_type : 'Unknown';
+        roleCounts[key] = (roleCounts[key] || 0) + 1;
+      });
+      const roleLabels = Object.keys(roleCounts).sort((a,b)=> roleCounts[b]-roleCounts[a]).slice(0,12);
+      const roleData = roleLabels.map(k => roleCounts[k]);
+
+      // ---- Render charts ----
+      destroyChart(chartAppsLine);
+      destroyChart(chartStatusPie);
+      destroyChart(chartSectorBar);
+      destroyChart(chartRoleTypeBar);
+
+      chartAppsLine = new Chart(document.getElementById('chartAppsLine').getContext('2d'), {
+        type: 'line',
+        data: { labels: lineLabels, datasets: [{ data: lineData, tension: 0.3 }] },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, title: { display: true, text: 'Applications over time' } },
+          scales: { y: { beginAtZero: true } }
+        }
       });
 
-      chartFitDist = new Chart(ctxFit,{
-        type:'bar',
-        data:{ labels:Object.keys(fitBuckets), datasets:[{ data:Object.values(fitBuckets) }] },
-        options:{ plugins:{ legend:{ display:false }, title:{ display:true, text:'Fit score distribution' } }, scales:{ y:{ beginAtZero:true } } }
+      chartStatusPie = new Chart(document.getElementById('chartStatusPie').getContext('2d'), {
+        type: 'pie',
+        data: { labels: pieLabels, datasets: [{ data: pieData }] },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom' }, title: { display: true, text: 'Status distribution' } }
+        }
       });
 
-      chartCompany = new Chart(ctxCompany,{
-        type:'bar',
-        data:{ labels:topCompanies.map(x=>x[0]), datasets:[{ data:topCompanies.map(x=>x[1]) }] },
-        options:{ plugins:{ legend:{ display:false }, title:{ display:true, text:'Top companies applied/saved' } }, indexAxis:'y', scales:{ x:{ beginAtZero:true } } }
+      chartSectorBar = new Chart(document.getElementById('chartSectorBar').getContext('2d'), {
+        type: 'bar',
+        data: { labels: sectorLabels, datasets: [{ data: sectorData }] },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, title: { display: true, text: 'Applications per sector' } },
+          scales: { y: { beginAtZero: true } }
+        }
       });
 
-      chartTrend = new Chart(ctxTrend,{
-        type:'line',
-        data:{ labels:monthsSorted, datasets:[{ data:monthsSorted.map(m=>byMonth[m]), tension:.3, fill:false }] },
-        options:{ plugins:{ legend:{ display:false }, title:{ display:true, text:'Applications over time' } }, scales:{ y:{ beginAtZero:true } } }
+      chartRoleTypeBar = new Chart(document.getElementById('chartRoleTypeBar').getContext('2d'), {
+        type: 'bar',
+        data: { labels: roleLabels, datasets: [{ data: roleData }] },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, title: { display: true, text: 'Applications per role type' } },
+          indexAxis: 'y',
+          scales: { x: { beginAtZero: true } }
+        }
       });
     }
 
