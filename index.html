@@ -27,11 +27,8 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    // ✅ Your actual Supabase project URL:
     const SUPABASE_URL = 'https://kudqgnpkznshcyvrwrpj.supabase.co';
-    // ✅ Paste the anon public key from Settings → API → Project API keys
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1ZHFnbnBrem5zaGN5dnJ3cnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5NzY0MDcsImV4cCI6MjA3MjU1MjQwN30.mPK21uGKyBtgvWL0vl80l9bLG9SWoXDbnYAjPbPNn74';
-
+    const SUPABASE_ANON_KEY = 'PASTE_YOUR_ANON_KEY_HERE';
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const loginBtn = document.getElementById('login');
@@ -43,9 +40,6 @@
     const companyEl = document.getElementById('company');
     const urlEl = document.getElementById('url');
     const statusEl = document.getElementById('status');
-
-    // Use a clean redirect URL that matches what you allowed in Supabase
-    const REDIRECT_BACK = 'https://ogpheard.github.io/grad-tracker/';
 
     async function refresh() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -60,8 +54,9 @@
       loginBtn.style.display = 'none';
       logoutBtn.style.display = '';
 
+      // Load ONLY your rows (RLS also enforces this on the server)
       const { data, error } = await supabase
-        .from('"Graduate Job Helper"') // table name has spaces → keep quoted
+        .from('"Graduate Job Helper"') // table has spaces, so quote it
         .select('application_id,title,company_name,status,canonical_job_url,status_update_date')
         .order('status_update_date', { ascending: false });
 
@@ -81,7 +76,9 @@
     loginBtn.onclick = async () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: REDIRECT_BACK }
+        options: {
+          redirectTo: location.origin + location.pathname // returns to this page
+        }
       });
       if (error) alert(error.message);
     };
@@ -96,12 +93,12 @@
       if (!user) return alert('Sign in first');
 
       const row = {
-        user_id: user.id, // required by your RLS policy
+        user_id: user.id,                       // REQUIRED by our policy
         title: titleEl.value || null,
         company_name: companyEl.value || null,
         canonical_job_url: urlEl.value || null,
         status: statusEl.value || 'Applied',
-        status_update_date: new Date().toISOString().slice(0,10)
+        status_update_date: new Date().toISOString().slice(0,10) // YYYY-MM-DD
       };
 
       const { error } = await supabase.from('"Graduate Job Helper"').insert(row);
