@@ -2,166 +2,118 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Job Helper – Demo</title>
+  <title>Grad Tracker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 40px auto; }
-    button { padding: 10px 14px; border: 1px solid #ccc; border-radius: 8px; cursor: pointer; }
-    #rows { margin-top: 16px; border: 1px solid #eee; border-radius: 10px; padding: 16px; }
-    .row { padding: 10px 8px; border-bottom: 1px solid #eee; }
-    .row:last-child { border-bottom: none; }
-    .muted { color: #666; font-size: 12px; }
-    input, select { padding: 8px; border: 1px solid #ddd; border-radius: 6px; }
-    .stack { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
-    .bar { display:flex; align-items:center; justify-content:space-between; gap: 12px; }
-    .pill { background:#f5f5f5; padding:4px 10px; border-radius: 999px; font-size:12px;}
-    pre { background:#fafafa; padding:10px; border-radius:8px; overflow:auto; }
-  </style>
 </head>
 <body>
-  <h1>Graduate Job Helper</h1>
+  <button id="login">Sign in with Google</button>
+  <button id="logout" style="display:none">Sign out</button>
 
-  <div class="bar">
-    <div id="who" class="pill">Not signed in</div>
-    <div class="stack">
-      <button id="btn-google">Sign in with Google</button>
-      <button id="btn-email">Send magic link</button>
-      <button id="btn-signout" style="display:none;">Sign out</button>
-    </div>
-  </div>
+  <div id="me"></div>
 
-  <div id="dev" class="muted" style="margin-top:6px;"></div>
+  <h3>Add job</h3>
+  <input id="title" placeholder="Title" />
+  <input id="company" placeholder="Company" />
+  <input id="url" placeholder="Job URL" />
+  <select id="status">
+    <option>Applied</option>
+    <option>Online Assessment</option>
+    <option>Rejected</option>
+  </select>
+  <button id="add">Add</button>
 
-  <h2>Your applications</h2>
-
-  <div class="stack">
-    <input id="title" placeholder="Title e.g. Graduate Analyst" />
-    <input id="company" placeholder="Company e.g. Elixirr" />
-    <select id="status">
-      <option>Draft</option>
-      <option>Applied</option>
-      <option>Online assessment</option>
-      <option>Interview</option>
-      <option>Offer</option>
-      <option>Rejected</option>
-    </select>
-    <button id="btn-insert">+ Add row</button>
-  </div>
-
-  <div id="rows">Loading…</div>
+  <h3>Your jobs</h3>
+  <ul id="list"></ul>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    // ⬇️ Fill these in from your Supabase project settings
-    const SUPABASE_URL = 'https://YOUR-PROJECT-REF.supabase.co';
-    const SUPABASE_ANON_KEY = 'YOUR-ANON-KEY';
+    // ✅ Your actual Supabase project URL:
+    const SUPABASE_URL = 'https://kudqgnpkznshcyvrwrpj.supabase.co';
+    // ✅ Paste the anon public key from Settings → API → Project API keys
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1ZHFnbnBrem5zaGN5dnJ3cnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5NzY0MDcsImV4cCI6MjA3MjU1MjQwN30.mPK21uGKyBtgvWL0vl80l9bLG9SWoXDbnYAjPbPNn74';
 
-    // Why: this talks to the Supabase REST API & Auth
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const whoEl = document.getElementById('who');
-    const devEl = document.getElementById('dev');
-    const rowsEl = document.getElementById('rows');
+    const loginBtn = document.getElementById('login');
+    const logoutBtn = document.getElementById('logout');
+    const meDiv = document.getElementById('me');
+    const list = document.getElementById('list');
 
-    const btnGoogle = document.getElementById('btn-google');
-    const btnEmail  = document.getElementById('btn-email');
-    const btnSignout= document.getElementById('btn-signout');
-    const btnInsert = document.getElementById('btn-insert');
-
-    const titleEl   = document.getElementById('title');
+    const titleEl = document.getElementById('title');
     const companyEl = document.getElementById('company');
-    const statusEl  = document.getElementById('status');
+    const urlEl = document.getElementById('url');
+    const statusEl = document.getElementById('status');
 
-    // show helper text
-    devEl.textContent = 'Tip: if Google sign-in returns to a blank page, add this page URL to Auth → Providers → Google → Redirect URLs.';
+    // Use a clean redirect URL that matches what you allowed in Supabase
+    const REDIRECT_BACK = 'https://ogpheard.github.io/grad-tracker/';
 
-    // auth state handler
-    supabase.auth.onAuthStateChange(async (_evt, session) => {
-      const user = session?.user || null;
-      renderUser(user);
-      if (user) { await refreshRows(); }
-      else { rowsEl.innerHTML = 'Sign in to see your rows.'; }
-    });
-
-    // initial load
-    (async () => {
-      const { data } = await supabase.auth.getSession();
-      renderUser(data.session?.user || null);
-      if (data.session?.user) await refreshRows();
-    })();
-
-    function renderUser(user) {
-      if (user) {
-        whoEl.textContent = `Signed in as ${user.email} · id ${user.id.slice(0,8)}…`;
-        btnSignout.style.display = '';
-      } else {
-        whoEl.textContent = 'Not signed in';
-        btnSignout.style.display = 'none';
+    async function refresh() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        meDiv.textContent = 'Not signed in';
+        loginBtn.style.display = '';
+        logoutBtn.style.display = 'none';
+        list.innerHTML = '';
+        return;
       }
+      meDiv.textContent = `Signed in as ${user.email}`;
+      loginBtn.style.display = 'none';
+      logoutBtn.style.display = '';
+
+      const { data, error } = await supabase
+        .from('"Graduate Job Helper"') // table name has spaces → keep quoted
+        .select('application_id,title,company_name,status,canonical_job_url,status_update_date')
+        .order('status_update_date', { ascending: false });
+
+      if (error) {
+        list.innerHTML = `<li>Error: ${error.message}</li>`;
+        return;
+      }
+      list.innerHTML = (data || []).map(r => `
+        <li>
+          <strong>${r.title || '(no title)'}</strong> @ ${r.company_name || '-'}
+          — ${r.status || '-'}
+          ${r.canonical_job_url ? ` | <a href="${r.canonical_job_url}" target="_blank">link</a>` : ''}
+        </li>
+      `).join('');
     }
 
-    btnGoogle.onclick = async () => {
-      // Why: starts Google OAuth; Supabase will redirect back here
+    loginBtn.onclick = async () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: window.location.origin }
+        options: { redirectTo: REDIRECT_BACK }
       });
       if (error) alert(error.message);
     };
 
-    btnEmail.onclick = async () => {
-      const email = prompt('Email to send a magic link to:', 'ogpheard2@gmail.com');
-      if (!email) return;
-      const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin }});
-      if (error) return alert(error.message);
-      alert('Check your inbox for the sign-in link.');
-    };
-
-    btnSignout.onclick = async () => {
+    logoutBtn.onclick = async () => {
       await supabase.auth.signOut();
+      await refresh();
     };
 
-    btnInsert.onclick = async () => {
+    document.getElementById('add').onclick = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return alert('Please sign in first.');
-      const title = titleEl.value.trim() || 'Untitled';
-      const company = companyEl.value.trim() || 'Unknown';
-      const status = statusEl.value;
+      if (!user) return alert('Sign in first');
 
-      // Why: include user_id so the RLS “insert_own” policy passes
-      const { error } = await supabase
-        .from('graduate_job_helper')
-        .insert([{ title, company_name: company, status, user_id: user.id }]);
+      const row = {
+        user_id: user.id, // required by your RLS policy
+        title: titleEl.value || null,
+        company_name: companyEl.value || null,
+        canonical_job_url: urlEl.value || null,
+        status: statusEl.value || 'Applied',
+        status_update_date: new Date().toISOString().slice(0,10)
+      };
 
-      if (error) { alert('Insert error: ' + error.message); return; }
+      const { error } = await supabase.from('"Graduate Job Helper"').insert(row);
+      if (error) return alert(error.message);
 
-      titleEl.value = ''; companyEl.value = '';
-      await refreshRows();
+      titleEl.value = companyEl.value = urlEl.value = '';
+      statusEl.value = 'Applied';
+      await refresh();
     };
 
-    async function refreshRows() {
-      // Why: RLS ensures you only see your rows
-      const { data, error } = await supabase
-        .from('graduate_job_helper')
-        .select('application_id,title,company_name,status,status_update_date')
-        .order('status_update_date', { ascending: false, nullsFirst: false })
-        .limit(50);
-
-      if (error) {
-        rowsEl.innerHTML = `<div class="muted">Error: ${error.message}</div>`;
-        return;
-      }
-      if (!data || data.length === 0) {
-        rowsEl.innerHTML = `<div class="muted">No rows yet. Add one above.</div>`;
-        return;
-      }
-      rowsEl.innerHTML = data.map(r => `
-        <div class="row">
-          <strong>${r.title || '(no title)'}</strong> · ${r.company_name || '(no company)'}
-          <div class="muted">status: ${r.status || '—'} · id: ${r.application_id}</div>
-        </div>
-      `).join('');
-    }
+    supabase.auth.onAuthStateChange(refresh);
+    refresh();
   </script>
 </body>
 </html>
