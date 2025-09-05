@@ -1,116 +1,204 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <title>Grad Tracker</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; max-width: 800px; }
+    h1 { margin-bottom: 8px; }
+    button { padding: 8px 12px; border-radius: 8px; border: 1px solid #ddd; cursor: pointer; }
+    input, select { padding: 8px; border-radius: 8px; border: 1px solid #ddd; width: 100%; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .card { border: 1px solid #eee; border-radius: 12px; padding: 12px; margin: 8px 0; }
+    .muted { color: #666; font-size: 0.9em; }
+    .bar { display: flex; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .hide { display: none; }
+    .error { color: #b00020; white-space: pre-wrap; }
+    label { font-size: 0.9em; color: #333; margin-top: 8px; display: block; }
+  </style>
 </head>
 <body>
-  <button id="login">Sign in with Google</button>
-  <button id="logout" style="display:none">Sign out</button>
+  <h1>Grad Tracker</h1>
+  <div id="auth" class="bar">
+    <div id="who" class="muted">Not signed in</div>
+    <div>
+      <button id="signin">Sign in with Google</button>
+      <button id="signout" class="hide">Sign out</button>
+    </div>
+  </div>
 
-  <div id="me"></div>
+  <h2>Add job</h2>
+  <div id="form" class="card">
+    <label>Title
+      <input id="title" placeholder="e.g. Graduate Analyst">
+    </label>
+    <div class="row">
+      <label>Company
+        <input id="company" placeholder="e.g. Alpha FMC">
+      </label>
+      <label>Status
+        <select id="status">
+          <option>Applied</option>
+          <option>Interested</option>
+          <option>Interview</option>
+          <option>Offer</option>
+          <option>Rejected</option>
+        </select>
+      </label>
+    </div>
+    <label>Job URL
+      <input id="url" placeholder="https://...">
+    </label>
+    <div class="bar">
+      <div class="muted">Applied date auto-fills today</div>
+      <button id="add">Add</button>
+    </div>
+    <div id="formError" class="error"></div>
+  </div>
 
-  <h3>Add job</h3>
-  <input id="title" placeholder="Title" />
-  <input id="company" placeholder="Company" />
-  <input id="url" placeholder="Job URL" />
-  <select id="status">
-    <option>Applied</option>
-    <option>Online Assessment</option>
-    <option>Rejected</option>
-  </select>
-  <button id="add">Add</button>
+  <h2>Your jobs</h2>
+  <div id="empty" class="muted">There are no jobs listed.</div>
+  <div id="list"></div>
 
-  <h3>Your jobs</h3>
-  <ul id="list"></ul>
+  <div id="debug" class="muted" style="margin-top:16px;"></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
-    const SUPABASE_URL = 'https://kudqgnpkznshcyvrwrpj.supabase.co';
-    const SUPABASE_ANON_KEY = 'PASTE_YOUR_ANON_KEY_HERE';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-    const loginBtn = document.getElementById('login');
-    const logoutBtn = document.getElementById('logout');
-    const meDiv = document.getElementById('me');
-    const list = document.getElementById('list');
+    // 🔧 REPLACE THESE
+    const SUPABASE_URL = "https://kudqgnpkznshcyvrwrpj.supabase.co";
+    const SUPABASE_ANON_KEY = "PASTE_YOUR_ANON_KEY_HERE";
 
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Elements
+    const signinBtn = document.getElementById('signin');
+    const signoutBtn = document.getElementById('signout');
+    const who = document.getElementById('who');
+    const addBtn = document.getElementById('add');
     const titleEl = document.getElementById('title');
     const companyEl = document.getElementById('company');
-    const urlEl = document.getElementById('url');
     const statusEl = document.getElementById('status');
+    const urlEl = document.getElementById('url');
+    const list = document.getElementById('list');
+    const empty = document.getElementById('empty');
+    const formError = document.getElementById('formError');
+    const debug = document.getElementById('debug');
 
-    async function refresh() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        meDiv.textContent = 'Not signed in';
-        loginBtn.style.display = '';
-        logoutBtn.style.display = 'none';
-        list.innerHTML = '';
-        return;
-      }
-      meDiv.textContent = `Signed in as ${user.email}`;
-      loginBtn.style.display = 'none';
-      logoutBtn.style.display = '';
+    // Handy: show errors/messages
+    function say(el, msg) { el.textContent = msg || ""; }
 
-      // Load ONLY your rows (RLS also enforces this on the server)
-      const { data, error } = await supabase
-        .from('"Graduate Job Helper"') // table has spaces, so quote it
-        .select('application_id,title,company_name,status,canonical_job_url,status_update_date')
-        .order('status_update_date', { ascending: false });
-
-      if (error) {
-        list.innerHTML = `<li>Error: ${error.message}</li>`;
-        return;
-      }
-      list.innerHTML = (data || []).map(r => `
-        <li>
-          <strong>${r.title || '(no title)'}</strong> @ ${r.company_name || '-'}
-          — ${r.status || '-'}
-          ${r.canonical_job_url ? ` | <a href="${r.canonical_job_url}" target="_blank">link</a>` : ''}
-        </li>
-      `).join('');
-    }
-
-    loginBtn.onclick = async () => {
+    // Sign in with Google (PKCE) — redirect back to ORIGIN (no path).
+    signinBtn.onclick = async () => {
+      const redirectTo = location.origin; // ✅ e.g. https://ogpheard.github.io
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: {
-          redirectTo: location.origin + location.pathname // returns to this page
-        }
+        options: { redirectTo }
       });
       if (error) alert(error.message);
     };
 
-    logoutBtn.onclick = async () => {
+    signoutBtn.onclick = async () => {
       await supabase.auth.signOut();
-      await refresh();
+      renderAuth(null);
+      renderRows([]);
     };
 
-    document.getElementById('add').onclick = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return alert('Sign in first');
+    // Render auth state
+    function renderAuth(user) {
+      if (user) {
+        who.textContent = `Signed in as ${user.email || user.id}`;
+        signinBtn.classList.add('hide');
+        signoutBtn.classList.remove('hide');
+      } else {
+        who.textContent = "Not signed in";
+        signinBtn.classList.remove('hide');
+        signoutBtn.classList.add('hide');
+      }
+    }
 
+    // Fetch your rows (RLS limits to yours)
+    async function loadRows() {
+      const { data, error } = await supabase
+        .from('graduate_job_helper')
+        .select('application_id, title, company_name, canonical_job_url, status, applied_date, status_update_date, updated_at')
+        .order('updated_at', { ascending: false })
+        .limit(200);
+
+      if (error) {
+        say(debug, `Load error: ${error.message}`);
+        renderRows([]);
+        return;
+      }
+      renderRows(data || []);
+    }
+
+    // Show cards
+    function renderRows(rows) {
+      list.innerHTML = "";
+      if (!rows || rows.length === 0) {
+        empty.classList.remove('hide');
+        return;
+      }
+      empty.classList.add('hide');
+      for (const r of rows) {
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.innerHTML = `
+          <div><strong>${r.title ?? '(no title)'}</strong> — ${r.company_name ?? '(no company)'}</div>
+          <div class="muted">${r.status ?? 'Applied'} • Applied: ${r.applied_date ?? '-'} • Updated: ${r.status_update_date ?? (r.updated_at ? r.updated_at.slice(0,10) : '-')}</div>
+          ${r.canonical_job_url ? `<div><a href="${r.canonical_job_url}" target="_blank" rel="noreferrer">Open posting</a></div>` : ''}
+        `;
+        list.appendChild(div);
+      }
+    }
+
+    // Add a row (let the trigger set user_id)
+    addBtn.onclick = async () => {
+      say(formError, "");
       const row = {
-        user_id: user.id,                       // REQUIRED by our policy
-        title: titleEl.value || null,
-        company_name: companyEl.value || null,
-        canonical_job_url: urlEl.value || null,
-        status: statusEl.value || 'Applied',
-        status_update_date: new Date().toISOString().slice(0,10) // YYYY-MM-DD
+        title: nonEmpty(titleEl.value),
+        company_name: nonEmpty(companyEl.value),
+        canonical_job_url: nonEmpty(urlEl.value),
+        status: nonEmpty(statusEl.value) || 'Applied',
+        applied_date: new Date().toISOString().slice(0,10),
+        status_update_date: new Date().toISOString().slice(0,10)
       };
-
-      const { error } = await supabase.from('"Graduate Job Helper"').insert(row);
-      if (error) return alert(error.message);
-
-      titleEl.value = companyEl.value = urlEl.value = '';
-      statusEl.value = 'Applied';
-      await refresh();
+      const { error } = await supabase.from('graduate_job_helper').insert(row);
+      if (error) {
+        say(formError, error.message);
+        say(debug, `Insert error: ${error.message}`);
+        return;
+      }
+      titleEl.value = ""; companyEl.value = ""; urlEl.value = ""; statusEl.value = "Applied";
+      await loadRows();
     };
 
-    supabase.auth.onAuthStateChange(refresh);
-    refresh();
+    function nonEmpty(s) {
+      if (!s) return null;
+      const t = s.trim();
+      return t.length ? t : null;
+    }
+
+    // Watch auth changes across redirects
+    supabase.auth.onAuthStateChange(async (evt, session) => {
+      renderAuth(session?.user ?? null);
+      if (session?.user) {
+        await loadRows();
+      } else {
+        renderRows([]);
+      }
+    });
+
+    // On first load after redirect, get session and render
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      renderAuth(session?.user ?? null);
+      if (session?.user) await loadRows();
+      // minimal debug
+      say(debug, `Origin: ${location.origin}`);
+    })();
   </script>
 </body>
 </html>
