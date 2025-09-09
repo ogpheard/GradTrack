@@ -8,6 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <!-- Charts (lightweight + responsive) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root{
       --primary-50:#eff6ff; --primary-100:#dbeafe; --primary-500:#3b82f6; --primary-600:#2563eb; --primary-700:#1d4ed8;
@@ -427,10 +428,10 @@
 
           <div class="hr"></div>
           <div style="display:flex;gap:.75rem;flex-wrap:wrap">
-            <button class="btn btn-primary" type="submit">Save to n8n</button>
+            <button class="btn btn-primary" type="submit">Save</button>
             <button class="btn btn-outline" type="button" id="addMock">Quick add (local only)</button>
           </div>
-          <p class="help" style="margin-top:.5rem">Arrays are parsed from your comma/semicolon entries. The form posts to your <strong>/applications</strong> webhook using the current environment.</p>
+          <p class="help" style="margin-top:.5rem">Arrays are parsed from your comma/semicolon entries. The form saves directly to Supabase using the current environment.</p>
         </form>
       </div>
     </div>
@@ -602,22 +603,19 @@
     // ========= ENDPOINTS =========
     const URLS = {
       test: {
-        analyse:      'https://ogpheard.app.n8n.cloud/webhook-test/analyse',
-        applications: 'https://ogpheard.app.n8n.cloud/webhook-test/applications',
-        cover:        'https://ogpheard.app.n8n.cloud/webhook-test/cover',
-        list:         'https://ogpheard.app.n8n.cloud/webhook-test/apps/list',
-        delete:       'https://ogpheard.app.n8n.cloud/webhook-test/apps/delete',
-        update:       'https://ogpheard.app.n8n.cloud/webhook-test/updater'
+        analyse: 'https://ogpheard.app.n8n.cloud/webhook-test/analyse',
+        cover:   'https://ogpheard.app.n8n.cloud/webhook-test/cover'
       },
       prod: {
-        analyse:      'https://ogpheard.app.n8n.cloud/webhook/analyse',
-        applications: 'https://ogpheard.app.n8n.cloud/webhook/applications',
-        cover:        'https://ogpheard.app.n8n.cloud/webhook/cover',
-        list:         'https://ogpheard.app.n8n.cloud/webhook/apps/list',
-        delete:       'https://ogpheard.app.n8n.cloud/webhook/apps/delete',
-        update:       'https://ogpheard.app.n8n.cloud/webhook/updater'
+        analyse: 'https://ogpheard.app.n8n.cloud/webhook/analyse',
+        cover:   'https://ogpheard.app.n8n.cloud/webhook/cover'
       }
     };
+    const DB = {
+      test: { url: 'https://bmudgeqzuhdjowcibwyx.supabase.co', key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJtdWRnZXF6dWhkam93Y2lid3l4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0MzExODUsImV4cCI6MjA3MzAwNzE4NX0.sGQ0YfX_TBKHVtrMSE77kifuXnRBdRjhaIcGZQpDLLc' },
+      prod: { url: 'https://bmudgeqzuhdjowcibwyx.supabase.co', key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJtdWRnZXF6dWhkam93Y2lid3l4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0MzExODUsImV4cCI6MjA3MzAwNzE4NX0.sGQ0YfX_TBKHVtrMSE77kifuXnRBdRjhaIcGZQpDLLc' }
+    };
+    const TABLE = 'graduate_job_helper';
     const CV_FOLDER_ID = '';
     const GUIDE_DOC_ID = '';
 
@@ -668,14 +666,7 @@
       return slug.replace(/(^|-)\w/g, m => m.toUpperCase()).replaceAll('-', ' ');
     }
 
-    // Backend sheet routing helper
-    // Only 'saved' -> 'Saved', 'applied' -> 'Applied'. Everything else currently ends up in Saved sheet on backend.
-    function apiStatusFor(sourceOrStatus){
-      const s = normaliseStatus(typeof sourceOrStatus === 'string' ? sourceOrStatus : sourceOrStatus?.status);
-      return s === 'saved' ? 'Saved' : (s === 'applied' ? 'Applied' : 'Saved'); // matches current n8n IF logic
-    }
-
-    // Outgoing status string (human-friendly) to send to n8n in payloads
+    // Outgoing status string (human-friendly) for payloads
     function apiOutgoingStatus(slug){
       if (slug === 'saved') return 'Saved';
       if (slug === 'applied') return 'Applied';
@@ -837,44 +828,13 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
     // Holds the pending delete payload
     let pendingDelete = null;
 
-    // Derive delete payload from a card item
-    function buildDeletePayloadFromCard(app, sourceHint){
-      const id = app.id || '';
-      const isUrl = /^https?:\/\//i.test(id);
-      const payload = {
-        status: apiStatusFor(sourceHint || app.status),
-        reason: 'user delete via UI'
-      };
-      if (isUrl) payload.canonical_job_url = id;
-      else payload.application_id = id;
-      return payload;
-    }
-
-    // Call delete API
-    async function apiDelete(env, payload){
-      const res = await fetch(URLS[env].delete, {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const text = await res.text();
-      let json; try{ json = JSON.parse(text); }catch{ json = { raw:text }; }
-      if (!res.ok || json?.ok === false){
-        const msg = json?.error || `HTTP ${res.status}`;
-        throw new Error(msg);
-      }
-      return json;
-    }
-
     // Modal open/close
-    function openDeleteConfirm(app, sourceHint){
-      const sheetLabel = apiStatusFor(sourceHint || app.status);
+    function openDeleteConfirm(app){
       confirmDeleteSummary.innerHTML = `
         <strong>${escapeHtml(app.title || 'Untitled')}</strong><br/>
-        ${escapeHtml(app.company || '—')}<br/>
-        <span class="help">Sheet: ${sheetLabel === 'Applied' ? 'Applications (Applied)' : 'Applications (Saved)'}</span>
+        ${escapeHtml(app.company || '—')}
       `;
-      pendingDelete = buildDeletePayloadFromCard(app, sourceHint);
+      pendingDelete = { application_id: app.id, canonical_job_url: app.canonical_job_url };
       confirmDeleteModal.classList.add('show');
       confirmDeleteModal.setAttribute('aria-hidden','false');
     }
@@ -891,12 +851,19 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
     // Perform deletion
     confirmDeleteBtn.onclick = async ()=>{
       if (!pendingDelete) return;
-      const prevText = confirmDeleteBtn.textContent;
+      const prev = confirmDeleteBtn.textContent;
       confirmDeleteBtn.textContent = 'Deleting…';
-      confirmDeleteBtn.disabled = true;
-      cancelDeleteBtn.disabled = true;
+      confirmDeleteBtn.disabled = true; cancelDeleteBtn.disabled = true;
       try{
-        await apiDelete(currentEnv, pendingDelete);
+        if (pendingDelete.application_id){
+          const { error } = await db.from(TABLE).delete().eq('application_id', pendingDelete.application_id);
+          if (error) throw error;
+        } else if (pendingDelete.canonical_job_url){
+          const { data, error } = await db.from(TABLE).select('application_id').eq('canonical_job_url', pendingDelete.canonical_job_url).limit(1).single();
+          if (error) throw error;
+          const { error: delErr } = await db.from(TABLE).delete().eq('application_id', data.application_id);
+          if (delErr) throw delErr;
+        }
         closeDeleteConfirm();
         toast('Deleted ✓');
         await refreshData(true);
@@ -904,9 +871,8 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         console.error(e);
         toast(`Delete failed: ${e.message || e}`);
       }finally{
-        confirmDeleteBtn.textContent = prevText;
-        confirmDeleteBtn.disabled = false;
-        cancelDeleteBtn.disabled = false;
+        confirmDeleteBtn.textContent = prev;
+        confirmDeleteBtn.disabled = false; cancelDeleteBtn.disabled = false;
       }
     };
 
@@ -914,6 +880,8 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
     const initialEnv = (new URLSearchParams(location.search).get('env') || 'prod').toLowerCase();
     envSelect.value = (initialEnv === 'test' ? 'test' : 'prod');
     let currentEnv = envSelect.value;
+    let db = supabase.createClient(DB[currentEnv].url, DB[currentEnv].key,
+      { auth:{ persistSession:false, autoRefreshToken:false, detectSessionInUrl:false } });
 
     let draft = null;     // last analysis JSON
     let lastCover = null; // last cover JSON
@@ -921,41 +889,24 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
     let appsLive = { applied: [], saved: [] }; // server truth from Workflow 4
     let applicationsList = [];                  // flattened view for “My Applications”
 
-    async function fetchJSONorText(url){
-      const res = await fetch(url, { method:'GET', cache:'no-store' });
-      const text = await res.text();
-      try { return JSON.parse(text); } catch { return text; }
-    }
-
     function toCardShape(r){
-      const locs = Array.isArray(r.locations) ? r.locations.join(' • ')
-               : typeof r.locations === 'string' ? r.locations : '';
-      const salary =
-        r.salary_raw ||
-        ((r.salary_currency || '') +
-         (r.salary_min ? ` ${r.salary_min}` : '') +
-         (r.salary_max ? `–${r.salary_max}` : '') +
-         (r.salary_period ? ` ${r.salary_period}` : '')).trim();
-
-      const rawStatus = normaliseStatus(r.status);
-      const mapped = STATUS_OPTIONS.find(o => normaliseStatus(o.label) === rawStatus || o.value === rawStatus);
-      const status = mapped ? mapped.value : rawStatus;
-
       return {
-        id: r.application_id || r.canonical_job_url || String(Math.random()),
+        id: r.application_id,
+        canonical_job_url: r.canonical_job_url || '',
         title: r.title || 'Untitled role',
         company: r.company_name || '',
-        status,
+        status: (r.status||'').trim().toLowerCase().replace(/\s+/g,'-') || 'saved',
         sector: r.sector || '',
         roleType: r.role_type || '',
         startDate: r.start_date || null,
         statusUpdateDate: r.status_update_date || null,
         appliedDate: r.applied_date || null,
-        location: locs || '—',
-        salary: salary || '—',
+        location: Array.isArray(r.locations) ? r.locations.join(' • ') : (r.locations || '—'),
+        salary: r.salary_raw ||
+                (`${r.salary_currency||''} ${r.salary_min||''}${r.salary_max?`–${r.salary_max}`:''} ${r.salary_period||''}`).trim(),
         fitScore: Number(r.AI_fit_score || 0),
         alignmentScore: Number(r.AI_alignment_score || 0),
-        source: r.source_url ? new URL(r.source_url).hostname : '—',
+        source: r.canonical_job_url ? new URL(r.canonical_job_url).hostname : (r.source_url ? new URL(r.source_url).hostname : '—'),
         description: r.job_description || '',
         requirements: Array.isArray(r.key_requirements) ? r.key_requirements : [],
         fits: Array.isArray(r.fits) ? r.fits : [],
@@ -974,31 +925,28 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
 
     async function refreshData(silent=false){
       try{
-        const url = URLS[currentEnv].list + `?t=${Date.now()}`;
-        const data = await fetchJSONorText(url);
-        if (!data || typeof data !== 'object') throw new Error('Bad response from list endpoint');
+        const { data, error } = await db
+          .from(TABLE)
+          .select('*')
+          .order('created_at', { ascending:false })
+          .limit(1000);
+        if (error) throw error;
 
         appsLive = {
-          applied: Array.isArray(data.applied) ? data.applied : [],
-          saved:   Array.isArray(data.saved)   ? data.saved   : []
+          applied: (data||[]).filter(r => (r.status||'').toLowerCase()==='applied'),
+          saved:   (data||[]).filter(r => (r.status||'').toLowerCase()==='saved')
         };
 
-        const flat = [
-          ...appsLive.applied.map(toCardShape),
-          ...appsLive.saved.map(toCardShape)
-        ];
-        const statusSet = [...new Set(flat.map(a=>a.status).filter(Boolean))].sort();
-        assignStatusColors(statusSet);
+        const flat = (data||[]).map(toCardShape);
         applicationsList = flat.filter(a => a.status !== 'saved');
 
         if (!silent) toast('Data refreshed');
-
         if (applicationsPage.classList.contains('active')) renderApplications();
         if (savedPage.classList.contains('active'))        renderSaved();
         if (analyticsPage.classList.contains('active'))    renderAnalytics();
       }catch(e){
         console.error(e);
-        if (!silent) toast('Failed to load live data');
+        if (!silent) toast('Failed to load from Supabase');
       }
     }
 
@@ -1019,9 +967,6 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
     function toast(msg){ toastEl.textContent = msg; toastEl.classList.add('show'); setTimeout(()=>toastEl.classList.remove('show'), 2400); }
     function asArray(v){ return Array.isArray(v) ? v : (v ? [v] : []); }
     function bullets(arr){ return asArray(arr).map(x=>`• ${String(x)}`).join('\n'); }
-    function statusChanged(prev, next){
-      return String(prev || '').trim() !== String(next || '').trim();
-    }
     function londonTodayISO(){
       const fmt = new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
       const y=fmt.find(p=>p.type==='year').value, m=fmt.find(p=>p.type==='month').value, d=fmt.find(p=>p.type==='day').value;
@@ -1132,7 +1077,13 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
     if (location.hash==='#analytics') switchTab('analytics');
     if (location.hash==='#add') switchTab('add');
 
-    envSelect.onchange = ()=>{ currentEnv = envSelect.value; toast(`Switched to ${currentEnv.toUpperCase()}`); };
+    envSelect.onchange = ()=>{
+      currentEnv = envSelect.value;
+      db = supabase.createClient(DB[currentEnv].url, DB[currentEnv].key,
+        { auth:{ persistSession:false, autoRefreshToken:false, detectSessionInUrl:false } });
+      toast(`Switched to ${currentEnv.toUpperCase()}`);
+      refreshData(true);
+    };
 
     // ====== Analyse flow
     analyzeBtn.onclick = analyseUrl;
@@ -1229,7 +1180,7 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
       coverBtn.onclick = onCoverClick;
     }
 
-    // ====== Applications send (to n8n)
+    // ====== Applications send
     function toApplicationsPayload(a, opts){
       const salary = a.salary || {};
       return {
@@ -1241,17 +1192,17 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         role_type: a.role_type || '',
         sector: a.sector || '',
         contact_email: a.contact_email || '',
-        date_posted: a.date_posted || '',
-        date_deadline: a.date_deadline || '',
-        start_date: a.start_date || '',
-        salary_min: salary.min || '',
-        salary_max: salary.max || '',
-        salary_currency: salary.currency || '',
-        salary_period: salary.period || '',
+        date_posted: a.date_posted || null,
+        date_deadline: a.date_deadline || null,
+        start_date: a.start_date || null,
+        salary_min: salary.min || null,
+        salary_max: salary.max || null,
+        salary_currency: salary.currency || null,
+        salary_period: salary.period || null,
         salary_raw: salary.salary_raw || a.salary_raw || '',
         locations: Array.isArray(a.locations) ? a.locations : [],
-        AI_fit_score: a.AI_fit_score ?? 0,
-        AI_alignment_score: a.AI_alignment_score ?? 0,
+        AI_fit_score: a.AI_fit_score ?? null,
+        AI_alignment_score: a.AI_alignment_score ?? null,
         AI_cv_filename: a.AI_cv_recommendation?.filename || a.AI_cv_filename || '',
         AI_cv_reason: a.AI_cv_recommendation?.reason || a.AI_cv_reason || '',
         key_requirements: a.key_requirements || [],
@@ -1262,30 +1213,36 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         keywords: a.keywords || [],
         job_description: a.job_description || '',
         status: opts.status,
-        applied_date: opts.status==='Applied' ? (opts.appliedDate || londonTodayISO()) : '',
-        application_effort_rating: opts.effort ?? '',
-        application_chance_rating: opts.chance ?? '',
+        applied_date: opts.status==='Applied' ? (opts.appliedDate || londonTodayISO()) : null,
+        application_effort_rating: opts.effort ?? null,
+        application_chance_rating: opts.chance ?? null,
         status_update_date: londonTodayISO(),
         cover_letter_url: a.cover_letter_url ?? ''
       };
     }
-    async function sendApplications(env, payload){
-      const fd = new FormData();
-      for (const [k,v] of Object.entries(payload)){
-        if (Array.isArray(v)) fd.append(k, JSON.stringify(v));
-        else fd.append(k, v==null ? '' : String(v));
-      }
-      return postForm(URLS[env].applications, fd);
+    async function sbInsert(row){
+      if (!row.application_id) row.application_id = (crypto.randomUUID?.() || String(Date.now()));
+      if (row.status) row.status_update_date = new Date().toISOString();
+      const { data, error } = await db.from(TABLE).insert(row).select('*').single();
+      if (error) throw error;
+      return data;
+    }
+
+    async function sbUpsertOnId(row){
+      if (row.status) row.status_update_date = new Date().toISOString();
+      const { data, error } = await db.from(TABLE).upsert(row, { onConflict:'application_id' }).select('*').single();
+      if (error) throw error;
+      return data;
     }
 
     async function onSave(){
       if (!draft) return;
       try{
         const payload = toApplicationsPayload(draft, { status:'Saved' });
-        await sendApplications(currentEnv, payload);
+        await sbInsert(payload);
         toast('Saved for later ✅');
         await refreshData(true);
-      }catch(e){ console.error(e); toast(`Save failed (${currentEnv})`); }
+      }catch(e){ console.error(e); toast('Save failed'); }
     }
 
     async function onApply(){
@@ -1295,15 +1252,15 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         const chance = Number(chanceInput.value);
         const payload = toApplicationsPayload(draft, {
           status:'Applied',
-          effort: Number.isFinite(effort)?effort:'',
-          chance: Number.isFinite(chance)?chance:'',
+          effort: Number.isFinite(effort) ? effort : null,
+          chance: Number.isFinite(chance) ? chance : null,
           appliedDate: londonTodayISO()
         });
-        await sendApplications(currentEnv, payload);
+        await sbInsert(payload);
         toast('Marked as applied 🎉');
         ratingInputs.classList.remove('show'); ratingInputs.setAttribute('aria-hidden','true');
         await refreshData(true);
-      }catch(e){ console.error(e); toast(`Apply failed (${currentEnv})`); }
+      }catch(e){ console.error(e); toast('Apply failed'); }
     }
 
     // ====== Cover letter & CV
@@ -1467,7 +1424,7 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
       modalTitle.textContent = `Edit: ${raw.title || 'Untitled role'}`;
       modalBody.innerHTML = `
         <form id="editForm" class="form-grid">
-          <!-- identifiers (used by n8n to upsert) -->
+          <!-- identifiers (used to upsert) -->
           <input type="hidden" name="application_id" value="${escapeHtml(raw.application_id || '')}"/>
           <input type="hidden" name="canonical_job_url" value="${escapeHtml(raw.canonical_job_url || '')}"/>
           <input type="hidden" name="source_url" value="${escapeHtml(raw.source_url || '')}"/>
@@ -1550,64 +1507,39 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
       document.getElementById('editForm').onsubmit = async (e)=>{
         e.preventDefault();
         const fd = new FormData(e.target);
-
-        // Read + normalise list inputs → JSON string arrays for n8n
         const toArray = (s, splitOn) => (s||'').split(splitOn).map(x=>x.trim()).filter(Boolean);
-        const locations = JSON.stringify(toArray(fd.get('locations'), ','));
-        const fits      = JSON.stringify(toArray(fd.get('fits'), ';'));
-        const gaps      = JSON.stringify(toArray(fd.get('gaps'), ';'));
-        const keywords  = JSON.stringify(toArray(fd.get('keywords'), ','));
 
-        // Status-change logic
         const statusSlug = normaliseStatus(fd.get('status') || 'saved');
-        const newStatus = apiOutgoingStatus(statusSlug);
-        const oldStatus = fd.get('__prev_status') || '';
-        const changed = statusChanged(oldStatus, newStatus);
-
-        // applied_date guard when becoming Applied
-        let appliedDate = fd.get('applied_date') || '';
-        if (statusSlug === 'applied' && !appliedDate) {
-          appliedDate = londonTodayISO();
-        }
-
-        // Build payload expected by /updater (all fields in body.*)
-        const payload = new FormData();
-        const fields = {
+        const payload = {
           application_id: fd.get('application_id') || '',
-          canonical_job_url: fd.get('canonical_job_url') || '',
-          source_url: fd.get('source_url') || '',
-
           title: fd.get('title') || '',
           company_name: fd.get('company_name') || '',
-          status: newStatus,
-
-          locations, fits, gaps, keywords,
-
-          salary_min: fd.get('salary_min') || '',
-          salary_max: fd.get('salary_max') || '',
-          salary_currency: fd.get('salary_currency') || '',
-          salary_period: fd.get('salary_period') || '',
-
-          AI_fit_score: fd.get('AI_fit_score') || 0,
-          AI_alignment_score: fd.get('AI_alignment_score') || 0,
-          application_effort_rating: fd.get('application_effort_rating') || '',
-          application_chance_rating: fd.get('application_chance_rating') || '',
-
-          applied_date: appliedDate,
-          // Only stamp when status actually changed:
-          status_update_date: changed ? londonTodayISO() : '',
-
+          status: apiOutgoingStatus(statusSlug),
+          locations: toArray(fd.get('locations'), ','),
+          fits:      toArray(fd.get('fits'), ';'),
+          gaps:      toArray(fd.get('gaps'), ';'),
+          keywords:  toArray(fd.get('keywords'), ','),
+          salary_min: fd.get('salary_min') || null,
+          salary_max: fd.get('salary_max') || null,
+          salary_currency: fd.get('salary_currency') || null,
+          salary_period: fd.get('salary_period') || null,
+          AI_fit_score: fd.get('AI_fit_score') || null,
+          AI_alignment_score: fd.get('AI_alignment_score') || null,
+          application_effort_rating: fd.get('application_effort_rating') || null,
+          application_chance_rating: fd.get('application_chance_rating') || null,
           job_summary: fd.get('job_summary') || '',
           job_description: fd.get('job_description') || '',
-          cover_letter_url: raw.cover_letter_url || ''
+          applied_date: fd.get('applied_date') || (statusSlug==='applied' ? londonTodayISO() : null),
+          status_update_date: new Date().toISOString()
         };
 
-        Object.entries(fields).forEach(([k,v]) => payload.append(k, v));
+        if (!payload.application_id) throw new Error('Missing application_id');
 
         try{
-          const res = await fetch(URLS[currentEnv].update, { method:'POST', body: payload });
-          if (!res.ok) throw new Error('HTTP '+res.status);
-          await res.json().catch(()=> ({}));
+          const { data, error } = await db.from(TABLE)
+            .update(payload).eq('application_id', payload.application_id)
+            .select('*').single();
+          if (error) throw error;
           toast('Saved changes ✓');
           closeModal();
           await refreshData(true);
@@ -1643,53 +1575,27 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
       savedGrid.innerHTML = arr.map(app => cardHTML(app,true)).join('');
     }
     window.markSavedApplied = async function(id){
-      const app = appsLive.saved.map(toCardShape).find(a=>a.id===id);
-      if (!app) return;
+      const raw = getRawRowById(id);
+      if (!raw) return;
       try{
-        const payload = {
-          source_url:'',
-          canonical_job_url:'',
-          title: app.title, company_name: app.company,
-          seniority:'', role_type:'', sector:'', contact_email:'',
-          date_posted:'', date_deadline:'', start_date:'',
-          salary_min:'', salary_max:'', salary_currency:'', salary_period:'', salary_raw:app.salary||'',
-          locations: asArray(app.location ? app.location.split(' • ') : []),
-          AI_fit_score: app.fitScore || 0,
-          AI_alignment_score: app.alignmentScore || 0,
-          AI_cv_filename:'', AI_cv_reason:'',
-          key_requirements: asArray(app.requirements||[]),
-          other_requirements: [],
-          fits: asArray(app.fits||[]),
-          gaps: asArray(app.gaps||[]),
-          job_summary:'', keywords: [],
-          job_description: app.description || '',
-          status: 'Applied',
-          applied_date: londonTodayISO(),
-          application_effort_rating: app.effortRating ?? '',
-          application_chance_rating: app.chanceRating ?? '',
-          status_update_date: londonTodayISO(),
-          cover_letter_url:''
-        };
-        await sendApplications(currentEnv, payload);
+        await sbUpsertOnId({ application_id: raw.application_id, status:'Applied', applied_date:londonTodayISO() });
         toast('Marked applied ✅');
         await refreshData(true);
-      }catch(e){ console.error(e); toast('Failed to update n8n'); }
+      }catch(e){ console.error(e); toast('Failed to update'); }
     };
 
     window.requestDelete = function(id, sourceHint){
       // Try Applications first
       let app = applicationsList.find(a=>a.id===id);
       if (!app && (sourceHint && String(sourceHint).toLowerCase() === 'saved')){
-        // Pull from saved live list
         app = appsLive.saved.map(toCardShape).find(a=>a.id===id);
       }
       if (!app){
-        // Fallback: search both collections
         app = (appsLive.applied.map(toCardShape).find(a=>a.id===id)
           || appsLive.saved.map(toCardShape).find(a=>a.id===id));
       }
       if (!app){ toast('Could not find that item in the UI'); return; }
-      openDeleteConfirm(app, sourceHint);
+      openDeleteConfirm(app);
     };
 
     // ====== Analytics page
@@ -1916,7 +1822,7 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
     addForm.addEventListener('submit', async (e)=>{
       e.preventDefault();
       const fd = new FormData(addForm);
-      // Build payload in the format your n8n expects
+      // Build payload for Supabase
       const statusSlug = normaliseStatus(fd.get('status') || 'saved');
       const status = apiOutgoingStatus(statusSlug);
       const payload = {
@@ -1926,10 +1832,10 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         company_name: fd.get('company_name') || '',
         seniority:'', role_type:'', sector:'', contact_email:'',
         date_posted:'', date_deadline:'', start_date:'',
-        salary_min: fd.get('salary_min') || '',
-        salary_max: fd.get('salary_max') || '',
-        salary_currency: fd.get('salary_currency') || '',
-        salary_period: fd.get('salary_period') || '',
+        salary_min: fd.get('salary_min') || null,
+        salary_max: fd.get('salary_max') || null,
+        salary_currency: fd.get('salary_currency') || null,
+        salary_period: fd.get('salary_period') || null,
         salary_raw: '',
         locations: (fd.get('locations')||'').split(',').map(s=>s.trim()).filter(Boolean),
         AI_fit_score: Number(fd.get('AI_fit_score')||0),
@@ -1943,18 +1849,18 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         keywords: (fd.get('keywords')||'').split(',').map(s=>s.trim()).filter(Boolean),
         job_description: fd.get('job_description')||'',
         status,
-        applied_date: statusSlug === 'applied' ? (fd.get('applied_date')||londonTodayISO()) : '',
-        application_effort_rating: fd.get('application_effort_rating')||'',
-        application_chance_rating: fd.get('application_chance_rating')||'',
+        applied_date: statusSlug === 'applied' ? (fd.get('applied_date')||londonTodayISO()) : null,
+        application_effort_rating: fd.get('application_effort_rating')||null,
+        application_chance_rating: fd.get('application_chance_rating')||null,
         status_update_date: londonTodayISO(),
         cover_letter_url:''
       };
       try{
-        await sendApplications(currentEnv, payload);
-        toast('Saved to n8n ✅');
+        await sbInsert(payload);
+        toast('Saved ✅');
         addForm.reset();
         await refreshData(true);
-      }catch(e){ console.error(e); toast('Failed to save to n8n'); }
+      }catch(e){ console.error(e); toast('Failed to save'); }
     });
 
     addMockBtn.onclick = ()=>{
