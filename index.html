@@ -39,6 +39,7 @@
     <header>
       <h1>Grad Tracker</h1>
       <div class="row">
+        <span id="who" class="small" style="align-self:center;opacity:.9"></span>
         <button id="signin">Sign in with Google</button>
         <button id="signout" class="ghost" style="display:none">Sign out</button>
       </div>
@@ -91,8 +92,11 @@
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
     const SUPABASE_URL = "https://kudqgnpkznshcyvrwrpj.supabase.co";
-    const SUPABASE_ANON_KEY = "PASTE_YOUR_SUPABASE_ANON_KEY_HERE"; // <- replace me
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1ZHFnbnBrem5zaGN5dnJ3cnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5NzY0MDcsImV4cCI6MjA3MjU1MjQwN30.mPK21uGKyBtgvWL0vl80l9bLG9SWoXDbnYAjPbPNn74"; // <- replace me
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
+      // ^ we handle the URL exchange manually below
+    });
 
     // --- 2) Helpers for GitHub Pages project path ---
     function buildReturnUrl() {
@@ -115,14 +119,16 @@
       el("debug").textContent += t + "\n";
     };
 
-    // --- 3) UI state ---
+    // --- 3) Auth/UI state ---
     async function refreshAuthUI() {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) debug("getSession error:", error);
       const authed = !!session;
       el("authed-ui").style.display = authed ? "" : "none";
       el("anon-ui").style.display = authed ? "none" : "";
       el("signin").style.display = authed ? "none" : "";
       el("signout").style.display = authed ? "" : "none";
+      el("who").textContent = authed ? (session.user.email || session.user.id) : "";
       if (authed) loadJobs();
     }
 
@@ -145,7 +151,7 @@
       renderJobs([]); // clear list
     };
 
-    // Refresh UI when Supabase finishes the OAuth exchange
+    // Keep UI in sync
     supabase.auth.onAuthStateChange((_event, _session) => {
       refreshAuthUI();
     });
@@ -173,20 +179,18 @@
         return;
       }
 
-      // Prepare row for your table: graduate_job_helper
       const row = {
         title,
         company_name: company,
         canonical_job_url: url,
         status: applied ? "Applied" : "Saved",
         applied_date: applied ? new Date().toISOString().slice(0,10) : null,
-        user_id: user.id // works with standard RLS policy (WITH CHECK user_id = auth.uid())
+        user_id: user.id
       };
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("graduate_job_helper")
-        .insert(row)
-        .select();
+        .insert(row);
 
       if (error) {
         el("add-msg").textContent = "Add failed: " + error.message;
@@ -205,13 +209,8 @@
     // --- 6) Load & render jobs ---
     async function loadJobs() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        renderJobs([]);
-        return;
-      }
+      if (!user) { renderJobs([]); return; }
 
-      // Pull only your rows (RLS will enforce this anyway).
-      // Order by most recently updated if the column exists; if not, it will still work.
       const { data, error } = await supabase
         .from("graduate_job_helper")
         .select("application_id,title,company_name,canonical_job_url,status,applied_date,status_update_date")
@@ -254,10 +253,26 @@
 
     function esc(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) }
 
-    // --- 7) Boot ---
+    // --- 7) Boot (EXCHANGE THE CODE HERE) ---
     (async function boot(){
       debug("Host:", window.location.origin);
       debug("Return URL:", buildReturnUrl());
+
+      // If we have ?code=... from Google, exchange it for a session
+      const hasCode = /\bcode=/.test(window.location.search);
+      if (hasCode) {
+        const { data, error } = await supabase.auth.exchangeCodeForSession(window.location.href);
+        if (error) {
+          debug("exchangeCodeForSession error:", error);
+          alert("Sign-in exchange failed: " + error.message);
+        } else {
+          debug("exchange ok, user:", data.user?.email || data.user?.id);
+        }
+        // Clean the URL so code/state aren’t left on the bar
+        const clean = buildReturnUrl();
+        history.replaceState({}, "", clean);
+      }
+
       await refreshAuthUI();
     })();
   </script>
