@@ -1,280 +1,167 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Grad Tracker</title>
+  <title>Grad Tracker — Auth Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: system-ui, Arial, sans-serif; margin: 24px; }
-    .row { display: grid; gap: 8px; margin: 12px 0; max-width: 560px; }
-    input[type=text] { padding: 8px; border: 1px solid #ccc; border-radius: 8px; }
-    button { padding: 8px 14px; border-radius: 8px; border: 1px solid #888; cursor: pointer; }
-    button[disabled] { opacity: .6; cursor: not-allowed; }
-    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin: 8px 0; }
-    .muted { color: #666; font-size: 12px; }
-    #debug { white-space: pre-wrap; background:#fafafa; border:1px dashed #ddd; padding:10px; border-radius:8px; margin-top:16px; }
-    .ok { color: #0a7; }
-    .err { color: #c00; }
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:0;padding:24px;line-height:1.4;background:#0b1020;color:#e9edf1}
+    .card{max-width:720px;margin:0 auto;background:#111936;border:1px solid #1e2848;border-radius:16px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+    h1{margin:0 0 6px;font-size:24px}
+    .muted{color:#9fb0c9}
+    button{background:#4c82fb;border:none;color:white;padding:10px 14px;border-radius:10px;font-weight:600;cursor:pointer}
+    button[disabled]{opacity:.6;cursor:not-allowed}
+    .row{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}
+    .ok{color:#6ee7a3}
+    .warn{color:#f9c97a}
+    pre{white-space:pre-wrap;background:#0d1328;border:1px solid #1d2750;border-radius:10px;padding:12px;color:#cfe3ff;max-height:320px;overflow:auto}
+    code{color:#cfe3ff}
+    .box{background:#0d1328;border:1px solid #1d2750;border-radius:10px;padding:12px}
+    .kv{display:grid;grid-template-columns:140px 1fr;gap:6px 12px}
+    .kv b{color:#cfe3ff}
   </style>
 </head>
 <body>
-  <h1>Grad Tracker</h1>
+  <div class="card">
+    <h1>Grad Tracker — Auth Test</h1>
+    <p class="muted">If the Google button works, you’ll see your session + profile below.</p>
 
-  <div id="auth">
-    <button id="signin">Sign in with Google</button>
-    <button id="signout" style="display:none;">Sign out</button>
-    <span id="who" class="muted"></span>
+    <div id="authed" class="box" style="display:none">
+      <div class="kv">
+        <b>Status</b><span class="ok">Signed in ✅</span>
+        <b>Email</b><span id="email">—</span>
+        <b>User ID</b><span id="uid">—</span>
+        <b>Provider</b><span id="provider">—</span>
+      </div>
+      <div class="row">
+        <button id="signOutBtn">Sign out</button>
+        <button id="goAppBtn" title="Continue to your app UI">Go to App</button>
+      </div>
+    </div>
+
+    <div id="anon" class="box" style="display:none">
+      <div class="kv">
+        <b>Status</b><span class="warn">Signed out</span>
+        <b>What to do</b><span>Click the button to start Google sign-in.</span>
+      </div>
+      <div class="row">
+        <button id="googleBtn">Sign in with Google</button>
+      </div>
+    </div>
+
+    <h3>Debug</h3>
+    <pre id="debug">loading…</pre>
   </div>
 
-  <hr/>
-
-  <h2>Add job</h2>
-  <div class="row" id="form">
-    <label>Title<br><input id="title" type="text" placeholder="e.g. Graduate Analyst"></label>
-    <label>Company<br><input id="company" type="text" placeholder="e.g. Alpha FMC"></label>
-    <label>Job URL<br><input id="url" type="text" placeholder="https://..."></label>
-    <label><input id="applied" type="checkbox"> Applied</label>
-    <div>
-      <button id="add" type="button">Add</button>
-      <span id="add-msg" class="muted"></span>
-    </div>
-    <div>
-      <button id="verify" type="button" style="display:none;">Verify last insert</button>
-      <span id="verify-msg" class="muted"></span>
-    </div>
-  </div>
-
-  <h2>Your jobs</h2>
-  <div id="jobs"></div>
-
-  <h3>Debug info</h3>
-  <div id="debug"></div>
-
+  <!-- Supabase JS v2 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    // --- CONFIG (yours, already filled) ---
+    // 🔧 Your Supabase project details
     const SUPABASE_URL = "https://kudqgnpkznshcyvrwrpj.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1ZHFnbnBrem5zaGN5dnJ3cnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5NzY0MDcsImV4cCI6MjA3MjU1MjQwN30.mPK21uGKyBtgvWL0vl80l9bLG9SWoXDbnYAjPbPNn74";
 
-    // --- Helpers ---
-    const el = (id) => document.getElementById(id);
-    const debug = el("debug");
-    const log = (...args) => {
-      console.log(...args);
-      debug.textContent += args.map(a => (typeof a === "string" ? a : JSON.stringify(a, null, 2))).join(" ") + "\n";
-    };
+    const debugEl = document.getElementById("debug");
+    const btnGoogle = document.getElementById("googleBtn");
+    const btnSignOut = document.getElementById("signOutBtn");
+    const btnGoApp = document.getElementById("goAppBtn");
+    const viewAnon = document.getElementById("anon");
+    const viewAuthed = document.getElementById("authed");
 
-    // show initial url bits
-    log("Host:", location.origin);
-    log("Pathname:", location.pathname);
-    log("Search:", location.search || "(none)");
-    log("Hash:", location.hash || "(none)");
+    const emailEl = document.getElementById("email");
+    const uidEl = document.getElementById("uid");
+    const providerEl = document.getElementById("provider");
 
-    // --- Supabase ---
-    const supabase = supabasejs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: true, detectSessionInUrl: false } // we’ll handle the #tokens manually
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true, // important: parse #access_token or ?code on this page
+      }
     });
 
-    // Handle #access_token / #refresh_token from Google redirect (implicit flow)
-    (async function handleHashSession() {
-      try {
-        if (location.hash.includes("access_token=") && location.hash.includes("refresh_token=")) {
-          const params = new URLSearchParams(location.hash.slice(1));
-          const access_token = params.get("access_token");
-          const refresh_token = params.get("refresh_token");
-          if (access_token && refresh_token) {
-            const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
-            log("[setSession] error?", error || "none");
-            // Clean the URL back to your page root
-            const returnUrl = location.origin + location.pathname;
-            history.replaceState({}, "", returnUrl);
-            log("Return URL set to:", returnUrl);
-          }
-        }
-      } catch (e) {
-        log("handleHashSession error:", e.message || e);
-      } finally {
-        boot();
-      }
-    })();
+    function log(...args){ debugEl.textContent += args.join(" ") + "\n"; }
+    function resetLog(){ debugEl.textContent = ""; }
 
-    // Global state
-    let lastInsertedId = null;
+    function pageOrigin(){ return window.location.origin; }
+    function appReturnUrl(){ return pageOrigin() + "/grad-tracker/"; }
 
-    async function boot() {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        log("[boot] session?", !!session);
-        updateAuthUI(session);
-        if (session) await loadJobs();
-      } catch (e) {
-        log("boot error:", e.message || e);
-      }
-    }
-
-    function updateAuthUI(session) {
-      if (session?.user) {
-        el("signin").style.display = "none";
-        el("signout").style.display = "inline-block";
-        el("who").textContent = `Signed in as ${session.user.email}`;
+    function showSession(session){
+      if (session && session.user) {
+        viewAuthed.style.display = "";
+        viewAnon.style.display = "none";
+        const u = session.user;
+        emailEl.textContent = u.email || "(no email)";
+        uidEl.textContent = u.id || "(no id)";
+        providerEl.textContent = (u.app_metadata && u.app_metadata.provider) || "unknown";
       } else {
-        el("signin").style.display = "inline-block";
-        el("signout").style.display = "none";
-        el("who").textContent = "";
-        el("jobs").innerHTML = "";
+        viewAuthed.style.display = "none";
+        viewAnon.style.display = "";
       }
     }
 
-    // Auth buttons
-    el("signin").onclick = async () => {
-      const redirectTo = location.origin + location.pathname; // back to this page
+    async function boot(){
+      resetLog();
+      log("[boot] origin:", pageOrigin());
+      log("[boot] path:", window.location.pathname);
+      log("[boot] hash:", window.location.hash);
+
+      // Listen for auth changes to update UI live
+      supabase.auth.onAuthStateChange((event, session) => {
+        log("[onAuthStateChange]", event, "session?", !!session);
+        showSession(session);
+      });
+
+      // Get current (persisted) session after possible redirect
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) log("[getSession:error]", error.message);
+      log("[getSession] session?", !!session);
+      showSession(session);
+
+      // Optional: clean up noisy hash once session exists
+      if (session && window.location.hash) {
+        history.replaceState({}, "", appReturnUrl());
+        log("[hash] cleaned, now:", window.location.href);
+      }
+    }
+
+    // 🔘 Sign in
+    async function handleGoogle(){
+      btnGoogle.disabled = true;
+      log("[signIn] redirectTo:", appReturnUrl());
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo,
-          queryParams: { prompt: "select_account" }
+          redirectTo: appReturnUrl(),
+          // scopes: "email profile" // default is fine
         }
       });
-      if (error) log("signIn error:", error.message);
-    };
-
-    el("signout").onclick = async () => {
-      await supabase.auth.signOut();
-      updateAuthUI(null);
-      el("jobs").innerHTML = "";
-      log("Signed out.");
-    };
-
-    // Load your rows
-    async function loadJobs() {
-      el("jobs").innerHTML = "<div class='muted'>Loading…</div>";
-
-      const { data: { user }, error: uerr } = await supabase.auth.getUser();
-      if (uerr || !user) {
-        el("jobs").innerHTML = "<div class='muted'>Sign in to see your jobs.</div>";
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from("graduate_job_helper")
-        .select("application_id, title, company_name, canonical_job_url, status, applied_date, status_update_date")
-        .eq("user_id", user.id)
-        .order("status_update_date", { ascending: false, nullsFirst: true })
-        .limit(50);
-
       if (error) {
-        el("jobs").innerHTML = `<div class='err'>Load failed: ${error.message}</div>`;
-        log("loadJobs error:", error.message);
-        return;
+        log("[signIn:error]", error.message);
+        btnGoogle.disabled = false;
+      } else {
+        // A full-page redirect will occur; no further code runs here
+        log("[signIn] redirecting…");
       }
-
-      if (!data || data.length === 0) {
-        el("jobs").innerHTML = "<div class='muted'>No jobs yet. Add one above.</div>";
-        return;
-      }
-
-      el("jobs").innerHTML = data.map(row => {
-        const when = row.applied_date || row.status_update_date || "";
-        return `
-          <div class="card">
-            <div><strong>${row.title || "(no title)"} </strong> @ ${row.company_name || ""}</div>
-            <div class="muted">${row.status || ""} ${when ? " • " + when : ""}</div>
-            <div><a href="${row.canonical_job_url}" target="_blank" rel="noopener">Open</a></div>
-            <div class="muted">ID: ${row.application_id}</div>
-          </div>
-        `;
-      }).join("");
     }
 
-    // ADD job (robust: try/catch/finally + always re-enable)
-    el("add").onclick = async () => {
-      el("add").disabled = true;
-      el("add-msg").textContent = "";
-      el("verify").style.display = "none";
-      el("verify-msg").textContent = "";
-      lastInsertedId = null;
+    // 🚪 Sign out
+    async function handleSignOut(){
+      btnSignOut.disabled = true;
+      const { error } = await supabase.auth.signOut();
+      if (error) log("[signOut:error]", error.message);
+      btnSignOut.disabled = false;
+    }
 
-      try {
-        const title   = el("title").value.trim();
-        const company = el("company").value.trim();
-        const url     = el("url").value.trim();
-        const applied = el("applied").checked;
-
-        if (!title || !company || !url) {
-          el("add-msg").textContent = "Please fill Title, Company and Job URL.";
-          return;
-        }
-
-        const { data: { user }, error: uerr } = await supabase.auth.getUser();
-        if (uerr || !user) {
-          el("add-msg").textContent = "You must be signed in.";
-          return;
-        }
-
-        const row = {
-          title,
-          company_name: company,
-          canonical_job_url: url,
-          status: applied ? "Applied" : "Saved",
-          applied_date: applied ? new Date().toISOString().slice(0,10) : null,
-          user_id: user.id
-        };
-
-        const { data: inserted, error } = await supabase
-          .from("graduate_job_helper")
-          .insert(row)
-          .select("application_id")
-          .single();
-
-        if (error) {
-          el("add-msg").innerHTML = `<span class="err">Add failed: ${error.message}</span>`;
-          log("Insert error:", error);
-          return;
-        }
-
-        lastInsertedId = inserted.application_id;
-        el("add-msg").innerHTML = `<span class="ok">Added (id: ${lastInsertedId}).</span>`;
-        el("verify").style.display = "inline-block";
-
-        // clear inputs
-        el("title").value = "";
-        el("company").value = "";
-        el("url").value = "";
-        el("applied").checked = false;
-
-        await loadJobs();
-      } catch (e) {
-        el("add-msg").innerHTML = `<span class="err">Unexpected error: ${e.message || e}</span>`;
-        log("Add handler crash:", e);
-      } finally {
-        el("add").disabled = false; // ALWAYS re-enable button
-      }
-    };
-
-    // Verify last insert
-    el("verify").onclick = async () => {
-      el("verify-msg").textContent = "";
-      if (!lastInsertedId) {
-        el("verify-msg").textContent = "No recent insert to verify.";
-        return;
-      }
-      const { data, error } = await supabase
-        .from("graduate_job_helper")
-        .select("application_id, title, company_name, status, user_id")
-        .eq("application_id", lastInsertedId);
-      if (error) {
-        el("verify-msg").innerHTML = `<span class="err">Verify failed: ${error.message}</span>`;
-      } else if (data && data.length === 1) {
-        el("verify-msg").innerHTML = `<span class="ok">Verified in DB: ${data[0].application_id} (${data[0].title} @ ${data[0].company_name})</span>`;
-      } else {
-        el("verify-msg").textContent = "Row not found (RLS or it wasn’t inserted).";
-      }
-    };
-
-    // Extra: show any window errors in debug
-    window.addEventListener("error", (e) => {
-      log("Window error:", e.message);
+    // 🎯 Wire events
+    btnGoogle?.addEventListener("click", handleGoogle);
+    btnSignOut?.addEventListener("click", handleSignOut);
+    btnGoApp?.addEventListener("click", () => {
+      // ⤴️ swap this to your real app page once auth test works
+      window.location.href = appReturnUrl();
     });
+
+    // 🚀 Start
+    boot();
   </script>
 </body>
 </html>
