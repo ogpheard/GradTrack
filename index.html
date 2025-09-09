@@ -81,48 +81,53 @@
     </div>
 
     <div class="divider"></div>
-    <details>
+    <details open>
       <summary class="small">Debug info</summary>
       <div id="debug" class="small"></div>
     </details>
   </div>
 
   <script type="module">
-    // --- 1) Supabase client ---
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+    // --- Your Supabase project ---
     const SUPABASE_URL = "https://kudqgnpkznshcyvrwrpj.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1ZHFnbnBrem5zaGN5dnJ3cnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5NzY0MDcsImV4cCI6MjA3MjU1MjQwN30.mPK21uGKyBtgvWL0vl80l9bLG9SWoXDbnYAjPbPNn74"; // <- replace me
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1ZHFnbnBrem5zaGN5dnJ3cnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5NzY0MDcsImV4cCI6MjA3MjU1MjQwN30.mPK21uGKyBtgvWL0vl80l9bLG9SWoXDbnYAjPbPNn74";
+
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
-      // ^ we handle the URL exchange manually below
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: false // we will do the exchange manually
+      }
     });
 
-    // --- 2) Helpers for GitHub Pages project path ---
-    function buildReturnUrl() {
-      const url = new URL(window.location.href);
-      if (url.hostname.endsWith("github.io")) {
-        // Ensure we return to /<repo>/
-        const parts = url.pathname.split("/").filter(Boolean);
-        if (parts.length > 0) {
-          const repo = parts[0];
-          return `${url.origin}/${repo}/`;
-        }
-      }
-      return `${url.origin}/`;
-    }
-
+    // --- Helpers ---
     const el = (id) => document.getElementById(id);
-    const debug = (...args) => {
+    const log = (...args) => {
       console.log(...args);
-      const t = args.map(x => (typeof x === "string" ? x : JSON.stringify(x, null, 2))).join(" ");
+      const t = args.map(x => typeof x === "string" ? x : JSON.stringify(x, null, 2)).join(" ");
       el("debug").textContent += t + "\n";
     };
+    const esc = (s)=> String(s||"").replace(/[&<>"']/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
 
-    // --- 3) Auth/UI state ---
-    async function refreshAuthUI() {
+    function buildReturnUrl() {
+      const u = new URL(window.location.href);
+      if (u.hostname.endsWith("github.io")) {
+        const parts = u.pathname.split("/").filter(Boolean);
+        if (parts.length > 0) {
+          const repo = parts[0];
+          return `${u.origin}/${repo}/`;
+        }
+      }
+      return `${u.origin}/`;
+    }
+
+    // --- UI state ---
+    async function refreshAuthUI(where="") {
       const { data: { session }, error } = await supabase.auth.getSession();
-      if (error) debug("getSession error:", error);
+      if (error) log("getSession error:", error.message);
+      log(`[${where}] session?`, !!session, session?.user?.email || "");
       const authed = !!session;
       el("authed-ui").style.display = authed ? "" : "none";
       el("anon-ui").style.display = authed ? "none" : "";
@@ -132,31 +137,29 @@
       if (authed) loadJobs();
     }
 
-    // --- 4) Auth buttons ---
+    // --- Auth buttons ---
     el("signin").onclick = async () => {
       const redirectTo = buildReturnUrl();
+      log("signin redirectTo:", redirectTo);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: { redirectTo }
       });
-      if (error) {
-        alert("Sign in failed: " + error.message);
-        debug("SignIn error:", error);
-      }
+      if (error) { alert("Sign in failed: " + error.message); log("SignIn error:", error.message); }
     };
 
     el("signout").onclick = async () => {
       await supabase.auth.signOut();
-      await refreshAuthUI();
-      renderJobs([]); // clear list
+      await refreshAuthUI("signout");
+      renderJobs([]);
     };
 
-    // Keep UI in sync
-    supabase.auth.onAuthStateChange((_event, _session) => {
-      refreshAuthUI();
+    supabase.auth.onAuthStateChange((event, session) => {
+      log("authStateChange:", event, !!session);
+      refreshAuthUI("onAuthStateChange");
     });
 
-    // --- 5) Add job ---
+    // --- Add job ---
     el("add").onclick = async () => {
       const title = el("title").value.trim();
       const company = el("company").value.trim();
@@ -172,8 +175,8 @@
         return;
       }
 
-      const { data: { user }, error: userErr } = await supabase.auth.getUser();
-      if (userErr || !user) {
+      const { data: { user }, error: uerr } = await supabase.auth.getUser();
+      if (uerr || !user) {
         el("add-msg").textContent = "You must be signed in.";
         el("add").disabled = false;
         return;
@@ -188,13 +191,10 @@
         user_id: user.id
       };
 
-      const { error } = await supabase
-        .from("graduate_job_helper")
-        .insert(row);
-
+      const { error } = await supabase.from("graduate_job_helper").insert(row);
       if (error) {
         el("add-msg").textContent = "Add failed: " + error.message;
-        debug("Insert error:", error);
+        log("Insert error:", error.message);
       } else {
         el("add-msg").textContent = "Added!";
         el("title").value = "";
@@ -206,7 +206,7 @@
       el("add").disabled = false;
     };
 
-    // --- 6) Load & render jobs ---
+    // --- Load jobs ---
     async function loadJobs() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { renderJobs([]); return; }
@@ -214,13 +214,15 @@
       const { data, error } = await supabase
         .from("graduate_job_helper")
         .select("application_id,title,company_name,canonical_job_url,status,applied_date,status_update_date")
+        .eq("user_id", user.id)
         .order("status_update_date", { ascending: false, nullsFirst: false });
 
       if (error) {
-        debug("Select error:", error);
+        log("Select error:", error.message);
         renderJobs([]);
         return;
       }
+      log("rows loaded:", data?.length ?? 0);
       renderJobs(data || []);
     }
 
@@ -234,46 +236,45 @@
       for (const r of rows) {
         const div = document.createElement("div");
         div.className = "job";
-        const safeTitle = esc(r.title || "(no title)");
-        const safeCo = esc(r.company_name || "(no company)");
+        const title = esc(r.title || "(no title)");
+        const co = esc(r.company_name || "(no company)");
         const url = r.canonical_job_url || "#";
-
         div.innerHTML = `
-          <h3>${safeTitle} &middot; ${safeCo}</h3>
+          <h3>${title} &middot; ${co}</h3>
           <div class="meta">
             <span>Status: ${esc(r.status || "Saved")}</span>
             ${r.applied_date ? `<span>Applied: ${esc(r.applied_date)}</span>` : ""}
             ${r.status_update_date ? `<span>Updated: ${esc(r.status_update_date)}</span>` : ""}
             <span><a href="${url}" target="_blank" rel="noopener">Job link</a></span>
-          </div>
-        `;
+          </div>`;
         cont.appendChild(div);
       }
     }
 
-    function esc(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) }
-
-    // --- 7) Boot (EXCHANGE THE CODE HERE) ---
+    // --- Boot: exchange OAuth code if present, then show UI ---
     (async function boot(){
-      debug("Host:", window.location.origin);
-      debug("Return URL:", buildReturnUrl());
+      log("Host:", window.location.origin);
+      log("Pathname:", window.location.pathname);
+      log("Search:", window.location.search);
+      log("Hash:", window.location.hash);
+      log("Return URL computed:", buildReturnUrl());
 
-      // If we have ?code=... from Google, exchange it for a session
       const hasCode = /\bcode=/.test(window.location.search);
+      log("Has ?code in URL?", hasCode);
+
       if (hasCode) {
         const { data, error } = await supabase.auth.exchangeCodeForSession(window.location.href);
         if (error) {
-          debug("exchangeCodeForSession error:", error);
+          log("exchangeCodeForSession error:", error.message);
           alert("Sign-in exchange failed: " + error.message);
         } else {
-          debug("exchange ok, user:", data.user?.email || data.user?.id);
+          log("exchange ok for user:", data.user?.email || data.user?.id);
         }
-        // Clean the URL so code/state aren’t left on the bar
-        const clean = buildReturnUrl();
-        history.replaceState({}, "", clean);
+        // Clean the URL so code/state are removed
+        history.replaceState({}, "", buildReturnUrl());
       }
 
-      await refreshAuthUI();
+      await refreshAuthUI("boot-end");
     })();
   </script>
 </body>
