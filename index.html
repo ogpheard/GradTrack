@@ -1,167 +1,932 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Grad Tracker — Auth Test</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:0;padding:24px;line-height:1.4;background:#0b1020;color:#e9edf1}
-    .card{max-width:720px;margin:0 auto;background:#111936;border:1px solid #1e2848;border-radius:16px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
-    h1{margin:0 0 6px;font-size:24px}
-    .muted{color:#9fb0c9}
-    button{background:#4c82fb;border:none;color:white;padding:10px 14px;border-radius:10px;font-weight:600;cursor:pointer}
-    button[disabled]{opacity:.6;cursor:not-allowed}
-    .row{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}
-    .ok{color:#6ee7a3}
-    .warn{color:#f9c97a}
-    pre{white-space:pre-wrap;background:#0d1328;border:1px solid #1d2750;border-radius:10px;padding:12px;color:#cfe3ff;max-height:320px;overflow:auto}
-    code{color:#cfe3ff}
-    .box{background:#0d1328;border:1px solid #1d2750;border-radius:10px;padding:12px}
-    .kv{display:grid;grid-template-columns:140px 1fr;gap:6px 12px}
-    .kv b{color:#cfe3ff}
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grad Tracker - Job Application Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #0a0a0a;
+            color: #e5e5e5;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .auth-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            flex-direction: column;
+        }
+
+        .card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover:not(:disabled) {
+            background: #1d4ed8;
+            transform: translateY(-1px);
+        }
+
+        .btn:disabled {
+            background: #374151;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #374151;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #4b5563;
+        }
+
+        .btn-danger {
+            background: #dc2626;
+            padding: 6px 8px;
+            font-size: 12px;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: #b91c1c;
+        }
+
+        .btn-google {
+            background: #4285f4;
+            font-size: 16px;
+            padding: 12px 24px;
+        }
+
+        .btn-google:hover {
+            background: #3367d6;
+        }
+
+        .form-section {
+            margin-bottom: 24px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        label {
+            font-weight: 500;
+            color: #d1d5db;
+        }
+
+        input, select, textarea {
+            background: #111;
+            border: 1px solid #374151;
+            border-radius: 6px;
+            padding: 10px 12px;
+            color: #e5e5e5;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            background: #111;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #374151;
+            white-space: nowrap;
+        }
+
+        th {
+            background: #1a1a1a;
+            font-weight: 600;
+            color: #f3f4f6;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        th:hover {
+            background: #252525;
+        }
+
+        th.sortable::after {
+            content: ' ↕';
+            opacity: 0.5;
+            margin-left: 4px;
+        }
+
+        th.sort-asc::after {
+            content: ' ↑';
+            opacity: 1;
+        }
+
+        th.sort-desc::after {
+            content: ' ↓';
+            opacity: 1;
+        }
+
+        tr:hover {
+            background: rgba(37, 99, 235, 0.1);
+        }
+
+        .status-select {
+            background: #111;
+            border: 1px solid #374151;
+            color: #e5e5e5;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .job-url {
+            color: #60a5fa;
+            text-decoration: none;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
+        }
+
+        .job-url:hover {
+            color: #93c5fd;
+            text-decoration: underline;
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .debug-panel {
+            margin-top: 24px;
+        }
+
+        .debug-toggle {
+            background: none;
+            border: none;
+            color: #9ca3af;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 8px 0;
+        }
+
+        .debug-content {
+            background: #0a0a0a;
+            border: 1px solid #374151;
+            border-radius: 6px;
+            padding: 16px;
+            margin-top: 8px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .debug-content pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6b7280;
+        }
+
+        .loading {
+            opacity: 0.6;
+        }
+
+        .error-message {
+            background: #7f1d1d;
+            border: 1px solid #dc2626;
+            color: #fecaca;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 12px 0;
+        }
+
+        .success-message {
+            background: #14532d;
+            border: 1px solid #16a34a;
+            color: #bbf7d0;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 12px 0;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 12px;
+            }
+            
+            .header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .search-box {
+                min-width: auto;
+            }
+            
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            table {
+                font-size: 14px;
+            }
+            
+            th, td {
+                padding: 8px;
+            }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
 </head>
 <body>
-  <div class="card">
-    <h1>Grad Tracker — Auth Test</h1>
-    <p class="muted">If the Google button works, you’ll see your session + profile below.</p>
+    <div class="container">
+        <!-- Auth Screen -->
+        <div id="auth-screen" class="auth-container hidden">
+            <div class="card">
+                <h1 style="text-align: center; margin-bottom: 24px; font-size: 32px; color: #f3f4f6;">
+                    Grad Tracker
+                </h1>
+                <p style="text-align: center; margin-bottom: 32px; color: #9ca3af;">
+                    Track your job applications with ease
+                </p>
+                <button id="sign-in-btn" class="btn btn-google">
+                    Sign in with Google
+                </button>
+            </div>
+        </div>
 
-    <div id="authed" class="box" style="display:none">
-      <div class="kv">
-        <b>Status</b><span class="ok">Signed in ✅</span>
-        <b>Email</b><span id="email">—</span>
-        <b>User ID</b><span id="uid">—</span>
-        <b>Provider</b><span id="provider">—</span>
-      </div>
-      <div class="row">
-        <button id="signOutBtn">Sign out</button>
-        <button id="goAppBtn" title="Continue to your app UI">Go to App</button>
-      </div>
+        <!-- Main App -->
+        <div id="app-screen" class="hidden">
+            <!-- Header -->
+            <div class="card">
+                <div class="header">
+                    <h1 style="color: #f3f4f6; font-size: 24px;">Grad Tracker</h1>
+                    <div class="user-info">
+                        <span id="user-email" style="color: #9ca3af;"></span>
+                        <button id="sign-out-btn" class="btn btn-secondary">Sign Out</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Job Form -->
+            <div class="card">
+                <h2 style="margin-bottom: 16px; color: #f3f4f6;">Add New Job Application</h2>
+                <form id="add-job-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="job-title">Job Title *</label>
+                            <input type="text" id="job-title" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="company-name">Company *</label>
+                            <input type="text" id="company-name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="job-url">Job URL</label>
+                            <input type="url" id="job-url" placeholder="https://...">
+                        </div>
+                        <div class="form-group">
+                            <label for="job-status">Status</label>
+                            <select id="job-status">
+                                <option value="Applied">Applied</option>
+                                <option value="Saved">Saved</option>
+                                <option value="Interview">Interview</option>
+                                <option value="Offer">Offer</option>
+                                <option value="Rejected">Rejected</option>
+                                <option value="Withdrawn">Withdrawn</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="applied-date">Applied Date</label>
+                            <input type="date" id="applied-date">
+                        </div>
+                    </div>
+                    <button type="submit" id="add-job-btn" class="btn">Add Job Application</button>
+                </form>
+                <div id="form-message"></div>
+            </div>
+
+            <!-- Jobs List -->
+            <div class="card">
+                <h2 style="margin-bottom: 16px; color: #f3f4f6;">Your Job Applications</h2>
+                
+                <div class="controls">
+                    <input type="text" id="search-jobs" class="search-box" placeholder="Search by title or company...">
+                    <select id="filter-status">
+                        <option value="">All Status</option>
+                        <option value="Applied">Applied</option>
+                        <option value="Saved">Saved</option>
+                        <option value="Interview">Interview</option>
+                        <option value="Offer">Offer</option>
+                        <option value="Rejected">Rejected</option>
+                        <option value="Withdrawn">Withdrawn</option>
+                    </select>
+                    <button id="refresh-btn" class="btn btn-secondary">Refresh</button>
+                </div>
+
+                <div class="table-container">
+                    <table id="jobs-table">
+                        <thead>
+                            <tr>
+                                <th class="sortable" data-sort="title">Title</th>
+                                <th class="sortable" data-sort="company_name">Company</th>
+                                <th>Job URL</th>
+                                <th class="sortable" data-sort="status">Status</th>
+                                <th class="sortable" data-sort="applied_date">Applied Date</th>
+                                <th class="sortable" data-sort="created_at">Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="jobs-tbody">
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="empty-state" class="empty-state hidden">
+                    <h3>No job applications found</h3>
+                    <p>Add your first job application above to get started!</p>
+                </div>
+            </div>
+
+            <!-- Debug Panel -->
+            <div class="debug-panel">
+                <button class="debug-toggle" onclick="toggleDebug()">
+                    🔧 Debug Panel
+                </button>
+                <div id="debug-content" class="debug-content hidden">
+                    <pre id="debug-log"></pre>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div id="anon" class="box" style="display:none">
-      <div class="kv">
-        <b>Status</b><span class="warn">Signed out</span>
-        <b>What to do</b><span>Click the button to start Google sign-in.</span>
-      </div>
-      <div class="row">
-        <button id="googleBtn">Sign in with Google</button>
-      </div>
-    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Supabase configuration
+        const SUPABASE_URL = 'https://kudqgnpkznshcyvrwrpj.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1ZHFnbnBrem5zaGN5dnJ3cnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5NzY0MDcsImV4cCI6MjA3MjU1MjQwN30.mPK21uGKyBtgvWL0vl80l9bLG9SWoXDbnYAjPbPNn74';
 
-    <h3>Debug</h3>
-    <pre id="debug">loading…</pre>
-  </div>
+        // Initialize Supabase
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: {
+                persistSession: true,
+                autoRefreshToken: true,
+                detectSessionInUrl: true
+            }
+        });
 
-  <!-- Supabase JS v2 -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
-    // 🔧 Your Supabase project details
-    const SUPABASE_URL = "https://kudqgnpkznshcyvrwrpj.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1ZHFnbnBrem5zaGN5dnJ3cnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5NzY0MDcsImV4cCI6MjA3MjU1MjQwN30.mPK21uGKyBtgvWL0vl80l9bLG9SWoXDbnYAjPbPNn74";
+        // Global state
+        let currentUser = null;
+        let jobs = [];
+        let filteredJobs = [];
+        let currentSort = { field: 'created_at', direction: 'desc' };
 
-    const debugEl = document.getElementById("debug");
-    const btnGoogle = document.getElementById("googleBtn");
-    const btnSignOut = document.getElementById("signOutBtn");
-    const btnGoApp = document.getElementById("goAppBtn");
-    const viewAnon = document.getElementById("anon");
-    const viewAuthed = document.getElementById("authed");
-
-    const emailEl = document.getElementById("email");
-    const uidEl = document.getElementById("uid");
-    const providerEl = document.getElementById("provider");
-
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: {
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: true, // important: parse #access_token or ?code on this page
-      }
-    });
-
-    function log(...args){ debugEl.textContent += args.join(" ") + "\n"; }
-    function resetLog(){ debugEl.textContent = ""; }
-
-    function pageOrigin(){ return window.location.origin; }
-    function appReturnUrl(){ return pageOrigin() + "/grad-tracker/"; }
-
-    function showSession(session){
-      if (session && session.user) {
-        viewAuthed.style.display = "";
-        viewAnon.style.display = "none";
-        const u = session.user;
-        emailEl.textContent = u.email || "(no email)";
-        uidEl.textContent = u.id || "(no id)";
-        providerEl.textContent = (u.app_metadata && u.app_metadata.provider) || "unknown";
-      } else {
-        viewAuthed.style.display = "none";
-        viewAnon.style.display = "";
-      }
-    }
-
-    async function boot(){
-      resetLog();
-      log("[boot] origin:", pageOrigin());
-      log("[boot] path:", window.location.pathname);
-      log("[boot] hash:", window.location.hash);
-
-      // Listen for auth changes to update UI live
-      supabase.auth.onAuthStateChange((event, session) => {
-        log("[onAuthStateChange]", event, "session?", !!session);
-        showSession(session);
-      });
-
-      // Get current (persisted) session after possible redirect
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (error) log("[getSession:error]", error.message);
-      log("[getSession] session?", !!session);
-      showSession(session);
-
-      // Optional: clean up noisy hash once session exists
-      if (session && window.location.hash) {
-        history.replaceState({}, "", appReturnUrl());
-        log("[hash] cleaned, now:", window.location.href);
-      }
-    }
-
-    // 🔘 Sign in
-    async function handleGoogle(){
-      btnGoogle.disabled = true;
-      log("[signIn] redirectTo:", appReturnUrl());
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: appReturnUrl(),
-          // scopes: "email profile" // default is fine
+        // Debug logging
+        function debugLog(message, data = null) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}${data ? '\n' + JSON.stringify(data, null, 2) : ''}`;
+            console.log(logEntry);
+            
+            const debugLogEl = document.getElementById('debug-log');
+            if (debugLogEl) {
+                debugLogEl.textContent = logEntry + '\n' + debugLogEl.textContent;
+            }
         }
-      });
-      if (error) {
-        log("[signIn:error]", error.message);
-        btnGoogle.disabled = false;
-      } else {
-        // A full-page redirect will occur; no further code runs here
-        log("[signIn] redirecting…");
-      }
-    }
 
-    // 🚪 Sign out
-    async function handleSignOut(){
-      btnSignOut.disabled = true;
-      const { error } = await supabase.auth.signOut();
-      if (error) log("[signOut:error]", error.message);
-      btnSignOut.disabled = false;
-    }
+        // Initialize debug info
+        function initDebugInfo() {
+            debugLog('Page loaded');
+            debugLog('Current location', {
+                origin: window.location.origin,
+                pathname: window.location.pathname,
+                hash: window.location.hash,
+                search: window.location.search
+            });
+        }
 
-    // 🎯 Wire events
-    btnGoogle?.addEventListener("click", handleGoogle);
-    btnSignOut?.addEventListener("click", handleSignOut);
-    btnGoApp?.addEventListener("click", () => {
-      // ⤴️ swap this to your real app page once auth test works
-      window.location.href = appReturnUrl();
-    });
+        // Clean URL after auth
+        function cleanUrl() {
+            if (window.location.hash || window.location.search.includes('code=')) {
+                debugLog('Cleaning URL after auth');
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
 
-    // 🚀 Start
-    boot();
-  </script>
+        // Show/hide screens
+        function showAuthScreen() {
+            document.getElementById('auth-screen').classList.remove('hidden');
+            document.getElementById('app-screen').classList.add('hidden');
+        }
+
+        function showAppScreen() {
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('app-screen').classList.remove('hidden');
+        }
+
+        // Show messages
+        function showMessage(elementId, message, type = 'error') {
+            const el = document.getElementById(elementId);
+            el.innerHTML = `<div class="${type}-message">${message}</div>`;
+            setTimeout(() => el.innerHTML = '', 5000);
+        }
+
+        // Auth functions
+        async function signIn() {
+            try {
+                debugLog('Initiating Google sign in');
+                const { data, error } = await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                        redirectTo: 'https://ogpheard.github.io/grad-tracker/'
+                    }
+                });
+                
+                if (error) {
+                    debugLog('Sign in error', error);
+                    showMessage('form-message', `Sign in failed: ${error.message}`);
+                }
+            } catch (err) {
+                debugLog('Sign in exception', err);
+                showMessage('form-message', `Sign in failed: ${err.message}`);
+            }
+        }
+
+        async function signOut() {
+            try {
+                debugLog('Signing out');
+                const { error } = await supabase.auth.signOut();
+                if (error) {
+                    debugLog('Sign out error', error);
+                } else {
+                    debugLog('Sign out successful');
+                }
+            } catch (err) {
+                debugLog('Sign out exception', err);
+            }
+        }
+
+        // Jobs CRUD operations
+        async function fetchJobs() {
+            try {
+                debugLog('Fetching jobs');
+                document.getElementById('jobs-table').classList.add('loading');
+                
+                const { data: userData, error: userError } = await supabase.auth.getUser();
+                if (userError || !userData.user) {
+                    throw new Error('User not authenticated');
+                }
+
+                const { data, error } = await supabase
+                    .from('graduate_job_helper')
+                    .select('application_id, title, company_name, canonical_job_url, status, applied_date, created_at')
+                    .eq('user_id', userData.user.id)
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+
+                if (error) {
+                    debugLog('Fetch jobs error', error);
+                    throw error;
+                }
+
+                jobs = data || [];
+                debugLog(`Fetched ${jobs.length} jobs`);
+                applyFilters();
+                
+            } catch (err) {
+                debugLog('Fetch jobs exception', err);
+                showMessage('form-message', `Failed to load jobs: ${err.message}`);
+            } finally {
+                document.getElementById('jobs-table').classList.remove('loading');
+            }
+        }
+
+        async function addJob(formData) {
+            try {
+                debugLog('Adding job', formData);
+                
+                const { data: userData, error: userError } = await supabase.auth.getUser();
+                if (userError || !userData.user) {
+                    throw new Error('User not authenticated');
+                }
+
+                const jobData = {
+                    user_id: userData.user.id,
+                    title: formData.title,
+                    company_name: formData.company_name,
+                    status: formData.status || 'Applied',
+                };
+
+                if (formData.canonical_job_url) {
+                    jobData.canonical_job_url = formData.canonical_job_url;
+                }
+
+                if (formData.applied_date) {
+                    jobData.applied_date = formData.applied_date;
+                }
+
+                const { data, error } = await supabase
+                    .from('graduate_job_helper')
+                    .insert([jobData])
+                    .select()
+                    .single();
+
+                if (error) {
+                    debugLog('Add job error', error);
+                    throw error;
+                }
+
+                debugLog('Job added successfully', data);
+                
+                // Add to local jobs array and re-render
+                jobs.unshift(data);
+                applyFilters();
+                
+                showMessage('form-message', 'Job application added successfully!', 'success');
+                document.getElementById('add-job-form').reset();
+                
+                // Set default date
+                document.getElementById('applied-date').valueAsDate = new Date();
+                
+            } catch (err) {
+                debugLog('Add job exception', err);
+                showMessage('form-message', `Failed to add job: ${err.message}`);
+            }
+        }
+
+        async function updateJobStatus(jobId, newStatus) {
+            try {
+                debugLog('Updating job status', { jobId, newStatus });
+                
+                const { data: userData, error: userError } = await supabase.auth.getUser();
+                if (userError || !userData.user) {
+                    throw new Error('User not authenticated');
+                }
+
+                const { error } = await supabase
+                    .from('graduate_job_helper')
+                    .update({ 
+                        status: newStatus, 
+                        status_update_date: new Date().toISOString() 
+                    })
+                    .eq('application_id', jobId)
+                    .eq('user_id', userData.user.id);
+
+                if (error) {
+                    debugLog('Update job status error', error);
+                    throw error;
+                }
+
+                // Update local data
+                const job = jobs.find(j => j.application_id === jobId);
+                if (job) {
+                    job.status = newStatus;
+                    applyFilters();
+                }
+
+                debugLog('Job status updated successfully');
+                
+            } catch (err) {
+                debugLog('Update job status exception', err);
+                showMessage('form-message', `Failed to update status: ${err.message}`);
+                
+                // Revert the select value
+                const select = document.querySelector(`select[data-job-id="${jobId}"]`);
+                if (select) {
+                    const job = jobs.find(j => j.application_id === jobId);
+                    if (job) select.value = job.status;
+                }
+            }
+        }
+
+        async function deleteJob(jobId) {
+            if (!confirm('Are you sure you want to delete this job application?')) {
+                return;
+            }
+
+            try {
+                debugLog('Deleting job', { jobId });
+                
+                const { data: userData, error: userError } = await supabase.auth.getUser();
+                if (userError || !userData.user) {
+                    throw new Error('User not authenticated');
+                }
+
+                const { error } = await supabase
+                    .from('graduate_job_helper')
+                    .delete()
+                    .eq('application_id', jobId)
+                    .eq('user_id', userData.user.id);
+
+                if (error) {
+                    debugLog('Delete job error', error);
+                    throw error;
+                }
+
+                // Remove from local data
+                jobs = jobs.filter(j => j.application_id !== jobId);
+                applyFilters();
+
+                debugLog('Job deleted successfully');
+                showMessage('form-message', 'Job application deleted successfully!', 'success');
+                
+            } catch (err) {
+                debugLog('Delete job exception', err);
+                showMessage('form-message', `Failed to delete job: ${err.message}`);
+            }
+        }
+
+        // Filtering and sorting
+        function applyFilters() {
+            const searchTerm = document.getElementById('search-jobs').value.toLowerCase();
+            const statusFilter = document.getElementById('filter-status').value;
+
+            filteredJobs = jobs.filter(job => {
+                const matchesSearch = !searchTerm || 
+                    job.title.toLowerCase().includes(searchTerm) ||
+                    job.company_name.toLowerCase().includes(searchTerm);
+                
+                const matchesStatus = !statusFilter || job.status === statusFilter;
+                
+                return matchesSearch && matchesStatus;
+            });
+
+            applySorting();
+        }
+
+        function applySorting() {
+            filteredJobs.sort((a, b) => {
+                const { field, direction } = currentSort;
+                let aVal = a[field] || '';
+                let bVal = b[field] || '';
+
+                if (field === 'created_at' || field === 'applied_date') {
+                    aVal = new Date(aVal);
+                    bVal = new Date(bVal);
+                }
+
+                if (aVal < bVal) return direction === 'asc' ? -1 : 1;
+                if (aVal > bVal) return direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            renderJobsTable();
+        }
+
+        function sortBy(field) {
+            if (currentSort.field === field) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.field = field;
+                currentSort.direction = 'asc';
+            }
+
+            // Update sort indicators
+            document.querySelectorAll('th').forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+            });
+
+            const header = document.querySelector(`th[data-sort="${field}"]`);
+            if (header) {
+                header.classList.add(currentSort.direction === 'asc' ? 'sort-asc' : 'sort-desc');
+            }
+
+            applySorting();
+        }
+
+        // Render jobs table
+        function renderJobsTable() {
+            const tbody = document.getElementById('jobs-tbody');
+            const emptyState = document.getElementById('empty-state');
+
+            if (filteredJobs.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            tbody.innerHTML = filteredJobs.map(job => {
+                const appliedDate = job.applied_date ? new Date(job.applied_date).toLocaleDateString() : '-';
+                const createdDate = new Date(job.created_at).toLocaleDateString();
+                
+                const jobUrl = job.canonical_job_url ? 
+                    `<a href="${job.canonical_job_url}" target="_blank" rel="noopener noreferrer" class="job-url">${new URL(job.canonical_job_url).hostname}</a>` :
+                    '-';
+
+                return `
+                    <tr>
+                        <td>${job.title}</td>
+                        <td>${job.company_name}</td>
+                        <td>${jobUrl}</td>
+                        <td>
+                            <select class="status-select" data-job-id="${job.application_id}" onchange="handleStatusChange(this)">
+                                <option value="Saved" ${job.status === 'Saved' ? 'selected' : ''}>Saved</option>
+                                <option value="Applied" ${job.status === 'Applied' ? 'selected' : ''}>Applied</option>
+                                <option value="Interview" ${job.status === 'Interview' ? 'selected' : ''}>Interview</option>
+                                <option value="Offer" ${job.status === 'Offer' ? 'selected' : ''}>Offer</option>
+                                <option value="Rejected" ${job.status === 'Rejected' ? 'selected' : ''}>Rejected</option>
+                                <option value="Withdrawn" ${job.status === 'Withdrawn' ? 'selected' : ''}>Withdrawn</option>
+                            </select>
+                        </td>
+                        <td>${appliedDate}</td>
+                        <td>${createdDate}</td>
+                        <td class="actions">
+                            <button class="btn btn-danger" onclick="deleteJob('${job.application_id}')" title="Delete">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Event handlers
+        function handleStatusChange(select) {
+            const jobId = select.dataset.jobId;
+            const newStatus = select.value;
+            updateJobStatus(jobId, newStatus);
+        }
+
+        function toggleDebug() {
+            const content = document.getElementById('debug-content');
+            content.classList.toggle('hidden');
+        }
+
+        // Initialize app
+        async function initApp() {
+            initDebugInfo();
+
+            // Set default date
+            document.getElementById('applied-date').valueAsDate = new Date();
+
+            // Auth state listener
+            supabase.auth.onAuthStateChange(async (event, session) => {
+                debugLog('Auth state changed', { event, hasSession: !!session });
+                
+                if (session) {
+                    currentUser = session.user;
+                    document.getElementById('user-email').textContent = currentUser.email;
+                    showAppScreen();
+                    cleanUrl();
+                    await fetchJobs();
+                } else {
+                    currentUser = null;
+                    showAuthScreen();
+                }
+            });
+
+            // Check initial session
+            const { data: { session } } = await supabase.auth.getSession();
+            debugLog('Initial session check', { hasSession: !!session });
+            
+            // Event listeners
+            document.getElementById('sign-in-btn').addEventListener('click', signIn);
+            document.getElementById('sign-out-btn').addEventListener('click', signOut);
+            document.getElementById('refresh-btn').addEventListener('click', fetchJobs);
+
+            // Form submission
+            document.getElementById('add-job-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const btn = document.getElementById('add-job-btn');
+                btn.disabled = true;
+                btn.textContent = 'Adding...';
+                
+                const formData = {
+                    title: document.getElementById('job-title').value,
+                    company_name: document.getElementById('company-name').value,
+                    canonical_job_url: document.getElementById('job-url').value,
+                    status: document.getElementById('job-status').value,
+                    applied_date: document.getElementById('applied-date').value
+                };
+
+                await addJob(formData);
+                
+                btn.disabled = false;
+                btn.textContent = 'Add Job Application';
+            });
+
+            // Search and filter
+            document.getElementById('search-jobs').addEventListener('input', applyFilters);
+            document.getElementById('filter-status').addEventListener('change', applyFilters);
+
+            // Table sorting
+            document.querySelectorAll('th.sortable').forEach(th => {
+                th.addEventListener('click', () => {
+                    const field = th.dataset.sort;
+                    if (field) sortBy(field);
+                });
+            });
+
+            debugLog('App initialized');
+        }
+
+        // Initialize when DOM is loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
+    </script>
 </body>
 </html>
