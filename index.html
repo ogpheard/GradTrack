@@ -1,286 +1,280 @@
 <!doctype html>
-<html lang="en">
+<html>
 <head>
   <meta charset="utf-8" />
-  <title>Grad Tracker1</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Grad Tracker</title>
   <style>
-    :root { --bg:#0f1220; --card:#14182b; --muted:#8ea0bf; --text:#e6ecff; --accent:#5b8cff; }
-    html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif}
-    a{color:var(--accent);text-decoration:none}
-    .wrap{max-width:860px;margin:0 auto;padding:24px}
-    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-    h1{font-size:22px;margin:0}
-    .row{display:flex;gap:12px;flex-wrap:wrap}
-    button{background:var(--accent);color:white;border:0;border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:600}
-    button.ghost{background:transparent;border:1px solid #2b3350;color:var(--text)}
-    button:disabled{opacity:.6;cursor:not-allowed}
-    .card{background:var(--card);border:1px solid #1f2741;border-radius:14px;padding:16px}
-    .grid{display:grid;grid-template-columns:1fr;gap:12px}
-    @media(min-width:700px){ .grid{grid-template-columns:1fr 1fr} }
-    label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
-    input[type="text"],input[type="url"]{
-      width:100%;box-sizing:border-box;background:#0e1324;border:1px solid #1f2741;color:var(--text);
-      border-radius:10px;padding:10px 12px;outline:none
-    }
-    .chk{display:flex;align-items:center;gap:8px;margin-top:4px}
-    .small{color:var(--muted);font-size:12px}
-    .jobs{display:grid;gap:10px;margin-top:8px}
-    .job{background:#0e1324;border:1px solid #1f2741;border-radius:12px;padding:12px}
-    .job h3{margin:0 0 8px 0;font-size:16px}
-    .job .meta{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--muted)}
-    .divider{height:1px;background:#1f2741;margin:18px 0}
-    #debug{white-space:pre-wrap;font-family:ui-monospace,SFMono-Regular,Consolas,Monaco,monospace;font-size:12px}
-    .empty{padding:14px;border:1px dashed #2b3350;border-radius:12px;color:var(--muted)}
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; }
+    .row { display: grid; gap: 8px; margin: 12px 0; max-width: 560px; }
+    input[type=text] { padding: 8px; border: 1px solid #ccc; border-radius: 8px; }
+    button { padding: 8px 14px; border-radius: 8px; border: 1px solid #888; cursor: pointer; }
+    button[disabled] { opacity: .6; cursor: not-allowed; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin: 8px 0; }
+    .muted { color: #666; font-size: 12px; }
+    #debug { white-space: pre-wrap; background:#fafafa; border:1px dashed #ddd; padding:10px; border-radius:8px; margin-top:16px; }
+    .ok { color: #0a7; }
+    .err { color: #c00; }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <h1>Grad Tracker</h1>
-      <div class="row">
-        <span id="who" class="small" style="align-self:center;opacity:.9"></span>
-        <button id="signin">Sign in with Google</button>
-        <button id="signout" class="ghost" style="display:none">Sign out</button>
-      </div>
-    </header>
+  <h1>Grad Tracker</h1>
 
-    <div id="authed-ui" style="display:none">
-      <div class="card">
-        <h2 style="margin:0 0 10px 0;font-size:18px">Add job</h2>
-        <div class="grid">
-          <div>
-            <label for="title">Title</label>
-            <input id="title" type="text" placeholder="e.g. Graduate Analyst" />
-          </div>
-          <div>
-            <label for="company">Company</label>
-            <input id="company" type="text" placeholder="e.g. Alpha FMC" />
-          </div>
-          <div style="grid-column:1/-1">
-            <label for="url">Job URL</label>
-            <input id="url" type="url" placeholder="https://example.com/job" />
-            <div class="chk"><input id="applied" type="checkbox" /><label for="applied" style="margin:0">Applied</label></div>
-          </div>
-        </div>
-        <div class="row" style="margin-top:10px">
-          <button id="add">Add</button>
-        </div>
-        <div class="small" id="add-msg"></div>
-      </div>
-
-      <div class="divider"></div>
-
-      <h2 style="margin:0 0 8px 0;font-size:18px">Your jobs</h2>
-      <div id="jobs" class="jobs"></div>
-    </div>
-
-    <div id="anon-ui" class="card" style="display:none">
-      <h3 style="margin:0 0 8px 0">Sign in to start</h3>
-      <div class="small">Click “Sign in with Google” above, then you’ll be redirected back here.</div>
-    </div>
-
-    <div class="divider"></div>
-    <details open>
-      <summary class="small">Debug info</summary>
-      <div id="debug" class="small"></div>
-    </details>
+  <div id="auth">
+    <button id="signin">Sign in with Google</button>
+    <button id="signout" style="display:none;">Sign out</button>
+    <span id="who" class="muted"></span>
   </div>
 
-  <script type="module">
-    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+  <hr/>
 
-    // --- Your Supabase project ---
+  <h2>Add job</h2>
+  <div class="row" id="form">
+    <label>Title<br><input id="title" type="text" placeholder="e.g. Graduate Analyst"></label>
+    <label>Company<br><input id="company" type="text" placeholder="e.g. Alpha FMC"></label>
+    <label>Job URL<br><input id="url" type="text" placeholder="https://..."></label>
+    <label><input id="applied" type="checkbox"> Applied</label>
+    <div>
+      <button id="add" type="button">Add</button>
+      <span id="add-msg" class="muted"></span>
+    </div>
+    <div>
+      <button id="verify" type="button" style="display:none;">Verify last insert</button>
+      <span id="verify-msg" class="muted"></span>
+    </div>
+  </div>
+
+  <h2>Your jobs</h2>
+  <div id="jobs"></div>
+
+  <h3>Debug info</h3>
+  <div id="debug"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // --- CONFIG (yours, already filled) ---
     const SUPABASE_URL = "https://kudqgnpkznshcyvrwrpj.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1ZHFnbnBrem5zaGN5dnJ3cnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5NzY0MDcsImV4cCI6MjA3MjU1MjQwN30.mPK21uGKyBtgvWL0vl80l9bLG9SWoXDbnYAjPbPNn74";
 
-    // We're using the implicit (hash) flow. Let Supabase parse the URL hash.
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,   // <-- important
-        flowType: "implicit"        // (default, but we make it explicit)
-      }
-    });
-
     // --- Helpers ---
     const el = (id) => document.getElementById(id);
+    const debug = el("debug");
     const log = (...args) => {
       console.log(...args);
-      const t = args.map(x => typeof x === "string" ? x : JSON.stringify(x, null, 2)).join(" ");
-      el("debug").textContent += t + "\n";
+      debug.textContent += args.map(a => (typeof a === "string" ? a : JSON.stringify(a, null, 2))).join(" ") + "\n";
     };
-    const esc = (s)=> String(s||"").replace(/[&<>"']/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
 
-    function buildReturnUrl() {
-      const u = new URL(window.location.href);
-      if (u.hostname.endsWith("github.io")) {
-        const parts = u.pathname.split("/").filter(Boolean);
-        if (parts.length > 0) {
-          const repo = parts[0];
-          return `${u.origin}/${repo}/`;
+    // show initial url bits
+    log("Host:", location.origin);
+    log("Pathname:", location.pathname);
+    log("Search:", location.search || "(none)");
+    log("Hash:", location.hash || "(none)");
+
+    // --- Supabase ---
+    const supabase = supabasejs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: true, detectSessionInUrl: false } // we’ll handle the #tokens manually
+    });
+
+    // Handle #access_token / #refresh_token from Google redirect (implicit flow)
+    (async function handleHashSession() {
+      try {
+        if (location.hash.includes("access_token=") && location.hash.includes("refresh_token=")) {
+          const params = new URLSearchParams(location.hash.slice(1));
+          const access_token = params.get("access_token");
+          const refresh_token = params.get("refresh_token");
+          if (access_token && refresh_token) {
+            const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
+            log("[setSession] error?", error || "none");
+            // Clean the URL back to your page root
+            const returnUrl = location.origin + location.pathname;
+            history.replaceState({}, "", returnUrl);
+            log("Return URL set to:", returnUrl);
+          }
         }
+      } catch (e) {
+        log("handleHashSession error:", e.message || e);
+      } finally {
+        boot();
       }
-      return `${u.origin}/`;
+    })();
+
+    // Global state
+    let lastInsertedId = null;
+
+    async function boot() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        log("[boot] session?", !!session);
+        updateAuthUI(session);
+        if (session) await loadJobs();
+      } catch (e) {
+        log("boot error:", e.message || e);
+      }
     }
 
-    // --- UI state ---
-    async function refreshAuthUI(where="") {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (error) log("getSession error:", error.message);
-      log(`[${where}] session?`, !!session, session?.user?.email || "");
-      const authed = !!session;
-      el("authed-ui").style.display = authed ? "" : "none";
-      el("anon-ui").style.display = authed ? "none" : "";
-      el("signin").style.display = authed ? "none" : "";
-      el("signout").style.display = authed ? "" : "none";
-      el("who").textContent = authed ? (session.user.email || session.user.id) : "";
-      if (authed) loadJobs();
+    function updateAuthUI(session) {
+      if (session?.user) {
+        el("signin").style.display = "none";
+        el("signout").style.display = "inline-block";
+        el("who").textContent = `Signed in as ${session.user.email}`;
+      } else {
+        el("signin").style.display = "inline-block";
+        el("signout").style.display = "none";
+        el("who").textContent = "";
+        el("jobs").innerHTML = "";
+      }
     }
 
-    // --- Auth buttons ---
+    // Auth buttons
     el("signin").onclick = async () => {
-      const redirectTo = buildReturnUrl();
-      log("signin redirectTo:", redirectTo);
+      const redirectTo = location.origin + location.pathname; // back to this page
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo }
+        options: {
+          redirectTo,
+          queryParams: { prompt: "select_account" }
+        }
       });
-      if (error) { alert("Sign in failed: " + error.message); log("SignIn error:", error.message); }
+      if (error) log("signIn error:", error.message);
     };
 
     el("signout").onclick = async () => {
       await supabase.auth.signOut();
-      await refreshAuthUI("signout");
-      renderJobs([]);
+      updateAuthUI(null);
+      el("jobs").innerHTML = "";
+      log("Signed out.");
     };
 
-    // When we come back from Google, Supabase will parse the hash and fire SIGNED_IN.
-    supabase.auth.onAuthStateChange(async (event, session) => {
-      log("authStateChange:", event, !!session);
-      if (event === "SIGNED_IN" && window.location.hash.includes("access_token")) {
-        // Clean the hash now that the session is stored
-        history.replaceState({}, "", buildReturnUrl());
-      }
-      await refreshAuthUI("onAuthStateChange");
-    });
-
-    // --- Add job ---
-    el("add").onclick = async () => {
-      const title = el("title").value.trim();
-      const company = el("company").value.trim();
-      const url = el("url").value.trim();
-      const applied = el("applied").checked;
-
-      el("add").disabled = true;
-      el("add-msg").textContent = "";
-
-      if (!title || !company || !url) {
-        el("add-msg").textContent = "Please fill Title, Company and Job URL.";
-        el("add").disabled = false;
-        return;
-      }
+    // Load your rows
+    async function loadJobs() {
+      el("jobs").innerHTML = "<div class='muted'>Loading…</div>";
 
       const { data: { user }, error: uerr } = await supabase.auth.getUser();
       if (uerr || !user) {
-        el("add-msg").textContent = "You must be signed in.";
-        el("add").disabled = false;
+        el("jobs").innerHTML = "<div class='muted'>Sign in to see your jobs.</div>";
         return;
       }
 
-      const row = {
-        title,
-        company_name: company,
-        canonical_job_url: url,
-        status: applied ? "Applied" : "Saved",
-        applied_date: applied ? new Date().toISOString().slice(0,10) : null,
-        user_id: user.id
-      };
+      const { data, error } = await supabase
+        .from("graduate_job_helper")
+        .select("application_id, title, company_name, canonical_job_url, status, applied_date, status_update_date")
+        .eq("user_id", user.id)
+        .order("status_update_date", { ascending: false, nullsFirst: true })
+        .limit(50);
 
-      const { error } = await supabase.from("graduate_job_helper").insert(row);
       if (error) {
-        el("add-msg").textContent = "Add failed: " + error.message;
-        log("Insert error:", error.message);
-      } else {
-        el("add-msg").textContent = "Added!";
+        el("jobs").innerHTML = `<div class='err'>Load failed: ${error.message}</div>`;
+        log("loadJobs error:", error.message);
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        el("jobs").innerHTML = "<div class='muted'>No jobs yet. Add one above.</div>";
+        return;
+      }
+
+      el("jobs").innerHTML = data.map(row => {
+        const when = row.applied_date || row.status_update_date || "";
+        return `
+          <div class="card">
+            <div><strong>${row.title || "(no title)"} </strong> @ ${row.company_name || ""}</div>
+            <div class="muted">${row.status || ""} ${when ? " • " + when : ""}</div>
+            <div><a href="${row.canonical_job_url}" target="_blank" rel="noopener">Open</a></div>
+            <div class="muted">ID: ${row.application_id}</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // ADD job (robust: try/catch/finally + always re-enable)
+    el("add").onclick = async () => {
+      el("add").disabled = true;
+      el("add-msg").textContent = "";
+      el("verify").style.display = "none";
+      el("verify-msg").textContent = "";
+      lastInsertedId = null;
+
+      try {
+        const title   = el("title").value.trim();
+        const company = el("company").value.trim();
+        const url     = el("url").value.trim();
+        const applied = el("applied").checked;
+
+        if (!title || !company || !url) {
+          el("add-msg").textContent = "Please fill Title, Company and Job URL.";
+          return;
+        }
+
+        const { data: { user }, error: uerr } = await supabase.auth.getUser();
+        if (uerr || !user) {
+          el("add-msg").textContent = "You must be signed in.";
+          return;
+        }
+
+        const row = {
+          title,
+          company_name: company,
+          canonical_job_url: url,
+          status: applied ? "Applied" : "Saved",
+          applied_date: applied ? new Date().toISOString().slice(0,10) : null,
+          user_id: user.id
+        };
+
+        const { data: inserted, error } = await supabase
+          .from("graduate_job_helper")
+          .insert(row)
+          .select("application_id")
+          .single();
+
+        if (error) {
+          el("add-msg").innerHTML = `<span class="err">Add failed: ${error.message}</span>`;
+          log("Insert error:", error);
+          return;
+        }
+
+        lastInsertedId = inserted.application_id;
+        el("add-msg").innerHTML = `<span class="ok">Added (id: ${lastInsertedId}).</span>`;
+        el("verify").style.display = "inline-block";
+
+        // clear inputs
         el("title").value = "";
         el("company").value = "";
         el("url").value = "";
         el("applied").checked = false;
+
         await loadJobs();
+      } catch (e) {
+        el("add-msg").innerHTML = `<span class="err">Unexpected error: ${e.message || e}</span>`;
+        log("Add handler crash:", e);
+      } finally {
+        el("add").disabled = false; // ALWAYS re-enable button
       }
-      el("add").disabled = false;
     };
 
-    // --- Load jobs ---
-    async function loadJobs() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { renderJobs([]); return; }
-
+    // Verify last insert
+    el("verify").onclick = async () => {
+      el("verify-msg").textContent = "";
+      if (!lastInsertedId) {
+        el("verify-msg").textContent = "No recent insert to verify.";
+        return;
+      }
       const { data, error } = await supabase
         .from("graduate_job_helper")
-        .select("application_id,title,company_name,canonical_job_url,status,applied_date,status_update_date")
-        .eq("user_id", user.id)
-        .order("status_update_date", { ascending: false, nullsFirst: false });
-
+        .select("application_id, title, company_name, status, user_id")
+        .eq("application_id", lastInsertedId);
       if (error) {
-        log("Select error:", error.message);
-        renderJobs([]);
-        return;
+        el("verify-msg").innerHTML = `<span class="err">Verify failed: ${error.message}</span>`;
+      } else if (data && data.length === 1) {
+        el("verify-msg").innerHTML = `<span class="ok">Verified in DB: ${data[0].application_id} (${data[0].title} @ ${data[0].company_name})</span>`;
+      } else {
+        el("verify-msg").textContent = "Row not found (RLS or it wasn’t inserted).";
       }
-      log("rows loaded:", data?.length ?? 0);
-      renderJobs(data || []);
-    }
+    };
 
-    function renderJobs(rows) {
-      const cont = el("jobs");
-      cont.innerHTML = "";
-      if (!rows.length) {
-        cont.innerHTML = `<div class="empty">No jobs yet. Add your first one above.</div>`;
-        return;
-      }
-      for (const r of rows) {
-        const div = document.createElement("div");
-        div.className = "job";
-        const title = esc(r.title || "(no title)");
-        const co = esc(r.company_name || "(no company)");
-        const url = r.canonical_job_url || "#";
-        div.innerHTML = `
-          <h3>${title} &middot; ${co}</h3>
-          <div class="meta">
-            <span>Status: ${esc(r.status || "Saved")}</span>
-            ${r.applied_date ? `<span>Applied: ${esc(r.applied_date)}</span>` : ""}
-            ${r.status_update_date ? `<span>Updated: ${esc(r.status_update_date)}</span>` : ""}
-            <span><a href="${url}" target="_blank" rel="noopener">Job link</a></span>
-          </div>`;
-        cont.appendChild(div);
-      }
-    }
-
-    // --- Boot ---
-    (async function boot(){
-      log("Host:", window.location.origin);
-      log("Pathname:", window.location.pathname);
-      log("Search:", window.location.search);
-      log("Hash:", window.location.hash);
-      log("Return URL computed:", buildReturnUrl());
-      log("Implicit flow: detectSessionInUrl is TRUE, Supabase will parse the hash and persist the session.");
-
-      // If already signed in (e.g., returning visit), show authed UI; otherwise show anon.
-      await refreshAuthUI("boot-end");
-
-      // If we landed with #access_token but the event didn't fire yet, do a tiny tick then clean URL.
-      if (window.location.hash.includes("access_token")) {
-        setTimeout(async () => {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) {
-            history.replaceState({}, "", buildReturnUrl());
-            log("Cleaned URL hash after implicit sign-in.");
-          }
-        }, 50);
-      }
-    })();
+    // Extra: show any window errors in debug
+    window.addEventListener("error", (e) => {
+      log("Window error:", e.message);
+    });
   </script>
 </body>
 </html>
