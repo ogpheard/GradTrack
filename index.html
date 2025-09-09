@@ -487,12 +487,115 @@
             const timestamp = new Date().toLocaleTimeString();
             const logEntry = `[${timestamp}] ${message}${data ? '\n' + JSON.stringify(data, null, 2) : ''}`;
             console.log(logEntry);
-            
+
             const debugLogEl = document.getElementById('debug-log');
             if (debugLogEl) {
                 debugLogEl.textContent = logEntry + '\n' + debugLogEl.textContent;
             }
         }
+
+        // === Debug bundle start ===
+        const Debug = (() => {
+          const state = {
+            origin: location.origin,
+            pathname: location.pathname,
+            search: location.search,
+            hash: location.hash,
+            startedAt: new Date().toISOString(),
+            events: []
+          };
+          function push(ev) {
+            state.events.unshift({
+              ts: new Date().toISOString(),
+              ...ev
+            });
+            const el = document.getElementById('debug-log');
+            if (el) {
+              el.textContent = JSON.stringify(state.events[0], null, 2) + '\n\n' + el.textContent;
+            }
+          }
+          function track(label, fn) {
+            return async (...args) => {
+              push({ type: 'call', label, args: safe(args) });
+              try {
+                const res = await fn(...args);
+                push({ type: 'ok', label, res: safe(res) });
+                return res;
+              } catch (err) {
+                push({ type: 'err', label, err: safeErr(err) });
+                throw err;
+              }
+            };
+          }
+          function safe(v) {
+            try {
+              return JSON.parse(JSON.stringify(v));
+            } catch { return String(v); }
+          }
+          function safeErr(e) {
+            return { name: e?.name, message: e?.message, stack: e?.stack };
+          }
+          function dump() {
+            return {
+              meta: {
+                origin: state.origin,
+                pathname: state.pathname,
+                search: state.search,
+                hash: state.hash,
+                startedAt: state.startedAt,
+                now: new Date().toISOString(),
+              },
+              last5: state.events.slice(0, 5)
+            };
+          }
+          async function copy() {
+            const blob = JSON.stringify(dump(), null, 2);
+            await navigator.clipboard.writeText(blob);
+            alert('Debug copied to clipboard. Paste it back here in chat.');
+          }
+          return { push, track, dump, copy };
+        })();
+
+        window.addEventListener('error', e => Debug.push({ type: 'window-error', message: e.message, filename: e.filename, lineno: e.lineno }));
+        window.addEventListener('unhandledrejection', e => Debug.push({ type: 'unhandled-rejection', reason: String(e.reason) }));
+
+        document.addEventListener('DOMContentLoaded', () => {
+          const btn = document.createElement('button');
+          btn.className = 'debug-toggle';
+          btn.textContent = '📋 Copy Debug';
+          btn.onclick = () => Debug.copy();
+          const panel = document.querySelector('.debug-panel');
+          if (panel) panel.insertBefore(btn, panel.firstChild.nextSibling);
+        });
+        // === Debug bundle end ===
+
+        // Tracked Supabase wrappers
+        const getSessionTracked = Debug.track('auth.getSession', () => supabase.auth.getSession());
+        const signInTracked = Debug.track('auth.signInWithOAuth', (opts) => supabase.auth.signInWithOAuth(opts));
+        const signOutTracked = Debug.track('auth.signOut', () => supabase.auth.signOut());
+        const getUserTracked = Debug.track('auth.getUser', () => supabase.auth.getUser());
+        const onAuthStateChangeTracked = Debug.track('auth.onAuthStateChange', (cb) => supabase.auth.onAuthStateChange(cb));
+        const fetchJobsTracked = Debug.track('db.fetchJobs', (userId) => supabase
+            .from('graduate_job_helper')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(50));
+        const insertJobTracked = Debug.track('db.insertJob', (row) => supabase
+            .from('graduate_job_helper')
+            .insert([row])
+            .select()
+            .single());
+        const updateJobStatusTracked = Debug.track('db.updateJobStatus', (jobId, userId, newStatus) => supabase
+            .from('graduate_job_helper')
+            .update({ status: newStatus, status_update_date: new Date().toISOString() })
+            .eq('application_id', jobId)
+            .eq('user_id', userId));
+        const deleteJobTracked = Debug.track('db.deleteJob', (jobId, userId) => supabase
+            .from('graduate_job_helper')
+            .delete()
+            .eq('application_id', jobId)
+            .eq('user_id', userId));
 
         // Initialize debug info
         function initDebugInfo() {
@@ -535,13 +638,13 @@
         async function signIn() {
             try {
                 debugLog('Initiating Google sign in');
-                const { data, error } = await supabase.auth.signInWithOAuth({
+                const { data, error } = await signInTracked({
                     provider: 'google',
                     options: {
                         redirectTo: 'https://ogpheard.github.io/grad-tracker/'
                     }
                 });
-                
+
                 if (error) {
                     debugLog('Sign in error', error);
                     showMessage('form-message', `Sign in failed: ${error.message}`);
@@ -555,7 +658,7 @@
         async function signOut() {
             try {
                 debugLog('Signing out');
-                const { error } = await supabase.auth.signOut();
+                const { error } = await signOutTracked();
                 if (error) {
                     debugLog('Sign out error', error);
                 } else {
@@ -571,25 +674,28 @@
             try {
                 debugLog('Fetching jobs');
                 document.getElementById('jobs-table').classList.add('loading');
-                
-                const { data: userData, error: userError } = await supabase.auth.getUser();
-                if (userError || !userData.user) {
+
+                const { data: userData, error: userError } = await getUserTracked();
+                if (userError || !userData?.user) {
                     throw new Error('User not authenticated');
                 }
 
-                const { data, error } = await supabase
-                    .from('graduate_job_helper')
-                    .select('application_id, title, company_name, canonical_job_url, status, applied_date, created_at')
-                    .eq('user_id', userData.user.id)
-                    .order('created_at', { ascending: false })
-                    .limit(50);
+                const { data, error } = await fetchJobsTracked(userData.user.id);
 
                 if (error) {
                     debugLog('Fetch jobs error', error);
                     throw error;
                 }
 
-                jobs = data || [];
+                jobs = (data || []).map(job => ({
+                    application_id: job.application_id,
+                    title: job.title,
+                    company_name: job.company_name,
+                    canonical_job_url: job.canonical_job_url,
+                    status: job.status,
+                    applied_date: job.applied_date,
+                    created_at: job.created_at
+                }));
                 debugLog(`Fetched ${jobs.length} jobs`);
                 applyFilters();
                 
@@ -604,17 +710,18 @@
         async function addJob(formData) {
             try {
                 debugLog('Adding job', formData);
-                
-                const { data: userData, error: userError } = await supabase.auth.getUser();
-                if (userError || !userData.user) {
+
+                const { data: userData, error: userError } = await getUserTracked();
+                if (userError || !userData?.user) {
                     throw new Error('User not authenticated');
                 }
 
                 const jobData = {
+                    application_id: crypto?.randomUUID ? crypto.randomUUID() : Date.now().toString(),
                     user_id: userData.user.id,
                     title: formData.title,
                     company_name: formData.company_name,
-                    status: formData.status || 'Applied',
+                    status: formData.status || 'Applied'
                 };
 
                 if (formData.canonical_job_url) {
@@ -625,11 +732,7 @@
                     jobData.applied_date = formData.applied_date;
                 }
 
-                const { data, error } = await supabase
-                    .from('graduate_job_helper')
-                    .insert([jobData])
-                    .select()
-                    .single();
+                const { data, error } = await insertJobTracked(jobData);
 
                 if (error) {
                     debugLog('Add job error', error);
@@ -637,9 +740,17 @@
                 }
 
                 debugLog('Job added successfully', data);
-                
+
                 // Add to local jobs array and re-render
-                jobs.unshift(data);
+                jobs.unshift({
+                    application_id: data.application_id,
+                    title: data.title,
+                    company_name: data.company_name,
+                    canonical_job_url: data.canonical_job_url,
+                    status: data.status,
+                    applied_date: data.applied_date,
+                    created_at: data.created_at
+                });
                 applyFilters();
                 
                 showMessage('form-message', 'Job application added successfully!', 'success');
@@ -657,20 +768,13 @@
         async function updateJobStatus(jobId, newStatus) {
             try {
                 debugLog('Updating job status', { jobId, newStatus });
-                
-                const { data: userData, error: userError } = await supabase.auth.getUser();
-                if (userError || !userData.user) {
+
+                const { data: userData, error: userError } = await getUserTracked();
+                if (userError || !userData?.user) {
                     throw new Error('User not authenticated');
                 }
 
-                const { error } = await supabase
-                    .from('graduate_job_helper')
-                    .update({ 
-                        status: newStatus, 
-                        status_update_date: new Date().toISOString() 
-                    })
-                    .eq('application_id', jobId)
-                    .eq('user_id', userData.user.id);
+                const { error } = await updateJobStatusTracked(jobId, userData.user.id, newStatus);
 
                 if (error) {
                     debugLog('Update job status error', error);
@@ -681,6 +785,7 @@
                 const job = jobs.find(j => j.application_id === jobId);
                 if (job) {
                     job.status = newStatus;
+                    job.status_update_date = new Date().toISOString();
                     applyFilters();
                 }
 
@@ -706,17 +811,13 @@
 
             try {
                 debugLog('Deleting job', { jobId });
-                
-                const { data: userData, error: userError } = await supabase.auth.getUser();
-                if (userError || !userData.user) {
+
+                const { data: userData, error: userError } = await getUserTracked();
+                if (userError || !userData?.user) {
                     throw new Error('User not authenticated');
                 }
 
-                const { error } = await supabase
-                    .from('graduate_job_helper')
-                    .delete()
-                    .eq('application_id', jobId)
-                    .eq('user_id', userData.user.id);
+                const { error } = await deleteJobTracked(jobId, userData.user.id);
 
                 if (error) {
                     debugLog('Delete job error', error);
@@ -810,10 +911,15 @@
             tbody.innerHTML = filteredJobs.map(job => {
                 const appliedDate = job.applied_date ? new Date(job.applied_date).toLocaleDateString() : '-';
                 const createdDate = new Date(job.created_at).toLocaleDateString();
-                
-                const jobUrl = job.canonical_job_url ? 
-                    `<a href="${job.canonical_job_url}" target="_blank" rel="noopener noreferrer" class="job-url">${new URL(job.canonical_job_url).hostname}</a>` :
-                    '-';
+                const jobUrl = (() => {
+                    if (!job.canonical_job_url) return '-';
+                    try {
+                        const parsed = new URL(job.canonical_job_url);
+                        return `<a href="${parsed.href}" target="_blank" rel="noopener noreferrer" class="job-url">${parsed.hostname}</a>`;
+                    } catch {
+                        return `<a href="${job.canonical_job_url}" target="_blank" rel="noopener noreferrer" class="job-url">${job.canonical_job_url}</a>`;
+                    }
+                })();
 
                 return `
                     <tr>
@@ -860,9 +966,9 @@
             document.getElementById('applied-date').valueAsDate = new Date();
 
             // Auth state listener
-            supabase.auth.onAuthStateChange(async (event, session) => {
+            await onAuthStateChangeTracked(async (event, session) => {
                 debugLog('Auth state changed', { event, hasSession: !!session });
-                
+
                 if (session) {
                     currentUser = session.user;
                     document.getElementById('user-email').textContent = currentUser.email;
@@ -876,8 +982,17 @@
             });
 
             // Check initial session
-            const { data: { session } } = await supabase.auth.getSession();
-            debugLog('Initial session check', { hasSession: !!session });
+            const { data: sessionData } = await getSessionTracked();
+            debugLog('Initial session check', { hasSession: !!sessionData.session });
+            if (sessionData.session) {
+                currentUser = sessionData.session.user;
+                document.getElementById('user-email').textContent = currentUser.email;
+                showAppScreen();
+                await fetchJobs();
+            } else {
+                showAuthScreen();
+            }
+            cleanUrl();
             
             // Event listeners
             document.getElementById('sign-in-btn').addEventListener('click', signIn);
