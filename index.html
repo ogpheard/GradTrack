@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Grad Tracker</title>
+  <title>Grad Tracker1</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { --bg:#0f1220; --card:#14182b; --muted:#8ea0bf; --text:#e6ecff; --accent:#5b8cff; }
@@ -94,11 +94,13 @@
     const SUPABASE_URL = "https://kudqgnpkznshcyvrwrpj.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1ZHFnbnBrem5zaGN5dnJ3cnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5NzY0MDcsImV4cCI6MjA3MjU1MjQwN30.mPK21uGKyBtgvWL0vl80l9bLG9SWoXDbnYAjPbPNn74";
 
+    // We're using the implicit (hash) flow. Let Supabase parse the URL hash.
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: false // we will do the exchange manually
+        detectSessionInUrl: true,   // <-- important
+        flowType: "implicit"        // (default, but we make it explicit)
       }
     });
 
@@ -154,9 +156,14 @@
       renderJobs([]);
     };
 
-    supabase.auth.onAuthStateChange((event, session) => {
+    // When we come back from Google, Supabase will parse the hash and fire SIGNED_IN.
+    supabase.auth.onAuthStateChange(async (event, session) => {
       log("authStateChange:", event, !!session);
-      refreshAuthUI("onAuthStateChange");
+      if (event === "SIGNED_IN" && window.location.hash.includes("access_token")) {
+        // Clean the hash now that the session is stored
+        history.replaceState({}, "", buildReturnUrl());
+      }
+      await refreshAuthUI("onAuthStateChange");
     });
 
     // --- Add job ---
@@ -251,30 +258,28 @@
       }
     }
 
-    // --- Boot: exchange OAuth code if present, then show UI ---
+    // --- Boot ---
     (async function boot(){
       log("Host:", window.location.origin);
       log("Pathname:", window.location.pathname);
       log("Search:", window.location.search);
       log("Hash:", window.location.hash);
       log("Return URL computed:", buildReturnUrl());
+      log("Implicit flow: detectSessionInUrl is TRUE, Supabase will parse the hash and persist the session.");
 
-      const hasCode = /\bcode=/.test(window.location.search);
-      log("Has ?code in URL?", hasCode);
-
-      if (hasCode) {
-        const { data, error } = await supabase.auth.exchangeCodeForSession(window.location.href);
-        if (error) {
-          log("exchangeCodeForSession error:", error.message);
-          alert("Sign-in exchange failed: " + error.message);
-        } else {
-          log("exchange ok for user:", data.user?.email || data.user?.id);
-        }
-        // Clean the URL so code/state are removed
-        history.replaceState({}, "", buildReturnUrl());
-      }
-
+      // If already signed in (e.g., returning visit), show authed UI; otherwise show anon.
       await refreshAuthUI("boot-end");
+
+      // If we landed with #access_token but the event didn't fire yet, do a tiny tick then clean URL.
+      if (window.location.hash.includes("access_token")) {
+        setTimeout(async () => {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            history.replaceState({}, "", buildReturnUrl());
+            log("Cleaned URL hash after implicit sign-in.");
+          }
+        }, 50);
+      }
     })();
   </script>
 </body>
