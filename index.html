@@ -66,6 +66,8 @@
     .search-button{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:var(--gradient-primary);color:#fff;border:none;padding:.75rem 1.25rem;border-radius:12px;font-weight:700;cursor:pointer;box-shadow:var(--shadow-md);transition:.25s}
     .search-button:hover:not(:disabled){transform:translateY(calc(-50% - 2px))}
     .helper-text{margin-top:1rem;font-size:.9rem;color:var(--gray-500);display:flex;align-items:center;gap:.5rem}
+    .diag-row{margin-top:.25rem;font-size:.8rem;color:var(--gray-600);display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+    .status-chip{background:var(--gray-100);border:1px solid var(--gray-300);border-radius:8px;padding:.2rem .5rem;font-size:.75rem;font-weight:700;color:var(--gray-700)}
 
     /* Pasted JD input */
     .paste-wrap{margin-top:1rem;display:flex;flex-direction:column;gap:.5rem}
@@ -467,6 +469,13 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
           Test uses <code>/webhook-test/*</code>. Production uses <code>/webhook/*</code>.
         </div>
+        <div id="n8nDiag" class="diag-row">
+          <span>Current Origin: <code id="diagOrigin"></code></span>
+          <span>Selected Env: <code id="diagEnv"></code></span>
+          <span>Analyse URL: <code id="diagUrl" class="mono"></code></span>
+          <span>Last Call: <span id="diagStatus" class="status-chip">—</span></span>
+          <button id="testN8n" class="btn btn-sm btn-outline">Test n8n</button>
+        </div>
 
         <div id="resultCard" class="result-card" aria-live="polite">
           <div id="loadingState" style="display:none">
@@ -601,14 +610,15 @@
 
   <script>
     // ========= ENDPOINTS =========
+    const N8N_ORIGIN = 'https://n8n.graduateapplication.online';
     const URLS = {
       test: {
-        analyse: 'https://n8n.graduateapplication.online/webhook-test/analyse',
-        cover:   'https://n8n.graduateapplication.online/webhook-test/cover'
+        analyse: `${N8N_ORIGIN}/webhook-test/analyse`,
+        cover:   `${N8N_ORIGIN}/webhook-test/cover`
       },
       prod: {
-        analyse: 'https://n8n.graduateapplication.online/webhook/analyse',
-        cover:   'https://n8n.graduateapplication.online/webhook/cover'
+        analyse: `${N8N_ORIGIN}/webhook/analyse`,
+        cover:   `${N8N_ORIGIN}/webhook/cover`
       }
     };
     const DB = {
@@ -704,11 +714,17 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
     const jobText = document.getElementById('jobText');
     const jobSourceUrl = document.getElementById('jobSourceUrl');
     const analyzeBtn = document.getElementById('analyzeBtn');
+    const analyzeText = document.getElementById('analyzeText');
     const resultCard = document.getElementById('resultCard');
     const loadingState = document.getElementById('loadingState');
     const resultContent = document.getElementById('resultContent');
     const toastEl = document.getElementById('toast');
     const jobCharCount = document.getElementById('jobCharCount');
+    const diagOrigin = document.getElementById('diagOrigin');
+    const diagEnv = document.getElementById('diagEnv');
+    const diagUrl = document.getElementById('diagUrl');
+    const diagStatus = document.getElementById('diagStatus');
+    const testN8nBtn = document.getElementById('testN8n');
 
     const jobTitleEl = document.getElementById('jobTitle');
     const jobCompanyEl = document.getElementById('jobCompany');
@@ -889,6 +905,13 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
     let appsLive = { applied: [], saved: [] }; // server truth from Workflow 4
     let applicationsList = [];                  // flattened view for “My Applications”
 
+    function updateDiagnostics(){
+      diagOrigin.textContent = window.location.origin;
+      diagEnv.textContent = currentEnv;
+      diagUrl.textContent = URLS[currentEnv].analyse;
+    }
+    updateDiagnostics();
+
     function toCardShape(r){
       return {
         id: r.application_id,
@@ -991,9 +1014,26 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
       }catch{return u;}
     }
     async function postForm(url, fd){
-      const res = await fetch(url, { method:'POST', body: fd });
-      if (!res.ok){ const t=await res.text().catch(()=> ''); console.error('POST',url,res.status,t); throw new Error(`HTTP ${res.status}`); }
-      try{ return await res.json(); }catch{ return {}; }
+      const controller = new AbortController();
+      const timer = setTimeout(()=>controller.abort(), 30000);
+      try{
+        const res = await fetch(url, { method:'POST', body: fd, mode:'cors', redirect:'follow', signal: controller.signal });
+        if (!res.ok){
+          const t = await res.text().catch(()=> '');
+          const snippet = t.slice(0,400);
+          const err = new Error(`HTTP ${res.status} ${res.statusText}: ${snippet}`);
+          err.status = res.status;
+          err.statusText = res.statusText;
+          err.body = snippet;
+          throw err;
+        }
+        try{ return await res.json(); }catch{ return {}; }
+      }catch(e){
+        if (e.name === 'AbortError' || (e instanceof TypeError && /Failed to fetch/i.test(e.message))) throw new Error('NETWORK');
+        throw e;
+      }finally{
+        clearTimeout(timer);
+      }
     }
     function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
     function sanitizeHtml(html){
@@ -1083,6 +1123,28 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         { auth:{ persistSession:false, autoRefreshToken:false, detectSessionInUrl:false } });
       toast(`Switched to ${currentEnv.toUpperCase()}`);
       refreshData(true);
+      updateDiagnostics();
+      diagStatus.textContent = '—';
+    };
+
+    testN8nBtn.onclick = async ()=>{
+      testN8nBtn.disabled = true;
+      diagStatus.textContent = '…';
+      try{
+        const fd = new FormData();
+        fd.append('job_text', 'PING from frontend');
+        await postForm(URLS[currentEnv].analyse, fd);
+        diagStatus.textContent = '200';
+        toast('n8n OK');
+      }catch(e){
+        if (String(e.message).includes('NETWORK')) diagStatus.textContent = 'CORS/NETWORK';
+        else if (/HTTP\s(\d+)/.test(e.message)) diagStatus.textContent = /HTTP\s(\d+)/.exec(e.message)[1];
+        else diagStatus.textContent = 'ERR';
+        toast('n8n test failed');
+        console.error({url: URLS[currentEnv].analyse, status: e.status, body: e.body}, e);
+      }finally{
+        testN8nBtn.disabled = false;
+      }
     };
 
     // ====== Analyse flow
@@ -1113,23 +1175,31 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
       loadingState.style.display='block';
       resultContent.style.display='none';
       analyzeBtn.disabled = true;
+      const prevTxt = analyzeText.textContent;
+      analyzeText.textContent = 'Analyzing…';
+      resultCard.setAttribute('aria-busy','true');
 
       try{
         const fd = new FormData();
         fd.append('job_text', text);
         if (src) fd.append('source_url', src);
 
-        const data = await postForm(URLS[currentEnv].analyse, fd);
+        const endpoint = URLS[currentEnv].analyse;
+        const data = await postForm(endpoint, fd);
         const out = Array.isArray(data) ? data[0] : data;
         if (!out) throw new Error('No analysis result');
         draft = out; lastCover = null;
         renderAnalysis(out);
       }catch(e){
-        console.error(e);
+        console.error({url: endpoint, status: e.status, body: e.body}, e);
         resultCard.style.display='none';
-        toast(`Analysis failed (${currentEnv}). Check n8n & CORS.`);
+        if (String(e.message).includes('NETWORK')) toast("Couldn't reach n8n (CORS/Network). Check n8n CORS + proxy.");
+        else if (/HTTP\s(\d+)/.test(e.message)) toast(`n8n error ${/HTTP\s(\d+)/.exec(e.message)[1]}. See console for details.`);
+        else toast('Analysis failed. See console for details.');
       }finally{
         analyzeBtn.disabled = false;
+        analyzeText.textContent = prevTxt;
+        resultCard.removeAttribute('aria-busy');
       }
     }
 
@@ -1274,7 +1344,8 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         fd.append('job_json', JSON.stringify(draft));
         if (CV_FOLDER_ID) fd.append('cv_folder_id', CV_FOLDER_ID);
         if (GUIDE_DOC_ID) fd.append('guide_doc_id', GUIDE_DOC_ID);
-        const data = await postForm(URLS[currentEnv].cover, fd);
+        const endpoint = URLS[currentEnv].cover;
+        const data = await postForm(endpoint, fd);
         lastCover = Array.isArray(data) ? data[0] : data || {};
         const cv = lastCover.selected_cv || {};
         const tweaks = Array.isArray(lastCover.cv_tweaks) ? lastCover.cv_tweaks : [];
@@ -1292,7 +1363,13 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
 
         coverStatus.textContent = 'Generated ✓';
         coverContent.classList.add('show');
-      }catch(e){ console.error(e); coverStatus.textContent = 'Generation failed. Check n8n logs / CORS.'; }
+      }catch(e){
+        console.error({url: endpoint, status: e.status, body: e.body}, e);
+        coverStatus.textContent = 'Generation failed';
+        if (String(e.message).includes('NETWORK')) toast("Couldn't reach n8n (CORS/Network). Check n8n CORS + proxy.");
+        else if (/HTTP\s(\d+)/.test(e.message)) toast(`n8n error ${/HTTP\s(\d+)/.exec(e.message)[1]}. See console for details.`);
+        else toast('Generation failed. See console for details.');
+      }
     }
 
     // ====== Applications page
