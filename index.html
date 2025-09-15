@@ -1018,18 +1018,36 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
       const timer = setTimeout(()=>controller.abort(), 30000);
       try{
         const res = await fetch(url, { method:'POST', body: fd, mode:'cors', redirect:'follow', signal: controller.signal });
+
+        // Read body once so we can use it both for JSON and error details
+        const raw = await res.text();
+        const status = res.status;
+
         if (!res.ok){
-          const t = await res.text().catch(()=> '');
-          const snippet = t.slice(0,400);
-          const err = new Error(`HTTP ${res.status} ${res.statusText}: ${snippet}`);
-          err.status = res.status;
+          const err = new Error(`HTTP ${status} ${res.statusText}`);
+          err.status = status;
           err.statusText = res.statusText;
-          err.body = snippet;
+          err.body = raw.slice(0, 400);
           throw err;
         }
-        try{ return await res.json(); }catch{ return {}; }
+
+        // Enforce JSON (fail loudly if not)
+        try{
+          // Content-Type may be missing; try parse anyway
+          return JSON.parse(raw);
+        }catch{
+          const err = new Error('Non-JSON response');
+          err.status = status;
+          err.statusText = res.statusText;
+          err.body = raw.slice(0, 400);
+          throw err;
+        }
       }catch(e){
-        if (e.name === 'AbortError' || (e instanceof TypeError && /Failed to fetch/i.test(e.message))) throw new Error('NETWORK');
+        if (e.name === 'AbortError' || (e instanceof TypeError && /Failed to fetch/i.test(e.message))){
+          const netErr = new Error('NETWORK');
+          netErr.cause = e;
+          throw netErr;
+        }
         throw e;
       }finally{
         clearTimeout(timer);
@@ -1171,6 +1189,9 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
       const src = (jobSourceUrl.value || '').trim();
       if (!text) { toast('Please paste the job description'); return; }
 
+      // Hoist endpoint out of try so catch can reference it
+      const endpoint = URLS[currentEnv].analyse;
+
       resultCard.style.display='block';
       loadingState.style.display='block';
       resultContent.style.display='none';
@@ -1184,18 +1205,27 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         fd.append('job_text', text);
         if (src) fd.append('source_url', src);
 
-        const endpoint = URLS[currentEnv].analyse;
         const data = await postForm(endpoint, fd);
         const out = Array.isArray(data) ? data[0] : data;
-        if (!out) throw new Error('No analysis result');
+
+        if (!out || Object.keys(out).length === 0){
+          throw new Error('Empty or non-JSON response');
+        }
+
         draft = out; lastCover = null;
         renderAnalysis(out);
       }catch(e){
         console.error({url: endpoint, status: e.status, body: e.body}, e);
         resultCard.style.display='none';
-        if (String(e.message).includes('NETWORK')) toast("Couldn't reach n8n (CORS/Network). Check n8n CORS + proxy.");
-        else if (/HTTP\s(\d+)/.test(e.message)) toast(`n8n error ${/HTTP\s(\d+)/.exec(e.message)[1]}. See console for details.`);
-        else toast('Analysis failed. See console for details.');
+        if (String(e.message).includes('NETWORK')) {
+          toast("Couldn't reach n8n (CORS/Network). Check n8n CORS + proxy.");
+        } else if (/HTTP\s(\d+)/.test(e.message)) {
+          toast(`n8n error ${/HTTP\s(\d+)/.exec(e.message)[1]}. See console for details.`);
+        } else if (/Non-JSON|Empty/.test(e.message)) {
+          toast('n8n returned no JSON. Ensure Respond node returns application/json.');
+        } else {
+          toast('Analysis failed. See console for details.');
+        }
       }finally{
         analyzeBtn.disabled = false;
         analyzeText.textContent = prevTxt;
@@ -1336,6 +1366,10 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
     // ====== Cover letter & CV
     async function onCoverClick(){
       if (!draft) return toast('Analyse a job first');
+
+      // Hoist endpoint out of try so catch can reference it
+      const endpoint = URLS[currentEnv].cover;
+
       coverSection.classList.add('show');
       coverContent.classList.remove('show');
       coverStatus.innerHTML = '<span class="spinner"></span> Preparing cover letter & CV tips…';
@@ -1344,12 +1378,18 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         fd.append('job_json', JSON.stringify(draft));
         if (CV_FOLDER_ID) fd.append('cv_folder_id', CV_FOLDER_ID);
         if (GUIDE_DOC_ID) fd.append('guide_doc_id', GUIDE_DOC_ID);
-        const endpoint = URLS[currentEnv].cover;
+
         const data = await postForm(endpoint, fd);
-        lastCover = Array.isArray(data) ? data[0] : data || {};
-        const cv = lastCover.selected_cv || {};
-        const tweaks = Array.isArray(lastCover.cv_tweaks) ? lastCover.cv_tweaks : [];
-        const letter = lastCover.cover_letter || {};
+        const out = Array.isArray(data) ? data[0] : data;
+        if (!out || Object.keys(out).length === 0){
+          throw new Error('Empty or non-JSON response');
+        }
+
+        lastCover = out;
+
+        const cv = out.selected_cv || {};
+        const tweaks = Array.isArray(out.cv_tweaks) ? out.cv_tweaks : [];
+        const letter = out.cover_letter || {};
 
         cvNameEl.textContent = cv.filename || '—';
         cvWhyEl.textContent = cv.reason || '—';
@@ -1366,9 +1406,15 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
       }catch(e){
         console.error({url: endpoint, status: e.status, body: e.body}, e);
         coverStatus.textContent = 'Generation failed';
-        if (String(e.message).includes('NETWORK')) toast("Couldn't reach n8n (CORS/Network). Check n8n CORS + proxy.");
-        else if (/HTTP\s(\d+)/.test(e.message)) toast(`n8n error ${/HTTP\s(\d+)/.exec(e.message)[1]}. See console for details.`);
-        else toast('Generation failed. See console for details.');
+        if (String(e.message).includes('NETWORK')) {
+          toast("Couldn't reach n8n (CORS/Network). Check n8n CORS + proxy.");
+        } else if (/HTTP\s(\d+)/.test(e.message)) {
+          toast(`n8n error ${/HTTP\s(\d+)/.exec(e.message)[1]}. See console for details.`);
+        } else if (/Non-JSON|Empty/.test(e.message)) {
+          toast('n8n returned no JSON. Ensure Respond node returns application/json.');
+        } else {
+          toast('Generation failed. See console for details.');
+        }
       }
     }
 
