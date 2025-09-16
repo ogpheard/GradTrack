@@ -272,10 +272,113 @@
       .applications-grid{grid-template-columns:1fr}
     }
     /* BEGIN: DEADLINES (SCOPED CSS) */
-    #deadlinesPage .kpi-chip{padding:.25rem .5rem;border-radius:8px;font-size:.75rem;font-weight:700;letter-spacing:.02em}
+    #deadlinesPage .panel{
+      background:#f8fafc;
+      border-radius:24px;
+      border:1px solid rgba(148,163,184,0.25);
+      box-shadow:var(--shadow-xl);
+      padding:2.5rem;
+    }
+    #deadlinesPage .dl-header{display:flex;flex-direction:column;gap:1.25rem;margin-bottom:1.5rem}
+    #deadlinesPage .dl-header-top{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap}
+    #deadlinesPage .dl-page-title{font-size:1.75rem;font-weight:800;color:var(--gray-900)}
+    #deadlinesPage .dl-kpi-chips{display:flex;gap:.5rem;flex-wrap:wrap}
+    #deadlinesPage .kpi-chip{padding:.35rem .6rem;border-radius:999px;font-size:.75rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;display:inline-flex;align-items:center;gap:.25rem}
     #deadlinesPage .kpi-chip.today{background:var(--warning-50);color:var(--warning-600)}
     #deadlinesPage .kpi-chip.week{background:var(--primary-50);color:var(--primary-700)}
     #deadlinesPage .kpi-chip.overdue{background:var(--danger-50);color:var(--danger-600)}
+    #deadlinesPage .dl-meta-row{display:flex;flex-wrap:wrap;gap:1rem;align-items:center;justify-content:space-between}
+    #deadlinesPage .dl-timezone-pill{display:flex;align-items:center;gap:.35rem;padding:.35rem .9rem;border-radius:999px;background:#e2e8f0;font-size:.85rem;color:var(--gray-700)}
+    #deadlinesPage .dl-sync-group{display:flex;gap:1rem;flex-wrap:wrap;color:var(--gray-600);font-size:.85rem}
+    #deadlinesPage .dl-sync-toggle{display:flex;align-items:center;gap:.35rem}
+    #deadlinesPage .dl-switch{width:44px;height:24px;border-radius:999px;background:var(--gray-300);position:relative;cursor:pointer;transition:all .2s ease}
+    #deadlinesPage .dl-switch::after{content:"";position:absolute;width:20px;height:20px;border-radius:50%;background:#fff;top:2px;left:2px;box-shadow:var(--shadow-sm);transition:transform .2s ease}
+    #deadlinesPage .dl-switch.active{background:var(--primary-500)}
+    #deadlinesPage .dl-switch.active::after{transform:translateX(20px)}
+    #deadlinesPage .dl-actions-row{display:flex;flex-wrap:wrap;gap:1rem;align-items:center;justify-content:space-between;margin-top:.25rem}
+    #deadlinesPage .dl-search-bar{flex:1;min-width:220px;position:relative}
+    #deadlinesPage .dl-search-input{width:100%;padding:.75rem 1rem;border-radius:14px;border:1px solid var(--gray-300);background:#fff;font-size:.95rem;color:var(--gray-700);box-shadow:var(--shadow-sm);transition:border-color .2s ease,box-shadow .2s ease}
+    #deadlinesPage .dl-search-input:focus{outline:none;border-color:var(--primary-500);box-shadow:0 0 0 3px rgba(59,130,246,0.15)}
+    #deadlinesPage .dl-actions-right{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+    #deadlinesPage .dl-filters-toggle{display:inline-flex;align-items:center;gap:.4rem;padding:.65rem 1rem;border-radius:12px;border:1px solid var(--gray-300);background:#fff;color:var(--gray-600);font-weight:600;cursor:pointer;transition:all .2s ease}
+    #deadlinesPage .dl-filters-toggle:hover{background:var(--gray-100);color:var(--gray-800)}
+    #deadlinesPage .dl-view-switcher{display:flex;background:var(--gray-200);padding:.3rem;border-radius:12px;box-shadow:var(--shadow-sm)}
+    #deadlinesPage .dl-view-button{padding:.55rem 1.1rem;border:none;background:transparent;border-radius:10px;font-weight:600;color:var(--gray-600);cursor:pointer;transition:all .2s ease}
+    #deadlinesPage .dl-view-button.active{background:#fff;color:var(--primary-600);box-shadow:var(--shadow-sm)}
+    #deadlinesPage .dl-filters-panel{display:none;background:#fff;border:1px solid var(--gray-200);border-radius:16px;padding:1.25rem;margin-bottom:1.5rem;box-shadow:var(--shadow-sm)}
+    #deadlinesPage .dl-filters-panel.open{display:block}
+    #deadlinesPage .dl-filters-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem}
+    #deadlinesPage .dl-filter-group label{display:block;font-size:.85rem;font-weight:600;color:var(--gray-600);margin-bottom:.35rem}
+    #deadlinesPage .dl-filter-actions{margin-top:1rem;display:flex;gap:.75rem;flex-wrap:wrap}
+    #deadlinesPage .filter-select{background:#fff;border:1px solid var(--gray-300);border-radius:10px;padding:.6rem .8rem;font-size:.9rem;color:var(--gray-700);box-shadow:var(--shadow-sm)}
+    #deadlinesPage .filter-select:focus{outline:none;border-color:var(--primary-500);box-shadow:0 0 0 3px rgba(59,130,246,0.12)}
+    #deadlinesPage .dl-banners{display:flex;flex-direction:column;gap:1rem;margin-bottom:1.25rem}
+    #deadlinesPage .dl-banner{display:flex;justify-content:space-between;align-items:center;padding:1rem 1.25rem;border-radius:14px;border:1px solid transparent;font-weight:600;font-size:.95rem}
+    #deadlinesPage .dl-banner button{border:none;background:transparent;color:inherit;font-weight:600;text-decoration:underline;cursor:pointer;padding:0;margin-left:1rem}
+    #deadlinesPage .dl-banner-warning{background:var(--warning-50);border-color:var(--warning-500);color:var(--warning-700)}
+    #deadlinesPage .dl-banner-danger{background:var(--danger-50);border-color:var(--danger-500);color:var(--danger-600)}
+    #deadlinesPage .agenda-section{margin-bottom:1.75rem}
+    #deadlinesPage .agenda-date{font-size:1.1rem;font-weight:800;color:var(--gray-800);margin-bottom:1rem;padding-bottom:.4rem;border-bottom:2px solid var(--primary-500)}
+    #deadlinesPage .deadline-card{background:#fff;border:1px solid var(--gray-200);border-radius:16px;padding:1.25rem;margin-bottom:1rem;box-shadow:var(--shadow-sm);transition:transform .2s ease,box-shadow .2s ease, border-color .2s ease;position:relative}
+    #deadlinesPage .deadline-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);border-color:var(--gray-300)}
+    #deadlinesPage .deadline-card.completed{opacity:.65}
+    #deadlinesPage .deadline-card.overdue{border-color:var(--danger-500);background:linear-gradient(135deg,rgba(248,113,113,0.06),rgba(248,113,113,0))}
+    #deadlinesPage .deadline-card.dl-card-focus{box-shadow:0 0 0 3px rgba(14,165,233,0.35);border-color:var(--primary-500)}
+    #deadlinesPage .card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:.75rem}
+    #deadlinesPage .card-title{font-size:1.05rem;font-weight:700;color:var(--gray-900)}
+    #deadlinesPage .card-subtitle{font-size:.9rem;color:var(--gray-600);margin-top:.2rem}
+    #deadlinesPage .card-timing{font-size:.9rem;color:var(--gray-600);margin-top:.35rem}
+    #deadlinesPage .card-timing.countdown{color:var(--warning-600);font-weight:600}
+    #deadlinesPage .card-timing.overdue{color:var(--danger-600);font-weight:700}
+    #deadlinesPage .card-badges{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.6rem}
+    #deadlinesPage .badge{display:inline-flex;align-items:center;gap:.25rem;padding:.25rem .6rem;border-radius:999px;font-size:.75rem;font-weight:600;text-transform:capitalize}
+    #deadlinesPage .badge.status-open{background:var(--primary-50);color:var(--primary-700)}
+    #deadlinesPage .badge.status-snoozed{background:var(--warning-50);color:var(--warning-700)}
+    #deadlinesPage .badge.status-completed{background:var(--success-50);color:var(--success-600)}
+    #deadlinesPage .badge.status-overdue{background:var(--danger-50);color:var(--danger-600)}
+    #deadlinesPage .badge.conflict{background:var(--warning-50);border:1px solid var(--warning-500);color:var(--warning-700)}
+    #deadlinesPage .card-meta{display:flex;flex-direction:column;gap:.35rem;font-size:.85rem;color:var(--gray-500);text-align:right}
+    #deadlinesPage .card-notes{font-size:.9rem;color:var(--gray-600);margin-top:.75rem;line-height:1.5}
+    #deadlinesPage .card-links{display:flex;gap:1rem;margin-top:.6rem;font-size:.85rem}
+    #deadlinesPage .card-links a{color:var(--primary-600);text-decoration:none;font-weight:600}
+    #deadlinesPage .card-actions{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem}
+    #deadlinesPage .dl-btn{display:inline-flex;align-items:center;gap:.35rem;padding:.55rem 1rem;border-radius:10px;border:none;font-weight:600;font-size:.9rem;cursor:pointer;transition:all .2s ease}
+    #deadlinesPage .dl-btn svg{width:14px;height:14px}
+    #deadlinesPage .dl-btn-success{background:var(--success-500);color:#fff}
+    #deadlinesPage .dl-btn-success:hover{background:var(--success-600)}
+    #deadlinesPage .dl-btn-outline{background:#fff;border:1px solid var(--gray-300);color:var(--gray-600)}
+    #deadlinesPage .dl-btn-outline:hover{border-color:var(--primary-500);color:var(--primary-600)}
+    #deadlinesPage .dl-btn-ghost{background:var(--gray-100);color:var(--gray-600)}
+    #deadlinesPage .dl-btn-ghost:hover{background:var(--gray-200);color:var(--gray-800)}
+    #deadlinesPage .dl-calendar-view{display:none}
+    #deadlinesPage .dl-calendar-view.active{display:block}
+    #deadlinesPage .dl-calendar-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+    #deadlinesPage .dl-calendar-nav{display:flex;gap:.6rem;align-items:center}
+    #deadlinesPage .dl-calendar-title{font-size:1.1rem;font-weight:700;color:var(--gray-800)}
+    #deadlinesPage .dl-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));gap:1px;background:var(--gray-200);border-radius:16px;overflow:hidden}
+    #deadlinesPage .dl-calendar-day{background:#fff;min-height:140px;padding:.9rem;display:flex;flex-direction:column;gap:.35rem}
+    #deadlinesPage .dl-calendar-day-header{font-size:.9rem;font-weight:700;color:var(--gray-600)}
+    #deadlinesPage .dl-calendar-pill{display:flex;flex-direction:column;gap:.2rem;padding:.45rem .6rem;border-radius:10px;font-size:.8rem;color:#fff;cursor:pointer;box-shadow:var(--shadow-sm)}
+    #deadlinesPage .dl-calendar-pill.event{background:var(--primary-500)}
+    #deadlinesPage .dl-calendar-pill.due{background:var(--warning-500)}
+    #deadlinesPage .dl-calendar-pill .dl-pill-company{font-weight:700;font-size:.85rem}
+    #deadlinesPage .dl-calendar-pill .dl-pill-time{opacity:.85}
+    #deadlinesPage .dl-empty-state{display:none;text-align:center;padding:3rem 1rem;color:var(--gray-600);background:#fff;border:1px dashed var(--gray-300);border-radius:16px;margin-top:2rem}
+    #deadlinesPage .dl-empty-state h3{font-size:1.2rem;font-weight:700;margin-bottom:.5rem}
+    #deadlinesPage .dl-empty-state p{font-size:.95rem}
+    #deadlinesPage .dl-loading{display:none;margin:2rem 0}
+    #deadlinesPage .dl-skeleton{height:160px;border-radius:16px;background:linear-gradient(90deg,rgba(226,232,240,0.7),rgba(241,245,249,0.9),rgba(226,232,240,0.7));background-size:200% 100%;animation:dl-pulse 1.5s infinite}
+    @keyframes dl-pulse{0%{background-position:200% 0}100%{background-position:-200% 0}}
+    @media (max-width:900px){
+      #deadlinesPage .dl-calendar-grid{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+    }
+    @media (max-width:640px){
+      #deadlinesPage .panel{padding:1.5rem}
+      #deadlinesPage .dl-actions-right{width:100%;justify-content:space-between}
+      #deadlinesPage .dl-view-switcher{width:100%}
+      #deadlinesPage .dl-view-button{flex:1}
+      #deadlinesPage .dl-calendar-grid{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+    }
     /* END: DEADLINES (SCOPED CSS) */
   </style>
   <!-- ######################## END: CSS (GLOBAL) ############## -->
@@ -459,50 +562,112 @@
     ############################################################ -->
     <div id="deadlinesPage" class="page-content">
       <div class="panel">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1rem">
-          <h2 style="font-size:1.4rem;font-weight:900;color:var(--gray-900)">Deadlines</h2>
-          <div class="kpi-chips" id="dl_kpis" style="display:flex;gap:.5rem;flex-wrap:wrap">
-            <span class="kpi-chip today">Due today: 0</span>
-            <span class="kpi-chip week">Due this week: 0</span>
-            <span class="kpi-chip overdue">Overdue: 0</span>
+        <div class="dl-header">
+          <div class="dl-header-top">
+            <div>
+              <h2 class="dl-page-title">Deadlines</h2>
+              <p class="card-subtitle">Stay on top of assessments, interviews and other milestones.</p>
+            </div>
+            <div class="dl-kpi-chips" id="dl_kpis">
+              <span class="kpi-chip today">Due today: 0</span>
+              <span class="kpi-chip week">Due this week: 0</span>
+              <span class="kpi-chip overdue">Overdue: 0</span>
+            </div>
+          </div>
+          <div class="dl-meta-row">
+            <div class="dl-timezone-pill">Showing times in Europe/London (BST/GMT)</div>
+            <div class="dl-sync-group">
+              <div class="dl-sync-toggle">
+                <div class="dl-switch" id="dl_calendarSync" role="switch" aria-checked="false" aria-label="Google Calendar sync"></div>
+                <span>Google Calendar</span>
+              </div>
+              <div class="dl-sync-toggle">
+                <div class="dl-switch" id="dl_telegramSync" role="switch" aria-checked="false" aria-label="Telegram alerts"></div>
+                <span>Telegram alerts</span>
+              </div>
+            </div>
+          </div>
+          <div class="dl-actions-row">
+            <div class="dl-search-bar">
+              <input id="dl_search" class="dl-search-input" type="text" placeholder="Search deadlines…" aria-label="Search deadlines" />
+            </div>
+            <div class="dl-actions-right">
+              <button id="dl_filtersToggle" class="dl-filters-toggle" type="button">Filters</button>
+              <div class="dl-view-switcher">
+                <button class="dl-view-button active" id="dl_viewAgenda" type="button">Agenda</button>
+                <button class="dl-view-button" id="dl_viewCalendar" type="button">Calendar</button>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem">
-          <input id="dl_search" class="search-input" placeholder="Search deadlines…" style="flex:1;min-width:220px"/>
-          <select id="dl_company" class="filter-select"><option value="">All companies</option></select>
-          <select id="dl_type" class="filter-select">
-            <option value="">All types</option>
-            <option>OA</option><option>HireVue</option><option>Interview</option>
-            <option>Assessment</option><option>Other</option>
-          </select>
-          <select id="dl_status" class="filter-select">
-            <option value="">All statuses</option>
-            <option>open</option><option>snoozed</option><option>completed</option><option>overdue</option>
-          </select>
-          <select id="dl_conflict" class="filter-select">
-            <option value="">All items</option>
-            <option value="true">Has conflict</option>
-            <option value="false">No conflict</option>
-          </select>
-          <button id="dl_clear" class="btn btn-outline">Clear</button>
-        </div>
-
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-          <div class="view-switcher">
-            <button class="btn btn-outline" id="dl_viewAgenda">Agenda</button>
-            <button class="btn btn-outline" id="dl_viewCalendar">Calendar</button>
+        <div id="dl_filtersPanel" class="dl-filters-panel" aria-hidden="true">
+          <div class="dl-filters-grid">
+            <div class="dl-filter-group">
+              <label for="dl_company">Company</label>
+              <select id="dl_company" class="filter-select">
+                <option value="">All companies</option>
+              </select>
+            </div>
+            <div class="dl-filter-group">
+              <label for="dl_type">Type</label>
+              <select id="dl_type" class="filter-select">
+                <option value="">All types</option>
+                <option>OA</option>
+                <option>HireVue</option>
+                <option>Interview</option>
+                <option>Assessment</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div class="dl-filter-group">
+              <label for="dl_status">Status</label>
+              <select id="dl_status" class="filter-select">
+                <option value="">All statuses</option>
+                <option>open</option>
+                <option>snoozed</option>
+                <option>completed</option>
+                <option>overdue</option>
+              </select>
+            </div>
+            <div class="dl-filter-group">
+              <label for="dl_conflict">Conflicts</label>
+              <select id="dl_conflict" class="filter-select">
+                <option value="">All items</option>
+                <option value="true">Has conflict</option>
+                <option value="false">No conflict</option>
+              </select>
+            </div>
           </div>
-          <div id="dl_calendarTitle" style="font-weight:700;color:var(--gray-700);display:none"></div>
+          <div class="dl-filter-actions">
+            <button id="dl_clear" class="dl-btn dl-btn-outline" type="button">Clear all filters</button>
+          </div>
         </div>
 
-        <div id="dl_agenda"></div>
-        <div id="dl_calendar" style="display:none">
-          <div id="dl_calendarGrid" class="calendar-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--gray-200)"></div>
+        <div id="dl_banners" class="dl-banners"></div>
+
+        <div id="dl_loading" class="dl-loading">
+          <div class="dl-skeleton"></div>
+          <div class="dl-skeleton"></div>
+          <div class="dl-skeleton"></div>
         </div>
 
-        <div id="dl_empty" class="empty-state" style="display:none">
-          <h3>No deadlines found</h3><p>Try adjusting your filters or search terms.</p>
+        <div id="dl_agenda" class="dl-agenda-view"></div>
+
+        <div id="dl_calendar" class="dl-calendar-view">
+          <div class="dl-calendar-header">
+            <div class="dl-calendar-nav">
+              <button class="dl-btn dl-btn-ghost" id="dl_prevWeek" type="button">Prev week</button>
+              <button class="dl-btn dl-btn-ghost" id="dl_nextWeek" type="button">Next week</button>
+            </div>
+            <div id="dl_calendarTitle" class="dl-calendar-title"></div>
+          </div>
+          <div id="dl_calendarGrid" class="dl-calendar-grid"></div>
+        </div>
+
+        <div id="dl_empty" class="dl-empty-state">
+          <h3>No deadlines found</h3>
+          <p>Adjust your filters or search terms.</p>
         </div>
       </div>
     </div>
@@ -1317,28 +1482,36 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
     };
 
     function dl_toItemShape(row){
+      const bool = v => {
+        if (typeof v === 'string') return v === 'true' || v === '1';
+        return Boolean(v);
+      };
+      const isWindowRaw = row?.isWindow ?? row?.is_window;
       const direct = {
         id: row.id || row.idempotency_key || row.application_id || (crypto.randomUUID?.() || String(Date.now())),
         company: row.company || row.company_name || '',
         role: row.role || row.title || '',
         type: row.type || '',
-        isWindow: Boolean(row.isWindow),
+        isWindow: bool(isWindowRaw),
         dueBy: row.dueBy || row.due_by || null,
-        startAt: row.startAt || null,
-        endAt: row.endAt || null,
-        timezone: row.timezone || 'Europe/London',
+        startAt: row.startAt || row.start_at || null,
+        endAt: row.endAt || row.end_at || null,
+        timezone: row.timezone || row.time_zone || 'Europe/London',
         status: row.status || 'open',
         priority: row.priority ?? 2,
         sourceEmailSubject: row.sourceEmailSubject || row.source_email_subject || '',
         notes: row.notes || '',
-        location: row.location || null,
-        meetingUrl: row.meetingUrl || null,
+        location: row.location || row.location_text || null,
+        meetingUrl: row.meetingUrl || row.meeting_url || null,
         createdAt: row.createdAt || row.created_at || new Date().toISOString(),
         updatedAt: row.updatedAt || row.updated_at || new Date().toISOString(),
-        hasConflict: Boolean(row.hasConflict)
+        hasConflict: bool(row.hasConflict ?? row.has_conflict)
       };
       if (!direct.isWindow && direct.startAt && !direct.endAt){
         direct.endAt = dayjs(direct.startAt).add(60,'minute').toISOString();
+      }
+      if (direct.isWindow && !direct.dueBy && direct.endAt){
+        direct.dueBy = direct.endAt;
       }
       return direct;
     }
@@ -1354,6 +1527,30 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
       dl_state.all = (data||[])
         .map(dl_toItemShape)
         .filter(d => d.company && d.role && d.type && (d.isWindow ? d.dueBy : (d.startAt && d.endAt)));
+      dl_detectConflicts();
+    }
+
+    function dl_detectConflicts(){
+      dl_state.all.forEach(d => { d.hasConflict = d.status === 'completed' ? false : Boolean(d.hasConflict); });
+      const events = dl_state.all
+        .filter(d => !d.isWindow && d.startAt && d.endAt && d.status !== 'completed')
+        .sort((a,b)=> dayjs(a.startAt).valueOf() - dayjs(b.startAt).valueOf());
+
+      for (let i=0; i<events.length; i++){
+        const eventA = events[i];
+        const startA = dayjs(eventA.startAt);
+        const endA = dayjs(eventA.endAt);
+        for (let j=i+1; j<events.length; j++){
+          const eventB = events[j];
+          const startB = dayjs(eventB.startAt);
+          const endB = dayjs(eventB.endAt);
+          if (startB.valueOf() >= endA.valueOf()) break;
+          if (startA.valueOf() < endB.valueOf() && endA.valueOf() > startB.valueOf()){
+            eventA.hasConflict = true;
+            eventB.hasConflict = true;
+          }
+        }
+      }
     }
 
     function dl_applyFilters(){
@@ -1399,104 +1596,194 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
       }
     }
 
+    function dl_updateBanners(){
+      const container = document.getElementById('dl_banners');
+      if (!container) return;
+      const now = dayjs().tz('Europe/London');
+      let overdue = 0;
+      let conflicts = 0;
+      dl_state.filtered.forEach(d => {
+        if (d.status === 'completed') return;
+        const when = d.isWindow ? dayjs(d.dueBy).tz('Europe/London') : dayjs(d.startAt).tz('Europe/London');
+        if (when.isBefore(now)) overdue++;
+        if (d.hasConflict) conflicts++;
+      });
+
+      const banners = [];
+      if (overdue > 0){
+        banners.push(`
+          <div class="dl-banner dl-banner-danger">
+            <div><strong>${overdue} overdue deadline${overdue > 1 ? 's' : ''}</strong></div>
+            <button type="button" onclick="dl_jumpToEarliest()">Jump to earliest</button>
+          </div>
+        `);
+      }
+      if (conflicts > 0){
+        banners.push(`
+          <div class="dl-banner dl-banner-warning">
+            <div><strong>${conflicts} conflict${conflicts > 1 ? 's' : ''} detected</strong></div>
+            <button type="button" onclick="dl_filterConflicts()">View conflicts</button>
+          </div>
+        `);
+      }
+      container.innerHTML = banners.join('');
+    }
+
     function dl_render(){
+      const agenda = document.getElementById('dl_agenda');
+      const calendar = document.getElementById('dl_calendar');
+      const calendarGrid = document.getElementById('dl_calendarGrid');
+      const calendarTitle = document.getElementById('dl_calendarTitle');
       const empty = document.getElementById('dl_empty');
+      const agendaBtn = document.getElementById('dl_viewAgenda');
+      const calendarBtn = document.getElementById('dl_viewCalendar');
+
+      if (agendaBtn && calendarBtn){
+        agendaBtn.classList.toggle('active', dl_state.view === 'agenda');
+        calendarBtn.classList.toggle('active', dl_state.view === 'calendar');
+      }
+
+      if (agenda){
+        agenda.style.display = dl_state.view === 'agenda' ? 'block' : 'none';
+      }
+      if (calendar){
+        if (dl_state.view === 'calendar'){
+          calendar.style.display = 'block';
+          calendar.classList.add('active');
+        }else{
+          calendar.style.display = 'none';
+          calendar.classList.remove('active');
+        }
+      }
+
       const hasItems = dl_state.filtered.length > 0;
       if (!hasItems){
-        if (dl_state.view === 'agenda'){
-          document.getElementById('dl_calendar').style.display='none';
-          const agenda = document.getElementById('dl_agenda');
-          agenda.style.display='block';
-          agenda.innerHTML = '';
-          document.getElementById('dl_calendarTitle').style.display='none';
-          if (empty) empty.style.display='block';
-          return;
+        if (dl_state.view === 'calendar'){ dl_renderCalendar(); }
+        else {
+          if (agenda) agenda.innerHTML = '';
+          if (calendarGrid) calendarGrid.innerHTML = '';
         }
-        document.getElementById('dl_agenda').style.display='none';
-        document.getElementById('dl_calendar').style.display='block';
-        document.getElementById('dl_calendarGrid').innerHTML = '';
-        const title = document.getElementById('dl_calendarTitle');
-        title.style.display='block';
-        title.textContent = `Week of ${dl_state.weekStart.format('MMM D, YYYY')}`;
-        if (empty) empty.style.display='block';
-        dl_renderCalendar();
+        if (calendarTitle) calendarTitle.textContent = `Week of ${dl_state.weekStart.format('MMM D, YYYY')}`;
+        if (empty) empty.style.display = 'block';
+        dl_updateBanners();
         return;
       }
-      if (empty) empty.style.display='none';
+
+      if (empty) empty.style.display = 'none';
       if (dl_state.view === 'agenda') dl_renderAgenda();
       else dl_renderCalendar();
+      dl_updateBanners();
     }
 
     function dl_renderAgenda(){
-      const c = document.getElementById('dl_agenda');
+      const container = document.getElementById('dl_agenda');
       const empty = document.getElementById('dl_empty');
-      document.getElementById('dl_calendar').style.display='none';
-      c.style.display='block';
-      document.getElementById('dl_calendarTitle').style.display='none';
+      if (!container) return;
 
       const items = dl_state.filtered;
-      if (!items.length){ c.innerHTML=''; if (empty) empty.style.display='block'; return; }
-      if (empty) empty.style.display='none';
+      if (!items.length){
+        container.innerHTML = '';
+        if (empty) empty.style.display = 'block';
+        return;
+      }
+      if (empty) empty.style.display = 'none';
 
       const now = dayjs().tz('Europe/London');
       const groups = new Map();
       for (const d of items){
         const due = d.isWindow ? dayjs(d.dueBy).tz('Europe/London') : dayjs(d.startAt).tz('Europe/London');
         let key = due.format('ddd D MMM');
-        if (due.isBefore(now,'day')) key='Overdue';
-        else if (due.isSame(now,'day')) key='Today';
-        else if (due.isSame(now.add(1,'day'),'day')) key='Tomorrow';
+        if (due.isBefore(now,'day')) key = 'Overdue';
+        else if (due.isSame(now,'day')) key = 'Today';
+        else if (due.isSame(now.add(1,'day'),'day')) key = 'Tomorrow';
         if (!groups.has(key)) groups.set(key, []);
         groups.get(key).push(d);
       }
 
       const order = (a,b)=>{
-        const idx = {'Overdue':-3,'Today':-2,'Tomorrow':-1};
-        const ia = idx[a] ?? 0, ib = idx[b] ?? 0;
-        if (ia!==ib) return ia-ib;
-        const da = dayjs(a,'ddd D MMM'), db = dayjs(b,'ddd D MMM');
-        return da.valueOf()-db.valueOf();
+        const rank = { 'Overdue': -3, 'Today': -2, 'Tomorrow': -1 };
+        const ia = rank[a] ?? 0;
+        const ib = rank[b] ?? 0;
+        if (ia !== ib) return ia - ib;
+        const da = dayjs(a,'ddd D MMM');
+        const db = dayjs(b,'ddd D MMM');
+        return da.valueOf() - db.valueOf();
       };
       const keys = [...groups.keys()].sort(order);
 
-      const html = keys.map(k=>{
-        const arr = groups.get(k).sort((a,b)=>{
+      const html = keys.map(key => {
+        const arr = groups.get(key).sort((a,b)=>{
           const at = a.isWindow ? dayjs(a.dueBy) : dayjs(a.startAt);
           const bt = b.isWindow ? dayjs(b.dueBy) : dayjs(b.startAt);
-          return at.valueOf()-bt.valueOf();
+          return at.valueOf() - bt.valueOf();
         });
         return `
-      <div class="agenda-section" style="margin-bottom:1.25rem">
-        <h3 class="agenda-date" style="font-weight:800;border-bottom:2px solid var(--primary-500);padding-bottom:.25rem;margin-bottom:.75rem">${k}</h3>
+      <div class="agenda-section">
+        <h3 class="agenda-date">${key}</h3>
         ${arr.map(dl_cardHTML).join('')}
       </div>`;
       }).join('');
 
-      c.innerHTML = html;
+      container.innerHTML = html;
+    }
+
+    function dl_statusLabel(status){
+      if (!status) return 'Open';
+      return status.charAt(0).toUpperCase() + status.slice(1);
     }
 
     function dl_cardHTML(d){
-      const timing = d.isWindow
-        ? dl_timeUntil(d.dueBy).text
-        : `${dayjs(d.startAt).tz('Europe/London').format('HH:mm')} - ${dayjs(d.endAt).tz('Europe/London').format('HH:mm')} (${dayjs(d.endAt).diff(dayjs(d.startAt),'minute')}m)`;
-
-      const timingStyle = d.isWindow
-        ? (dayjs(d.dueBy).isBefore(dayjs()) ? 'color:var(--danger-600);font-weight:700' : 'color:var(--warning-600);font-weight:600')
-        : 'color:var(--gray-600)';
-
-      const statusChip = `<span class="badge" style="padding:.2rem .5rem;border-radius:10px;background:var(--gray-100);font-size:.75rem">${d.status}</span>`;
-      const conflictChip = d.hasConflict ? `<span class="badge" style="padding:.2rem .5rem;border-radius:10px;background:var(--warning-50);border:1px solid var(--warning-500);font-size:.75rem">⚠️ Conflict</span>` : '';
+      const start = d.isWindow ? null : dayjs(d.startAt).tz('Europe/London');
+      const end = d.isWindow ? null : dayjs(d.endAt).tz('Europe/London');
+      const due = d.isWindow ? dayjs(d.dueBy).tz('Europe/London') : start;
+      const timingInfo = d.isWindow ? dl_timeUntil(d.dueBy) : null;
+      const duration = (!d.isWindow && start && end) ? end.diff(start, 'minute') : null;
+      const timingText = d.isWindow
+        ? (timingInfo?.isOverdue ? timingInfo.text : `Window closes in ${timingInfo.text}`)
+        : (start && end ? `${start.format('HH:mm')} - ${end.format('HH:mm')} (${duration}m)` : (start ? start.format('HH:mm') : ''));
+      const timingClass = d.isWindow
+        ? `card-timing ${timingInfo?.isOverdue ? 'overdue' : 'countdown'}`
+        : 'card-timing';
+      const cardClasses = ['deadline-card'];
+      if (d.status === 'completed') cardClasses.push('completed');
+      if ((timingInfo && timingInfo.isOverdue) || d.status === 'overdue') cardClasses.push('overdue');
+      const statusSlug = (d.status || 'open').toLowerCase().replace(/[^a-z0-9-]/g,'');
+      const notesHtml = d.notes ? `<div class="card-notes">${escapeHtml(d.notes).replace(/\n/g,'<br/>')}</div>` : '';
+      const linksHtml = (d.location || d.meetingUrl) ? `
+        <div class="card-links">
+          ${d.location ? `<span>📍 ${escapeHtml(d.location)}</span>` : ''}
+          ${d.meetingUrl ? `<a href="${escapeHtml(d.meetingUrl)}" target="_blank" rel="noopener">Join meeting</a>` : ''}
+        </div>
+      ` : '';
+      const actions = [];
+      if (d.status !== 'completed'){
+        actions.push(`<button class="dl-btn dl-btn-success" onclick="dl_markDone('${d.id}')">Mark done</button>`);
+        actions.push(`<button class="dl-btn dl-btn-outline" onclick="dl_snooze('${d.id}', 24)">Snooze 24h</button>`);
+      }
+      actions.push(`<button class="dl-btn dl-btn-outline" onclick="dl_addToCalendar('${d.id}')">Add to calendar</button>`);
 
       return `
-    <div class="deadline-card" style="border:1px solid var(--gray-200);border-radius:12px;padding:1rem;margin-bottom:.75rem;background:#fff">
-      <div class="card-title" style="font-weight:800;color:var(--gray-900)">${escapeHtml(d.company)} • ${escapeHtml(d.role)} • ${escapeHtml(d.type)}</div>
-      <div class="card-timing" style="${timingStyle};margin:.2rem 0 .4rem 0">${timing}</div>
-      <div class="card-badges" style="display:flex;gap:.35rem;margin-bottom:.4rem">${statusChip}${conflictChip}</div>
-      <div class="card-source" style="font-size:.8rem;color:var(--gray-500)">From email: "${escapeHtml(d.sourceEmailSubject||'')}"</div>
-      <div class="card-actions" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem">
-        <button class="btn btn-success btn-sm" onclick="dl_markDone('${d.id}')">Mark done</button>
-        <button class="btn btn-outline btn-sm" onclick="dl_snooze('${d.id}', 24)">Snooze 24h</button>
+    <div class="${cardClasses.join(' ')}" id="dl_card_${d.id}">
+      <div class="card-header">
+        <div>
+          <div class="card-title">${escapeHtml(d.company)} • ${escapeHtml(d.role)}</div>
+          <div class="card-subtitle">${escapeHtml(d.type || '—')}${d.priority != null ? ` • Priority ${escapeHtml(d.priority)}` : ''}</div>
+          <div class="${timingClass}">${timingText}</div>
+          <div class="card-badges">
+            <span class="badge status-${statusSlug}">${escapeHtml(dl_statusLabel(d.status))}</span>
+            ${d.hasConflict ? '<span class="badge conflict">⚠️ Conflict</span>' : ''}
+          </div>
+        </div>
+        <div class="card-meta">
+          ${due ? `<span>${due.format('MMM D, YYYY')}</span>` : ''}
+          ${d.isWindow ? (due ? `<span>Due by ${due.format('HH:mm')}</span>` : '') : (start && end ? `<span>${start.format('HH:mm')} - ${end.format('HH:mm')}</span>` : '')}
+          ${d.timezone ? `<span>${escapeHtml(d.timezone)}</span>` : ''}
+          ${d.sourceEmailSubject ? `<span>“${escapeHtml(d.sourceEmailSubject)}”</span>` : ''}
+        </div>
       </div>
+      ${notesHtml}
+      ${linksHtml}
+      <div class="card-actions">${actions.join('')}</div>
     </div>`;
     }
 
@@ -1517,43 +1804,120 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
     function dl_renderCalendar(){
       const title = document.getElementById('dl_calendarTitle');
       const grid = document.getElementById('dl_calendarGrid');
-      const empty = document.getElementById('dl_empty');
-      document.getElementById('dl_agenda').style.display='none';
-      document.getElementById('dl_calendar').style.display='block';
-      title.style.display='block';
-      title.textContent = `Week of ${dl_state.weekStart.format('MMM D, YYYY')}`;
+      if (!grid) return;
+
+      if (title){
+        title.textContent = `Week of ${dl_state.weekStart.format('MMM D, YYYY')}`;
+      }
 
       const days = [...Array(7)].map((_,i)=> dl_state.weekStart.add(i,'day'));
+      const weekStart = dl_state.weekStart.startOf('day');
+      const weekEnd = dl_state.weekStart.add(6,'day').endOf('day');
       const inWeek = dl_state.filtered.filter(d=>{
         const due = d.isWindow ? dayjs(d.dueBy).tz('Europe/London') : dayjs(d.startAt).tz('Europe/London');
-        return due.isBetween(dl_state.weekStart.startOf('day'), dl_state.weekStart.add(6,'day').endOf('day'), null, '[]');
+        return due.isBetween(weekStart, weekEnd, null, '[]');
       });
 
-      grid.innerHTML = days.map(day=>{
-        const items = inWeek.filter(d => {
+      grid.innerHTML = days.map(day => {
+        const dayItems = inWeek.filter(d => {
           const due = d.isWindow ? dayjs(d.dueBy).tz('Europe/London') : dayjs(d.startAt).tz('Europe/London');
-          return due.isSame(day,'day');
+          return due.isSame(day, 'day');
         });
+        const pills = dayItems.map(d => {
+          const isWindow = d.isWindow;
+          const start = isWindow ? dayjs(d.dueBy).tz('Europe/London') : dayjs(d.startAt).tz('Europe/London');
+          const end = !isWindow && d.endAt ? dayjs(d.endAt).tz('Europe/London') : null;
+          const pillClass = `dl-calendar-pill ${isWindow ? 'due' : 'event'}`;
+          const timeLabel = isWindow
+            ? `Due ${start.format('HH:mm')}`
+            : `${start.format('HH:mm')}${end ? ` - ${end.format('HH:mm')}` : ''}`;
+          return `
+            <div class="${pillClass}" onclick="dl_jumpToCard('${d.id}')" title="${escapeHtml(d.company)}">
+              <div class="dl-pill-company">${escapeHtml(d.company)}</div>
+              <div class="dl-pill-time">${escapeHtml(timeLabel)}</div>
+              ${d.hasConflict ? '<span style="font-size:.75rem;align-self:flex-end;">⚠️</span>' : ''}
+            </div>
+          `;
+        }).join('');
         return `
-      <div class="calendar-day" style="background:#fff;min-height:120px;padding:.75rem">
-        <div class="calendar-day-header" style="font-weight:700;color:var(--gray-600);margin-bottom:.5rem">${day.format('ddd D')}</div>
-        ${items.map(d=>{
-          const isW = d.isWindow;
-          const time = isW ? 'Due '+dayjs(d.dueBy).tz('Europe/London').format('HH:mm') : dayjs(d.startAt).tz('Europe/London').format('HH:mm');
-          const cls = isW ? 'background:var(--warning-500)' : 'background:var(--primary-500)';
-          return `<div class="calendar-event" style="${cls};color:#fff;border-radius:6px;padding:.25rem .5rem;margin-bottom:.25rem;cursor:pointer" title="${escapeHtml(d.company)}">
-            <div style="font-weight:700">${escapeHtml(d.company)} • ${escapeHtml(d.type)}</div>
-            <div style="opacity:.9">${time}</div>
-          </div>`;
-        }).join('')}
-      </div>`;
+          <div class="dl-calendar-day">
+            <div class="dl-calendar-day-header">${day.format('ddd D')}</div>
+            ${pills}
+          </div>
+        `;
       }).join('');
+    }
+
+    function dl_focusCard(id){
+      requestAnimationFrame(() => {
+        const el = document.getElementById(`dl_card_${id}`);
+        if (!el) return;
+        el.scrollIntoView({ behavior:'smooth', block:'center' });
+        el.classList.add('dl-card-focus');
+        setTimeout(()=> el.classList.remove('dl-card-focus'), 1600);
+      });
+    }
+
+    function dl_jumpToCard(id){
+      dl_state.view = 'agenda';
+      dl_render();
+      dl_focusCard(id);
+    }
+
+    function dl_jumpToEarliest(){
+      dl_state.view = 'agenda';
+      const now = dayjs().tz('Europe/London');
+      const overdue = dl_state.filtered
+        .filter(d => d.status !== 'completed')
+        .filter(d => {
+          const when = d.isWindow ? dayjs(d.dueBy).tz('Europe/London') : dayjs(d.startAt).tz('Europe/London');
+          return when.isBefore(now);
+        })
+        .sort((a,b)=>{
+          const aTime = a.isWindow ? dayjs(a.dueBy) : dayjs(a.startAt);
+          const bTime = b.isWindow ? dayjs(b.dueBy) : dayjs(b.startAt);
+          return aTime.valueOf() - bTime.valueOf();
+        });
+      dl_render();
+      if (!overdue.length){
+        toast('No overdue deadlines in current view');
+        return;
+      }
+      dl_focusCard(overdue[0].id);
+    }
+
+    function dl_filterConflicts(){
+      dl_state.filters.conflict = 'true';
+      const conflictSelect = document.getElementById('dl_conflict');
+      if (conflictSelect) conflictSelect.value = 'true';
+      const filtersPanel = document.getElementById('dl_filtersPanel');
+      if (filtersPanel){
+        filtersPanel.classList.add('open');
+        filtersPanel.setAttribute('aria-hidden','false');
+      }
+      dl_applyFilters();
+      dl_updateKPIs();
+      dl_render();
+    }
+
+    function dl_addToCalendar(id){
+      const deadline = dl_state.all.find(d => d.id === id);
+      if (deadline){
+        toast(`Would sync ${deadline.company} • ${deadline.type} to your calendar`);
+      }else{
+        toast('Calendar sync coming soon');
+      }
     }
 
     function dl_markDone(id){
       const it = dl_state.all.find(x=>x.id===id); if (!it) return;
-      it.status='completed'; it.updatedAt=new Date().toISOString();
-      dl_applyFilters(); dl_updateKPIs(); dl_render();
+      it.status = 'completed';
+      it.updatedAt = new Date().toISOString();
+      dl_detectConflicts();
+      dl_applyFilters();
+      dl_updateKPIs();
+      dl_render();
+      toast('Deadline marked as completed');
     }
     function dl_snooze(id, hours){
       const it = dl_state.all.find(x=>x.id===id); if (!it) return;
@@ -1563,8 +1927,13 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         it.startAt = dayjs(it.startAt).add(hours,'hour').toISOString();
         it.endAt = dayjs(it.startAt).add(dur,'minute').toISOString();
       }
-      it.status='snoozed'; it.updatedAt=new Date().toISOString();
-      dl_applyFilters(); dl_updateKPIs(); dl_render();
+      it.status = 'snoozed';
+      it.updatedAt = new Date().toISOString();
+      dl_detectConflicts();
+      dl_applyFilters();
+      dl_updateKPIs();
+      dl_render();
+      toast(`Deadline snoozed for ${hours}h`);
     }
 
     function dl_populateCompanies(){
@@ -1572,40 +1941,118 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
       if (!sel) return;
       const companies = [...new Set(dl_state.all.map(d=>d.company))].sort();
       sel.innerHTML = '<option value="">All companies</option>' + companies.map(c=>`<option>${escapeHtml(c)}</option>`).join('');
+      sel.value = dl_state.filters.company || '';
     }
 
     async function initDeadlinesPage(){
       if (!initDeadlinesPage._wired){
-        document.getElementById('dl_viewAgenda').onclick = ()=>{ dl_state.view='agenda'; dl_render(); };
-        document.getElementById('dl_viewCalendar').onclick = ()=>{ dl_state.view='calendar'; dl_render(); };
+        const agendaBtn = document.getElementById('dl_viewAgenda');
+        if (agendaBtn) agendaBtn.onclick = ()=>{ dl_state.view='agenda'; dl_render(); };
+        const calendarBtn = document.getElementById('dl_viewCalendar');
+        if (calendarBtn) calendarBtn.onclick = ()=>{ dl_state.view='calendar'; dl_render(); };
 
-        document.getElementById('dl_search').oninput = (e)=>{ dl_state.filters.search=e.target.value; dl_applyFilters(); dl_updateKPIs(); dl_render(); };
-        document.getElementById('dl_company').onchange = (e)=>{ dl_state.filters.company=e.target.value; dl_applyFilters(); dl_updateKPIs(); dl_render(); };
-        document.getElementById('dl_type').onchange = (e)=>{ dl_state.filters.type=e.target.value; dl_applyFilters(); dl_updateKPIs(); dl_render(); };
-        document.getElementById('dl_status').onchange = (e)=>{ dl_state.filters.status=e.target.value; dl_applyFilters(); dl_updateKPIs(); dl_render(); };
-        document.getElementById('dl_conflict').onchange = (e)=>{ dl_state.filters.conflict=e.target.value; dl_applyFilters(); dl_updateKPIs(); dl_render(); };
-        document.getElementById('dl_clear').onclick = ()=>{
-          dl_state.filters = { search:'', company:'', type:'', status:'', conflict:'' };
-          document.getElementById('dl_search').value='';
-          document.getElementById('dl_company').value='';
-          document.getElementById('dl_type').value='';
-          document.getElementById('dl_status').value='';
-          document.getElementById('dl_conflict').value='';
-          dl_applyFilters(); dl_updateKPIs(); dl_render();
-        };
+        const filtersPanel = document.getElementById('dl_filtersPanel');
+        const filtersToggle = document.getElementById('dl_filtersToggle');
+        if (filtersPanel){ filtersPanel.setAttribute('aria-hidden', filtersPanel.classList.contains('open') ? 'false' : 'true'); }
+        if (filtersToggle && filtersPanel){
+          filtersToggle.onclick = ()=>{
+            const open = !filtersPanel.classList.contains('open');
+            filtersPanel.classList.toggle('open', open);
+            filtersPanel.setAttribute('aria-hidden', open ? 'false' : 'true');
+          };
+        }
+
+        const calendarSwitch = document.getElementById('dl_calendarSync');
+        if (calendarSwitch){
+          calendarSwitch.onclick = ()=>{
+            calendarSwitch.classList.toggle('active');
+            calendarSwitch.setAttribute('aria-checked', calendarSwitch.classList.contains('active') ? 'true' : 'false');
+          };
+        }
+        const telegramSwitch = document.getElementById('dl_telegramSync');
+        if (telegramSwitch){
+          telegramSwitch.onclick = ()=>{
+            telegramSwitch.classList.toggle('active');
+            telegramSwitch.setAttribute('aria-checked', telegramSwitch.classList.contains('active') ? 'true' : 'false');
+          };
+        }
+
+        const prevWeek = document.getElementById('dl_prevWeek');
+        if (prevWeek) prevWeek.onclick = ()=>{ dl_state.weekStart = dl_state.weekStart.subtract(1,'week'); dl_renderCalendar(); };
+        const nextWeek = document.getElementById('dl_nextWeek');
+        if (nextWeek) nextWeek.onclick = ()=>{ dl_state.weekStart = dl_state.weekStart.add(1,'week'); dl_renderCalendar(); };
+
+        const searchInput = document.getElementById('dl_search');
+        if (searchInput){
+          searchInput.value = dl_state.filters.search || '';
+          searchInput.oninput = (e)=>{ dl_state.filters.search=e.target.value; dl_applyFilters(); dl_updateKPIs(); dl_render(); };
+        }
+        const companySelect = document.getElementById('dl_company');
+        if (companySelect){
+          companySelect.onchange = (e)=>{ dl_state.filters.company=e.target.value; dl_applyFilters(); dl_updateKPIs(); dl_render(); };
+        }
+        const typeSelect = document.getElementById('dl_type');
+        if (typeSelect){
+          typeSelect.value = dl_state.filters.type || '';
+          typeSelect.onchange = (e)=>{ dl_state.filters.type=e.target.value; dl_applyFilters(); dl_updateKPIs(); dl_render(); };
+        }
+        const statusSelect = document.getElementById('dl_status');
+        if (statusSelect){
+          statusSelect.value = dl_state.filters.status || '';
+          statusSelect.onchange = (e)=>{ dl_state.filters.status=e.target.value; dl_applyFilters(); dl_updateKPIs(); dl_render(); };
+        }
+        const conflictSelect = document.getElementById('dl_conflict');
+        if (conflictSelect){
+          conflictSelect.value = dl_state.filters.conflict || '';
+          conflictSelect.onchange = (e)=>{ dl_state.filters.conflict=e.target.value; dl_applyFilters(); dl_updateKPIs(); dl_render(); };
+        }
+        const clearBtn = document.getElementById('dl_clear');
+        if (clearBtn){
+          clearBtn.onclick = ()=>{
+            dl_state.filters = { search:'', company:'', type:'', status:'', conflict:'' };
+            if (searchInput) searchInput.value='';
+            if (companySelect) companySelect.value='';
+            if (typeSelect) typeSelect.value='';
+            if (statusSelect) statusSelect.value='';
+            if (conflictSelect) conflictSelect.value='';
+            dl_applyFilters(); dl_updateKPIs(); dl_render();
+          };
+        }
         initDeadlinesPage._wired = true;
       }
 
       try{
+        const loading = document.getElementById('dl_loading');
+        if (loading) loading.style.display = 'block';
+        const emptyState = document.getElementById('dl_empty');
+        if (emptyState) emptyState.innerHTML = '<h3>No deadlines found</h3><p>Adjust your filters or search terms.</p>';
         await dl_fetch();
         dl_populateCompanies();
+        const typeSelect = document.getElementById('dl_type'); if (typeSelect) typeSelect.value = dl_state.filters.type || '';
+        const statusSelect = document.getElementById('dl_status'); if (statusSelect) statusSelect.value = dl_state.filters.status || '';
+        const conflictSelect = document.getElementById('dl_conflict'); if (conflictSelect) conflictSelect.value = dl_state.filters.conflict || '';
+        const searchInput = document.getElementById('dl_search'); if (searchInput) searchInput.value = dl_state.filters.search || '';
         dl_applyFilters();
         dl_updateKPIs();
         dl_render();
+        if (loading) loading.style.display = 'none';
       }catch(e){
         console.error(e);
+        const loading = document.getElementById('dl_loading');
+        if (loading) loading.style.display = 'none';
+        dl_state.all = [];
+        dl_state.filtered = [];
+        dl_updateKPIs();
+        dl_updateBanners();
         const agenda = document.getElementById('dl_agenda');
-        if (agenda) agenda.innerHTML = '<div class="empty-state">Failed to load deadlines from Supabase.</div>';
+        if (agenda) agenda.innerHTML = '';
+        const calendarGrid = document.getElementById('dl_calendarGrid');
+        if (calendarGrid) calendarGrid.innerHTML = '';
+        const empty = document.getElementById('dl_empty');
+        if (empty){
+          empty.style.display = 'block';
+          empty.innerHTML = '<h3>Failed to load deadlines</h3><p>Please check your Supabase connection.</p>';
+        }
       }
     }
     /* ######################## END: DEADLINES MODULE (JS) ############### */
