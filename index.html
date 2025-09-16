@@ -1,3 +1,30 @@
+<!-- ############################################################
+# FILE: Graduate Applications Assistant (single file)
+# TOC (search these tokens):
+#  - BEGIN: CSS (GLOBAL)
+#  - BEGIN: HEADER (HTML)
+#  - BEGIN: APPLICATIONS PAGE (HTML)
+#  - BEGIN: SAVED PAGE (HTML)
+#  - BEGIN: ANALYTICS PAGE (HTML)
+#  - BEGIN: ADD PAGE (HTML)
+#  - BEGIN: ANALYZE PAGE (HTML)
+#  - BEGIN: APPLICATION MODAL (HTML)
+#  - BEGIN: CONFIRM DELETE MODAL (HTML)
+#  - BEGIN: TOAST (HTML)
+#  - BEGIN: CONFIG & ENDPOINTS (JS)
+#  - BEGIN: STATUS CATALOGS (JS)
+#  - BEGIN: ELEMENT LOOKUPS (JS)
+#  - BEGIN: STATE (JS)
+#  - BEGIN: HELPERS (JS)
+#  - BEGIN: TABS/ROUTER (JS)
+#  - BEGIN: ENV SWITCH (JS)
+#  - BEGIN: ANALYSE FLOW (JS)
+#  - BEGIN: APPLICATIONS RENDER (JS)
+#  - BEGIN: SAVED RENDER (JS)
+#  - BEGIN: ANALYTICS LOGIC (JS)
+#  - BEGIN: ADD FORM (JS)
+#  - BEGIN: INIT (JS)
+############################################################ -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,6 +36,9 @@
   <!-- Charts (lightweight + responsive) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- ############################################################
+  # BEGIN: CSS (GLOBAL)
+  ############################################################ -->
   <style>
     :root{
       --primary-50:#eff6ff; --primary-100:#dbeafe; --primary-500:#3b82f6; --primary-600:#2563eb; --primary-700:#1d4ed8;
@@ -236,9 +266,13 @@
       .applications-grid{grid-template-columns:1fr}
     }
   </style>
+  <!-- ######################## END: CSS (GLOBAL) ############## -->
 </head>
 <body>
   <div class="container">
+    <!-- ############################################################
+    # BEGIN: HEADER (HTML)
+    ############################################################ -->
     <!-- Header -->
     <div class="header">
       <div class="header-content">
@@ -261,7 +295,11 @@
         </div>
       </div>
     </div>
+    <!-- ######################## END: HEADER (HTML) ############## -->
 
+    <!-- ############################################################
+    # BEGIN: APPLICATIONS PAGE (HTML)
+    ############################################################ -->
     <!-- Applications page -->
     <div id="applicationsPage" class="page-content">
       <div class="panel">
@@ -277,7 +315,11 @@
         <div id="applicationsGrid" class="applications-grid"></div>
       </div>
     </div>
+    <!-- ######################## END: APPLICATIONS PAGE (HTML) ############## -->
 
+    <!-- ############################################################
+    # BEGIN: SAVED PAGE (HTML)
+    ############################################################ -->
     <!-- Saved page -->
     <div id="savedPage" class="page-content">
       <div class="panel">
@@ -292,7 +334,11 @@
         <div id="savedGrid" class="applications-grid"></div>
       </div>
     </div>
+    <!-- ######################## END: SAVED PAGE (HTML) ############## -->
 
+    <!-- ############################################################
+    # BEGIN: ANALYTICS PAGE (HTML)
+    ############################################################ -->
     <!-- Analytics page -->
     <div id="analyticsPage" class="page-content">
       <div class="panel animate-slide-in">
@@ -393,7 +439,11 @@
         </div>
       </div>
     </div>
+    <!-- ######################## END: ANALYTICS PAGE (HTML) ############## -->
 
+    <!-- ############################################################
+    # BEGIN: ADD PAGE (HTML)
+    ############################################################ -->
     <!-- Add application page -->
     <div id="addPage" class="page-content">
       <div class="panel">
@@ -435,7 +485,11 @@
         </form>
       </div>
     </div>
+    <!-- ######################## END: ADD PAGE (HTML) ############## -->
 
+    <!-- ############################################################
+    # BEGIN: ANALYZE PAGE (HTML)
+    ############################################################ -->
     <!-- Analyze page -->
     <div id="analyzePage" class="page-content active">
       <div class="panel">
@@ -562,8 +616,12 @@
         </div> <!-- /resultCard -->
       </div>
     </div>
+    <!-- ######################## END: ANALYZE PAGE (HTML) ############## -->
   </div>
 
+  <!-- ############################################################
+  # BEGIN: APPLICATION MODAL (HTML)
+  ############################################################ -->
   <!-- Modal -->
   <div id="applicationModal" class="modal" aria-hidden="true">
     <div id="modalOverlay" class="modal-overlay"></div>
@@ -575,7 +633,11 @@
       <div id="modalBody" class="modal-body"></div>
     </div>
   </div>
+  <!-- ######################## END: APPLICATION MODAL (HTML) ############## -->
 
+  <!-- ############################################################
+  # BEGIN: CONFIRM DELETE MODAL (HTML)
+  ############################################################ -->
   <!-- Confirm Delete Modal -->
   <div id="confirmDeleteModal" class="modal" aria-hidden="true">
     <div class="modal-overlay" id="confirmDeleteOverlay"></div>
@@ -595,11 +657,19 @@
       </div>
     </div>
   </div>
+  <!-- ######################## END: CONFIRM DELETE MODAL (HTML) ############## -->
 
+  <!-- ############################################################
+  # BEGIN: TOAST (HTML)
+  ############################################################ -->
   <!-- Toast -->
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <!-- ######################## END: TOAST (HTML) ############## -->
 
   <script>
+    /* ############################################################
+       BEGIN: CONFIG & ENDPOINTS (JS)
+    ############################################################ */
     // ========= ENDPOINTS =========
     const URLS = {
       test: {
@@ -618,7 +688,11 @@
     const TABLE = 'graduate_job_helper';
     const CV_FOLDER_ID = '';
     const GUIDE_DOC_ID = '';
+    /* ######################## END: CONFIG & ENDPOINTS (JS) ############### */
 
+    /* ############################################################
+       BEGIN: STATUS CATALOGS (JS)
+    ############################################################ */
     // ===== Status catalogs
     const STATUS_STARTER = [
       { value: 'saved',       label: 'Saved' },
@@ -682,7 +756,11 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         .map(o => `<option value="${o.value}" ${o.value===current?'selected':''}>${o.label}</option>`)
         .join('');
     }
+    /* ######################## END: STATUS CATALOGS (JS) ############### */
 
+    /* ############################################################
+       BEGIN: ELEMENT LOOKUPS (JS)
+    ############################################################ */
     // ====== Elements
     const envSelect = document.getElementById('envSelect');
 
@@ -824,7 +902,11 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
     const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
     const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
     const confirmDeleteSummary = document.getElementById('confirmDeleteSummary');
+    /* ######################## END: ELEMENT LOOKUPS (JS) ############### */
 
+    /* ############################################################
+       BEGIN: STATE (JS)
+    ############################################################ */
     // Holds the pending delete payload
     let pendingDelete = null;
 
@@ -994,6 +1076,11 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
       else { refreshData(true); startPolling(); }
     });
 
+    /* ######################## END: STATE (JS) ############### */
+
+    /* ############################################################
+       BEGIN: HELPERS (JS)
+    ############################################################ */
     // ====== Helpers
     // ---- Type coercion & normalisation helpers ----
     function deepUnwrapJsonString(v, max=4){
@@ -1140,6 +1227,11 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
       return x >= start && x <= end;
     }
 
+    /* ######################## END: HELPERS (JS) ############### */
+
+    /* ############################################################
+       BEGIN: TABS/ROUTER (JS)
+    ############################################################ */
     // ====== Tabs
     function switchTab(name){
       document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
@@ -1162,6 +1254,11 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
     if (location.hash==='#analytics') switchTab('analytics');
     if (location.hash==='#add') switchTab('add');
 
+    /* ######################## END: TABS/ROUTER (JS) ############### */
+
+    /* ############################################################
+       BEGIN: ENV SWITCH (JS)
+    ############################################################ */
     envSelect.onchange = ()=>{
       currentEnv = envSelect.value;
       db = supabase.createClient(DB[currentEnv].url, DB[currentEnv].key,
@@ -1169,7 +1266,11 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
       toast(`Switched to ${currentEnv.toUpperCase()}`);
       refreshData(true);
     };
+    /* ######################## END: ENV SWITCH (JS) ############### */
 
+    /* ############################################################
+       BEGIN: ANALYSE FLOW (JS)
+    ############################################################ */
     // ====== Analyse flow
     analyzeBtn.onclick = analyseUrl;
     // (No Enter-on-URL listener anymore; we use Cmd/Ctrl+Enter in textarea)
@@ -1410,6 +1511,11 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
       }catch(e){ console.error(e); coverStatus.textContent = 'Generation failed. Check n8n logs / CORS.'; }
     }
 
+    /* ######################## END: ANALYSE FLOW (JS) ############### */
+
+    /* ############################################################
+       BEGIN: APPLICATIONS RENDER (JS)
+    ############################################################ */
     // ====== Applications page
     statusFilter.onchange = renderApplications;
     sortFilter.onchange = renderApplications;
@@ -1680,6 +1786,11 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
       }
     });
 
+    /* ######################## END: APPLICATIONS RENDER (JS) ############### */
+
+    /* ############################################################
+       BEGIN: SAVED RENDER (JS)
+    ############################################################ */
     // ====== Saved page
     savedSort.onchange = renderSaved;
     function renderSaved(){
@@ -1714,6 +1825,11 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
       openDeleteConfirm(app);
     };
 
+    /* ######################## END: SAVED RENDER (JS) ############### */
+
+    /* ############################################################
+       BEGIN: ANALYTICS LOGIC (JS)
+    ############################################################ */
     // ====== Analytics page
     analyticsRange.onchange = renderAnalytics;
 
@@ -1934,6 +2050,11 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
       });
     }
 
+    /* ######################## END: ANALYTICS LOGIC (JS) ############### */
+
+    /* ############################################################
+       BEGIN: ADD FORM (JS)
+    ############################################################ */
     // ====== Add application page
     addForm.addEventListener('submit', async (e)=>{
       e.preventDefault();
@@ -1991,6 +2112,11 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
       renderSaved(); renderAnalytics();
     };
 
+    /* ######################## END: ADD FORM (JS) ############### */
+
+    /* ############################################################
+       BEGIN: INIT (JS)
+    ############################################################ */
     // ====== Init renders
     (async ()=>{ await refreshData(); startPolling(); })();
 
@@ -2008,6 +2134,7 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
     document.addEventListener('DOMContentLoaded',()=>{
       currentEnv = envSelect.value;
     });
+    /* ######################## END: INIT (JS) ############### */
   </script>
 </body>
 </html>
