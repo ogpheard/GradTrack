@@ -36,6 +36,12 @@
   <!-- Charts (lightweight + responsive) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- BEGIN: DEADLINES LIBS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/dayjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/plugin/utc.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/plugin/timezone.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/plugin/isBetween.min.js"></script>
+  <!-- END: DEADLINES LIBS -->
   <!-- ############################################################
   # BEGIN: CSS (GLOBAL)
   ############################################################ -->
@@ -265,6 +271,12 @@
       .nav-controls{flex-direction:column;gap:1rem}
       .applications-grid{grid-template-columns:1fr}
     }
+    /* BEGIN: DEADLINES (SCOPED CSS) */
+    #deadlinesPage .kpi-chip{padding:.25rem .5rem;border-radius:8px;font-size:.75rem;font-weight:700;letter-spacing:.02em}
+    #deadlinesPage .kpi-chip.today{background:var(--warning-50);color:var(--warning-600)}
+    #deadlinesPage .kpi-chip.week{background:var(--primary-50);color:var(--primary-700)}
+    #deadlinesPage .kpi-chip.overdue{background:var(--danger-50);color:var(--danger-600)}
+    /* END: DEADLINES (SCOPED CSS) */
   </style>
   <!-- ######################## END: CSS (GLOBAL) ############## -->
 </head>
@@ -284,6 +296,7 @@
             <button id="savedTab" class="nav-tab" data-tab="saved">Saved</button>
             <button id="analyticsTab" class="nav-tab" data-tab="analytics">Analytics</button>
             <button id="addTab" class="nav-tab" data-tab="add">Add Application</button>
+            <button id="deadlinesTab" class="nav-tab" data-tab="deadlines">Deadlines</button>
           </nav>
           <div class="env-selector">
             <label>Environment:</label>
@@ -440,6 +453,60 @@
       </div>
     </div>
     <!-- ######################## END: ANALYTICS PAGE (HTML) ############## -->
+
+    <!-- ############################################################
+    # BEGIN: DEADLINES PAGE (HTML)
+    ############################################################ -->
+    <div id="deadlinesPage" class="page-content">
+      <div class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1rem">
+          <h2 style="font-size:1.4rem;font-weight:900;color:var(--gray-900)">Deadlines</h2>
+          <div class="kpi-chips" id="dl_kpis" style="display:flex;gap:.5rem;flex-wrap:wrap">
+            <span class="kpi-chip today">Due today: 0</span>
+            <span class="kpi-chip week">Due this week: 0</span>
+            <span class="kpi-chip overdue">Overdue: 0</span>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem">
+          <input id="dl_search" class="search-input" placeholder="Search deadlines…" style="flex:1;min-width:220px"/>
+          <select id="dl_company" class="filter-select"><option value="">All companies</option></select>
+          <select id="dl_type" class="filter-select">
+            <option value="">All types</option>
+            <option>OA</option><option>HireVue</option><option>Interview</option>
+            <option>Assessment</option><option>Other</option>
+          </select>
+          <select id="dl_status" class="filter-select">
+            <option value="">All statuses</option>
+            <option>open</option><option>snoozed</option><option>completed</option><option>overdue</option>
+          </select>
+          <select id="dl_conflict" class="filter-select">
+            <option value="">All items</option>
+            <option value="true">Has conflict</option>
+            <option value="false">No conflict</option>
+          </select>
+          <button id="dl_clear" class="btn btn-outline">Clear</button>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+          <div class="view-switcher">
+            <button class="btn btn-outline" id="dl_viewAgenda">Agenda</button>
+            <button class="btn btn-outline" id="dl_viewCalendar">Calendar</button>
+          </div>
+          <div id="dl_calendarTitle" style="font-weight:700;color:var(--gray-700);display:none"></div>
+        </div>
+
+        <div id="dl_agenda"></div>
+        <div id="dl_calendar" style="display:none">
+          <div id="dl_calendarGrid" class="calendar-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--gray-200)"></div>
+        </div>
+
+        <div id="dl_empty" class="empty-state" style="display:none">
+          <h3>No deadlines found</h3><p>Try adjusting your filters or search terms.</p>
+        </div>
+      </div>
+    </div>
+    <!-- ######################## END: DEADLINES PAGE (HTML) ############## -->
 
     <!-- ############################################################
     # BEGIN: ADD PAGE (HTML)
@@ -770,6 +837,8 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
     const savedTab = document.getElementById('savedTab');
     const analyticsTab = document.getElementById('analyticsTab');
     const addTab = document.getElementById('addTab');
+    // Deadlines tab
+    const deadlinesTab = document.getElementById('deadlinesTab');
 
     // Pages
     const analyzePage = document.getElementById('analyzePage');
@@ -777,6 +846,7 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
     const savedPage = document.getElementById('savedPage');
     const analyticsPage = document.getElementById('analyticsPage');
     const addPage = document.getElementById('addPage');
+    const deadlinesPage = document.getElementById('deadlinesPage');
 
     // Analyse page refs
     const jobText = document.getElementById('jobText');
@@ -1230,6 +1300,317 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
     /* ######################## END: HELPERS (JS) ############### */
 
     /* ############################################################
+       BEGIN: DEADLINES MODULE (JS)
+    ############################################################ */
+    dayjs.extend(dayjs_plugin_utc);
+    dayjs.extend(dayjs_plugin_timezone);
+    dayjs.extend(dayjs_plugin_isBetween);
+
+    const DEADLINES_TABLE = 'graduate_deadlines';
+
+    let dl_state = {
+      all: [],
+      filtered: [],
+      view: 'agenda',
+      weekStart: dayjs().tz('Europe/London').startOf('week'),
+      filters: { search:'', company:'', type:'', status:'', conflict:'' }
+    };
+
+    function dl_toItemShape(row){
+      const direct = {
+        id: row.id || row.idempotency_key || row.application_id || (crypto.randomUUID?.() || String(Date.now())),
+        company: row.company || row.company_name || '',
+        role: row.role || row.title || '',
+        type: row.type || '',
+        isWindow: Boolean(row.isWindow),
+        dueBy: row.dueBy || row.due_by || null,
+        startAt: row.startAt || null,
+        endAt: row.endAt || null,
+        timezone: row.timezone || 'Europe/London',
+        status: row.status || 'open',
+        priority: row.priority ?? 2,
+        sourceEmailSubject: row.sourceEmailSubject || row.source_email_subject || '',
+        notes: row.notes || '',
+        location: row.location || null,
+        meetingUrl: row.meetingUrl || null,
+        createdAt: row.createdAt || row.created_at || new Date().toISOString(),
+        updatedAt: row.updatedAt || row.updated_at || new Date().toISOString(),
+        hasConflict: Boolean(row.hasConflict)
+      };
+      if (!direct.isWindow && direct.startAt && !direct.endAt){
+        direct.endAt = dayjs(direct.startAt).add(60,'minute').toISOString();
+      }
+      return direct;
+    }
+
+    async function dl_fetch(){
+      const { data, error } = await db
+        .from(DEADLINES_TABLE)
+        .select('*')
+        .order('updated_at', { ascending:false })
+        .limit(1000);
+      if (error) throw error;
+
+      dl_state.all = (data||[])
+        .map(dl_toItemShape)
+        .filter(d => d.company && d.role && d.type && (d.isWindow ? d.dueBy : (d.startAt && d.endAt)));
+    }
+
+    function dl_applyFilters(){
+      const f = dl_state.filters;
+      const search = (f.search||'').toLowerCase();
+      dl_state.filtered = dl_state.all.filter(d=>{
+        if (f.company && d.company !== f.company) return false;
+        if (f.type && d.type !== f.type) return false;
+        if (f.status && d.status !== f.status) return false;
+        if (f.conflict){
+          const want = f.conflict === 'true';
+          if (Boolean(d.hasConflict) !== want) return false;
+        }
+        if (search){
+          const blob = `${d.company} ${d.role} ${d.type} ${d.notes||''}`.toLowerCase();
+          if (!blob.includes(search)) return false;
+        }
+        return true;
+      });
+    }
+
+    function dl_updateKPIs(){
+      const now = dayjs().tz('Europe/London');
+      const today = now.startOf('day');
+      const weekEnd = now.endOf('week');
+      let dueToday=0, dueThisWeek=0, overdue=0;
+
+      dl_state.all.forEach(d=>{
+        if (d.status === 'completed') return;
+        const when = d.isWindow ? dayjs(d.dueBy).tz('Europe/London') : dayjs(d.startAt).tz('Europe/London');
+        if (when.isBefore(now)) overdue++;
+        else if (when.isSame(today,'day')) dueToday++;
+        else if (when.isBefore(weekEnd)) dueThisWeek++;
+      });
+
+      const kpis = document.getElementById('dl_kpis');
+      if (kpis){
+        kpis.innerHTML = `
+    <span class="kpi-chip today">Due today: ${dueToday}</span>
+    <span class="kpi-chip week">Due this week: ${dueThisWeek}</span>
+    <span class="kpi-chip overdue">Overdue: ${overdue}</span>
+  `;
+      }
+    }
+
+    function dl_render(){
+      const empty = document.getElementById('dl_empty');
+      const hasItems = dl_state.filtered.length > 0;
+      if (!hasItems){
+        if (dl_state.view === 'agenda'){
+          document.getElementById('dl_calendar').style.display='none';
+          const agenda = document.getElementById('dl_agenda');
+          agenda.style.display='block';
+          agenda.innerHTML = '';
+          document.getElementById('dl_calendarTitle').style.display='none';
+          if (empty) empty.style.display='block';
+          return;
+        }
+        document.getElementById('dl_agenda').style.display='none';
+        document.getElementById('dl_calendar').style.display='block';
+        document.getElementById('dl_calendarGrid').innerHTML = '';
+        const title = document.getElementById('dl_calendarTitle');
+        title.style.display='block';
+        title.textContent = `Week of ${dl_state.weekStart.format('MMM D, YYYY')}`;
+        if (empty) empty.style.display='block';
+        dl_renderCalendar();
+        return;
+      }
+      if (empty) empty.style.display='none';
+      if (dl_state.view === 'agenda') dl_renderAgenda();
+      else dl_renderCalendar();
+    }
+
+    function dl_renderAgenda(){
+      const c = document.getElementById('dl_agenda');
+      const empty = document.getElementById('dl_empty');
+      document.getElementById('dl_calendar').style.display='none';
+      c.style.display='block';
+      document.getElementById('dl_calendarTitle').style.display='none';
+
+      const items = dl_state.filtered;
+      if (!items.length){ c.innerHTML=''; if (empty) empty.style.display='block'; return; }
+      if (empty) empty.style.display='none';
+
+      const now = dayjs().tz('Europe/London');
+      const groups = new Map();
+      for (const d of items){
+        const due = d.isWindow ? dayjs(d.dueBy).tz('Europe/London') : dayjs(d.startAt).tz('Europe/London');
+        let key = due.format('ddd D MMM');
+        if (due.isBefore(now,'day')) key='Overdue';
+        else if (due.isSame(now,'day')) key='Today';
+        else if (due.isSame(now.add(1,'day'),'day')) key='Tomorrow';
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(d);
+      }
+
+      const order = (a,b)=>{
+        const idx = {'Overdue':-3,'Today':-2,'Tomorrow':-1};
+        const ia = idx[a] ?? 0, ib = idx[b] ?? 0;
+        if (ia!==ib) return ia-ib;
+        const da = dayjs(a,'ddd D MMM'), db = dayjs(b,'ddd D MMM');
+        return da.valueOf()-db.valueOf();
+      };
+      const keys = [...groups.keys()].sort(order);
+
+      const html = keys.map(k=>{
+        const arr = groups.get(k).sort((a,b)=>{
+          const at = a.isWindow ? dayjs(a.dueBy) : dayjs(a.startAt);
+          const bt = b.isWindow ? dayjs(b.dueBy) : dayjs(b.startAt);
+          return at.valueOf()-bt.valueOf();
+        });
+        return `
+      <div class="agenda-section" style="margin-bottom:1.25rem">
+        <h3 class="agenda-date" style="font-weight:800;border-bottom:2px solid var(--primary-500);padding-bottom:.25rem;margin-bottom:.75rem">${k}</h3>
+        ${arr.map(dl_cardHTML).join('')}
+      </div>`;
+      }).join('');
+
+      c.innerHTML = html;
+    }
+
+    function dl_cardHTML(d){
+      const timing = d.isWindow
+        ? dl_timeUntil(d.dueBy).text
+        : `${dayjs(d.startAt).tz('Europe/London').format('HH:mm')} - ${dayjs(d.endAt).tz('Europe/London').format('HH:mm')} (${dayjs(d.endAt).diff(dayjs(d.startAt),'minute')}m)`;
+
+      const timingStyle = d.isWindow
+        ? (dayjs(d.dueBy).isBefore(dayjs()) ? 'color:var(--danger-600);font-weight:700' : 'color:var(--warning-600);font-weight:600')
+        : 'color:var(--gray-600)';
+
+      const statusChip = `<span class="badge" style="padding:.2rem .5rem;border-radius:10px;background:var(--gray-100);font-size:.75rem">${d.status}</span>`;
+      const conflictChip = d.hasConflict ? `<span class="badge" style="padding:.2rem .5rem;border-radius:10px;background:var(--warning-50);border:1px solid var(--warning-500);font-size:.75rem">⚠️ Conflict</span>` : '';
+
+      return `
+    <div class="deadline-card" style="border:1px solid var(--gray-200);border-radius:12px;padding:1rem;margin-bottom:.75rem;background:#fff">
+      <div class="card-title" style="font-weight:800;color:var(--gray-900)">${escapeHtml(d.company)} • ${escapeHtml(d.role)} • ${escapeHtml(d.type)}</div>
+      <div class="card-timing" style="${timingStyle};margin:.2rem 0 .4rem 0">${timing}</div>
+      <div class="card-badges" style="display:flex;gap:.35rem;margin-bottom:.4rem">${statusChip}${conflictChip}</div>
+      <div class="card-source" style="font-size:.8rem;color:var(--gray-500)">From email: "${escapeHtml(d.sourceEmailSubject||'')}"</div>
+      <div class="card-actions" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem">
+        <button class="btn btn-success btn-sm" onclick="dl_markDone('${d.id}')">Mark done</button>
+        <button class="btn btn-outline btn-sm" onclick="dl_snooze('${d.id}', 24)">Snooze 24h</button>
+      </div>
+    </div>`;
+    }
+
+    function dl_timeUntil(iso){
+      const now = dayjs().tz('Europe/London');
+      const tgt = dayjs(iso).tz('Europe/London');
+      const diff = tgt.diff(now);
+      if (diff < 0){
+        const h = Math.floor(Math.abs(diff)/36e5), m = Math.floor((Math.abs(diff)%36e5)/6e4);
+        return { text:`Overdue by ${h}h ${m}m`, isOverdue:true };
+      }
+      const d = Math.floor(diff/86400000);
+      const h = Math.floor((diff%86400000)/36e5);
+      const m = Math.floor((diff%36e5)/6e4);
+      return { text: d>0?`${d}d ${h}h`: h>0?`${h}h ${m}m`:`${m}m`, isOverdue:false };
+    }
+
+    function dl_renderCalendar(){
+      const title = document.getElementById('dl_calendarTitle');
+      const grid = document.getElementById('dl_calendarGrid');
+      const empty = document.getElementById('dl_empty');
+      document.getElementById('dl_agenda').style.display='none';
+      document.getElementById('dl_calendar').style.display='block';
+      title.style.display='block';
+      title.textContent = `Week of ${dl_state.weekStart.format('MMM D, YYYY')}`;
+
+      const days = [...Array(7)].map((_,i)=> dl_state.weekStart.add(i,'day'));
+      const inWeek = dl_state.filtered.filter(d=>{
+        const due = d.isWindow ? dayjs(d.dueBy).tz('Europe/London') : dayjs(d.startAt).tz('Europe/London');
+        return due.isBetween(dl_state.weekStart.startOf('day'), dl_state.weekStart.add(6,'day').endOf('day'), null, '[]');
+      });
+
+      grid.innerHTML = days.map(day=>{
+        const items = inWeek.filter(d => {
+          const due = d.isWindow ? dayjs(d.dueBy).tz('Europe/London') : dayjs(d.startAt).tz('Europe/London');
+          return due.isSame(day,'day');
+        });
+        return `
+      <div class="calendar-day" style="background:#fff;min-height:120px;padding:.75rem">
+        <div class="calendar-day-header" style="font-weight:700;color:var(--gray-600);margin-bottom:.5rem">${day.format('ddd D')}</div>
+        ${items.map(d=>{
+          const isW = d.isWindow;
+          const time = isW ? 'Due '+dayjs(d.dueBy).tz('Europe/London').format('HH:mm') : dayjs(d.startAt).tz('Europe/London').format('HH:mm');
+          const cls = isW ? 'background:var(--warning-500)' : 'background:var(--primary-500)';
+          return `<div class="calendar-event" style="${cls};color:#fff;border-radius:6px;padding:.25rem .5rem;margin-bottom:.25rem;cursor:pointer" title="${escapeHtml(d.company)}">
+            <div style="font-weight:700">${escapeHtml(d.company)} • ${escapeHtml(d.type)}</div>
+            <div style="opacity:.9">${time}</div>
+          </div>`;
+        }).join('')}
+      </div>`;
+      }).join('');
+    }
+
+    function dl_markDone(id){
+      const it = dl_state.all.find(x=>x.id===id); if (!it) return;
+      it.status='completed'; it.updatedAt=new Date().toISOString();
+      dl_applyFilters(); dl_updateKPIs(); dl_render();
+    }
+    function dl_snooze(id, hours){
+      const it = dl_state.all.find(x=>x.id===id); if (!it) return;
+      if (it.isWindow){ it.dueBy = dayjs(it.dueBy).add(hours,'hour').toISOString(); }
+      else {
+        const dur = dayjs(it.endAt).diff(dayjs(it.startAt),'minute');
+        it.startAt = dayjs(it.startAt).add(hours,'hour').toISOString();
+        it.endAt = dayjs(it.startAt).add(dur,'minute').toISOString();
+      }
+      it.status='snoozed'; it.updatedAt=new Date().toISOString();
+      dl_applyFilters(); dl_updateKPIs(); dl_render();
+    }
+
+    function dl_populateCompanies(){
+      const sel = document.getElementById('dl_company');
+      if (!sel) return;
+      const companies = [...new Set(dl_state.all.map(d=>d.company))].sort();
+      sel.innerHTML = '<option value="">All companies</option>' + companies.map(c=>`<option>${escapeHtml(c)}</option>`).join('');
+    }
+
+    async function initDeadlinesPage(){
+      if (!initDeadlinesPage._wired){
+        document.getElementById('dl_viewAgenda').onclick = ()=>{ dl_state.view='agenda'; dl_render(); };
+        document.getElementById('dl_viewCalendar').onclick = ()=>{ dl_state.view='calendar'; dl_render(); };
+
+        document.getElementById('dl_search').oninput = (e)=>{ dl_state.filters.search=e.target.value; dl_applyFilters(); dl_updateKPIs(); dl_render(); };
+        document.getElementById('dl_company').onchange = (e)=>{ dl_state.filters.company=e.target.value; dl_applyFilters(); dl_updateKPIs(); dl_render(); };
+        document.getElementById('dl_type').onchange = (e)=>{ dl_state.filters.type=e.target.value; dl_applyFilters(); dl_updateKPIs(); dl_render(); };
+        document.getElementById('dl_status').onchange = (e)=>{ dl_state.filters.status=e.target.value; dl_applyFilters(); dl_updateKPIs(); dl_render(); };
+        document.getElementById('dl_conflict').onchange = (e)=>{ dl_state.filters.conflict=e.target.value; dl_applyFilters(); dl_updateKPIs(); dl_render(); };
+        document.getElementById('dl_clear').onclick = ()=>{
+          dl_state.filters = { search:'', company:'', type:'', status:'', conflict:'' };
+          document.getElementById('dl_search').value='';
+          document.getElementById('dl_company').value='';
+          document.getElementById('dl_type').value='';
+          document.getElementById('dl_status').value='';
+          document.getElementById('dl_conflict').value='';
+          dl_applyFilters(); dl_updateKPIs(); dl_render();
+        };
+        initDeadlinesPage._wired = true;
+      }
+
+      try{
+        await dl_fetch();
+        dl_populateCompanies();
+        dl_applyFilters();
+        dl_updateKPIs();
+        dl_render();
+      }catch(e){
+        console.error(e);
+        const agenda = document.getElementById('dl_agenda');
+        if (agenda) agenda.innerHTML = '<div class="empty-state">Failed to load deadlines from Supabase.</div>';
+      }
+    }
+    /* ######################## END: DEADLINES MODULE (JS) ############### */
+
+    /* ############################################################
        BEGIN: TABS/ROUTER (JS)
     ############################################################ */
     // ====== Tabs
@@ -1242,6 +1623,7 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
       if (name==='applications') renderApplications();
       if (name==='saved') renderSaved();
       if (name==='analytics') renderAnalytics();
+      if (name==='deadlines') initDeadlinesPage();
       history.replaceState(null,'',`#${name}`);
     }
     analyzeTab.onclick = () => switchTab('analyze');
@@ -1249,10 +1631,12 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
     savedTab.onclick = () => switchTab('saved');
     analyticsTab.onclick = () => switchTab('analytics');
     addTab.onclick = () => switchTab('add');
+    deadlinesTab.onclick = () => switchTab('deadlines');
     if (location.hash==='#applications') switchTab('applications');
     if (location.hash==='#saved') switchTab('saved');
     if (location.hash==='#analytics') switchTab('analytics');
     if (location.hash==='#add') switchTab('add');
+    if (location.hash==='#deadlines') switchTab('deadlines');
 
     /* ######################## END: TABS/ROUTER (JS) ############### */
 
@@ -1265,6 +1649,7 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         { auth:{ persistSession:false, autoRefreshToken:false, detectSessionInUrl:false } });
       toast(`Switched to ${currentEnv.toUpperCase()}`);
       refreshData(true);
+      if (deadlinesPage.classList.contains('active')) initDeadlinesPage();
     };
     /* ######################## END: ENV SWITCH (JS) ############### */
 
