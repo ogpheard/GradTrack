@@ -1223,8 +1223,9 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         salary: r.salary_raw ||
                 (`${r.salary_currency||''} ${r.salary_min||''}${r.salary_max?`–${r.salary_max}`:''} ${r.salary_period||''}`).trim(),
 
-        fitScore: toNum(r.AI_fit_score) ?? 0,
-        alignmentScore: toNum(r.AI_alignment_score) ?? 0,
+        // use lowercase first, fallback to legacy
+        fitScore: toNum(r.ai_fit_score ?? r.AI_fit_score) ?? 0,
+        alignmentScore: toNum(r.ai_alignment_score ?? r.AI_alignment_score) ?? 0,
 
         source: r.canonical_job_url ? new URL(r.canonical_job_url).hostname :
                 (r.source_url ? new URL(r.source_url).hostname : '—'),
@@ -1254,30 +1255,36 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
           .limit(1000);
         if (error) throw error;
 
-        const norm = (r) => ({
-          ...r,
-          // arrays
-          locations:          normalizeListField(r.locations),
-          key_requirements:   normalizeListField(r.key_requirements),
-          other_requirements: normalizeListField(r.other_requirements),
-          fits:               normalizeListField(r.fits),
-          gaps:               normalizeListField(r.gaps),
-          keywords:           normalizeListField(r.keywords),
+        const norm = (r) => {
+          const aiFit = toNum(r.ai_fit_score ?? r.AI_fit_score);
+          const aiAlign = toNum(r.ai_alignment_score ?? r.AI_alignment_score);
+          return {
+            ...r,
+            // arrays
+            locations:          normalizeListField(r.locations),
+            key_requirements:   normalizeListField(r.key_requirements),
+            other_requirements: normalizeListField(r.other_requirements),
+            fits:               normalizeListField(r.fits),
+            gaps:               normalizeListField(r.gaps),
+            keywords:           normalizeListField(r.keywords),
 
-          // numbers
-          AI_fit_score:               toNum(r.AI_fit_score),
-          AI_alignment_score:         toNum(r.AI_alignment_score),
-          salary_min:                 toNum(r.salary_min),
-          salary_max:                 toNum(r.salary_max),
-          application_effort_rating:  toNum(r.application_effort_rating),
-          application_chance_rating:  toNum(r.application_chance_rating),
+            // numbers
+            ai_fit_score:              aiFit,
+            ai_alignment_score:        aiAlign,
+            AI_fit_score:              aiFit,
+            AI_alignment_score:        aiAlign,
+            salary_min:                toNum(r.salary_min),
+            salary_max:                toNum(r.salary_max),
+            application_effort_rating: toNum(r.application_effort_rating),
+            application_chance_rating: toNum(r.application_chance_rating),
 
-          // dates
-          applied_date: toISODateOrNull(r.applied_date),
+            // dates
+            applied_date: toISODateOrNull(r.applied_date),
 
-          // strings
-          status: coerceStatus(r.status),
-        });
+            // strings
+            status: coerceStatus(r.status),
+          };
+        };
 
         const dataNorm = (data || []).map(norm);
         appsLive = {
@@ -2170,8 +2177,8 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         <div class="detail-item"><div class="detail-label">URL</div><div class="detail-value">${url?`<a href="${url}" target="_blank" rel="noopener">${escapeHtml(url)}</a>`:'—'}</div></div>
       `;
 
-      const fit = Math.max(0, Math.min(100, (toNum(a.AI_fit_score) ?? 0)));
-      const align = Math.max(0, Math.min(100, (toNum(a.AI_alignment_score) ?? 0)));
+      const fit = Math.max(0, Math.min(100, (toNum(a.ai_fit_score ?? a.AI_fit_score) ?? 0)));
+      const align = Math.max(0, Math.min(100, (toNum(a.ai_alignment_score ?? a.AI_alignment_score) ?? 0)));
       fitScoreEl.textContent = `${fit}%`; fitFillEl.style.width=`${fit}%`;
       alignScoreEl.textContent = `${align}%`; alignFillEl.style.width=`${align}%`;
 
@@ -2218,9 +2225,12 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         salary_currency: salary.currency ?? a.salary_currency ?? null,
         salary_period: salary.period ?? a.salary_period ?? null,
         salary_raw: salary.salary_raw || a.salary_raw || '',
+
         locations: normalizeListField(a.locations),
-        AI_fit_score: toNum(a.AI_fit_score),
-        AI_alignment_score: toNum(a.AI_alignment_score),
+        // IMPORTANT: write lowercase to DB
+        ai_fit_score: toNum(a.ai_fit_score ?? a.AI_fit_score),
+        ai_alignment_score: toNum(a.ai_alignment_score ?? a.AI_alignment_score),
+
         AI_cv_filename: a.AI_cv_recommendation?.filename || a.AI_cv_filename || '',
         AI_cv_reason: a.AI_cv_recommendation?.reason || a.AI_cv_reason || '',
         key_requirements: normalizeListField(a.key_requirements),
@@ -2230,6 +2240,7 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         job_summary: a.job_summary || '',
         keywords: normalizeListField(a.keywords),
         job_description: a.job_description || '',
+
         status: opts.status,
         applied_date: opts.status==='Applied' ? (opts.appliedDate || londonTodayISO()) : null,
         application_effort_rating: toNum(opts.effort ?? a.application_effort_rating),
@@ -2251,17 +2262,18 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
       out.keywords           = normalizeListField(out.keywords);
 
       // numbers
-      out.AI_fit_score              = toNum(out.AI_fit_score);
-      out.AI_alignment_score        = toNum(out.AI_alignment_score);
+      out.ai_fit_score        = toNum(out.ai_fit_score ?? out.AI_fit_score);
+      out.ai_alignment_score  = toNum(out.ai_alignment_score ?? out.AI_alignment_score);
+      delete out.AI_fit_score;
+      delete out.AI_alignment_score;
+
       out.salary_min                = toNum(out.salary_min);
       out.salary_max                = toNum(out.salary_max);
       out.application_effort_rating = toNum(out.application_effort_rating);
       out.application_chance_rating = toNum(out.application_chance_rating);
 
-      // dates
+      // dates/strings
       out.applied_date = toISODateOrNull(out.applied_date);
-
-      // strings
       out.status = coerceStatus(out.status);
 
       return out;
@@ -2269,7 +2281,7 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
     async function sbInsert(row){
       const cleaned = cleanRowForDB(row);
       if (!cleaned.application_id) cleaned.application_id = (crypto.randomUUID?.() || String(Date.now()));
-      if (cleaned.status) cleaned.status_update_date = new Date().toISOString();
+      if (cleaned.status) cleaned.status_update_date = londonTodayISO(); // DATE only
       const { data, error } = await db.from(TABLE).insert(cleaned).select('*').single();
       if (error) throw error;
       return data;
@@ -2277,8 +2289,20 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
 
     async function sbUpsertOnId(row){
       const cleaned = cleanRowForDB(row);
-      if (cleaned.status) cleaned.status_update_date = new Date().toISOString();
+      if (cleaned.status) cleaned.status_update_date = londonTodayISO(); // DATE only
       const { data, error } = await db.from(TABLE).upsert(cleaned, { onConflict:'application_id' }).select('*').single();
+      if (error) throw error;
+      return data;
+    }
+
+    async function sbUpsertOnUnique(row){
+      const cleaned = cleanRowForDB(row);
+      if (cleaned.status) cleaned.status_update_date = londonTodayISO();
+      const { data, error } = await db
+        .from(TABLE)
+        .upsert(cleaned, { onConflict: 'canonical_job_url,company_name,title' })
+        .select('*')
+        .single();
       if (error) throw error;
       return data;
     }
@@ -2287,7 +2311,7 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
       if (!draft) return;
       try{
         const payload = cleanRowForDB(toApplicationsPayload(draft, { status:'Saved' }));
-        await sbInsert(payload);
+        await sbUpsertOnUnique(payload);
         toast('Saved for later ✅');
         await refreshData(true);
       }catch(e){ console.error(e); toast('Save failed'); }
@@ -2304,7 +2328,7 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
           chance: chanceRaw,
           appliedDate: londonTodayISO()
         });
-        await sbInsert(cleanRowForDB(payload));
+        await sbUpsertOnUnique(cleanRowForDB(payload));
         toast('Marked as applied 🎉');
         ratingInputs.classList.remove('show'); ratingInputs.setAttribute('aria-hidden','true');
         await refreshData(true);
@@ -2399,6 +2423,8 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
       modalTitle.textContent = raw.title || 'Untitled role';
 
       const bullet = arr => asArray(arr).map(x=>`• ${escapeHtml(x)}`).join('<br/>') || '—';
+      const aiFitRaw = toNum(raw.ai_fit_score ?? raw.AI_fit_score);
+      const aiAlignRaw = toNum(raw.ai_alignment_score ?? raw.AI_alignment_score);
       const detailFields = [
         ['Source URL', raw.source_url ? `<a href="${escapeHtml(raw.source_url)}" target="_blank" rel="noopener">${escapeHtml(raw.source_url)}</a>` : '—'],
         ['Title', raw.title],
@@ -2416,8 +2442,8 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         ['Salary Period', raw.salary_period],
         ['Salary Raw', raw.salary_raw],
         ['Locations', escapeHtml(listToComma(raw.locations))],
-        ['AI Fit Score', raw.AI_fit_score],
-        ['AI Alignment Score', raw.AI_alignment_score],
+        ['AI Fit Score', aiFitRaw],
+        ['AI Alignment Score', aiAlignRaw],
         ['AI CV Filename', raw.AI_cv_filename],
         ['AI CV Reason', raw.AI_cv_reason],
         ['Status', (() => {
@@ -2438,8 +2464,8 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         return `<div class="detail-item"><div class="detail-label">${label}</div><div class="detail-value">${v}</div></div>`;
       }).join('');
 
-      const fit = Math.max(0, Math.min(100, Number(raw.AI_fit_score || 0)));
-      const align = Math.max(0, Math.min(100, Number(raw.AI_alignment_score || 0)));
+      const fit = Math.max(0, Math.min(100, Number(aiFitRaw ?? 0)));
+      const align = Math.max(0, Math.min(100, Number(aiAlignRaw ?? 0)));
 
       modalBody.innerHTML = `
         <div class="job-details">${detailsHtml}</div>
@@ -2516,10 +2542,10 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
           </div>
 
           <div class="form-field"><label>AI Fit %</label>
-            <input name="AI_fit_score" type="number" min="0" max="100" value="${escapeHtml(raw.AI_fit_score||0)}"/>
+            <input name="AI_fit_score" type="number" min="0" max="100" value="${escapeHtml((raw.ai_fit_score ?? raw.AI_fit_score ?? '') || 0)}"/>
           </div>
           <div class="form-field"><label>AI Alignment %</label>
-            <input name="AI_alignment_score" type="number" min="0" max="100" value="${escapeHtml(raw.AI_alignment_score||0)}"/>
+            <input name="AI_alignment_score" type="number" min="0" max="100" value="${escapeHtml((raw.ai_alignment_score ?? raw.AI_alignment_score ?? '') || 0)}"/>
           </div>
           <div class="form-field"><label>Effort /10</label>
             <input name="application_effort_rating" type="number" min="0" max="10" step="1" value="${escapeHtml(raw.application_effort_rating ?? '')}"/>
@@ -2578,8 +2604,8 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
           salary_currency: fd.get('salary_currency') || null,
           salary_period: fd.get('salary_period') || null,
 
-          AI_fit_score: fd.get('AI_fit_score'),
-          AI_alignment_score: fd.get('AI_alignment_score'),
+          ai_fit_score: fd.get('AI_fit_score'),
+          ai_alignment_score: fd.get('AI_alignment_score'),
           application_effort_rating: fd.get('application_effort_rating'),
           application_chance_rating: fd.get('application_chance_rating'),
 
@@ -2587,7 +2613,7 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
           job_description: fd.get('job_description') || '',
 
           applied_date: fd.get('applied_date') || (statusSlug==='applied' ? londonTodayISO() : null),
-          status_update_date: new Date().toISOString()
+          status_update_date: londonTodayISO()
         });
 
         if (!payload.application_id) throw new Error('Missing application_id');
@@ -2907,8 +2933,8 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         salary_period: fd.get('salary_period') || null,
         salary_raw: '',
         locations: toArraySmart(fd.get('locations')),
-        AI_fit_score: fd.get('AI_fit_score'),
-        AI_alignment_score: fd.get('AI_alignment_score'),
+        ai_fit_score: fd.get('AI_fit_score'),
+        ai_alignment_score: fd.get('AI_alignment_score'),
         AI_cv_filename:'', AI_cv_reason:'',
         key_requirements: [],
         other_requirements: [],
@@ -2925,7 +2951,7 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         cover_letter_url:''
       });
       try{
-        await sbInsert(payload);
+        await sbUpsertOnUnique(payload);
         toast('Saved ✅');
         addForm.reset();
         await refreshData(true);
