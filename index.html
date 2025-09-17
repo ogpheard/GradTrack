@@ -693,8 +693,8 @@
             <div class="form-field"><label>Effort /10</label><input type="number" min="0" max="10" step="1" name="application_effort_rating"/></div>
             <div class="form-field"><label>Chance /10</label><input type="number" min="0" max="10" step="1" name="application_chance_rating"/></div>
 
-            <div class="form-field"><label>AI Fit %</label><input type="number" min="0" max="100" step="1" name="AI_fit_score"/></div>
-            <div class="form-field"><label>AI Alignment %</label><input type="number" min="0" max="100" step="1" name="AI_alignment_score"/></div>
+            <div class="form-field"><label>AI Fit %</label><input type="number" min="0" max="100" step="1" name="ai_fit_score"/></div>
+            <div class="form-field"><label>AI Alignment %</label><input type="number" min="0" max="100" step="1" name="ai_alignment_score"/></div>
             <div class="form-field"><label>Salary min</label><input type="number" name="salary_min"/></div>
             <div class="form-field"><label>Salary max</label><input type="number" name="salary_max"/></div>
             <div class="form-field"><label>Salary currency</label><input name="salary_currency" placeholder="£"/></div>
@@ -1256,33 +1256,33 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         if (error) throw error;
 
         const norm = (r) => {
-          const aiFit = toNum(r.ai_fit_score ?? r.AI_fit_score);
-          const aiAlign = toNum(r.ai_alignment_score ?? r.AI_alignment_score);
+          const fixed = fixAIKeys(r);
+          const aiFit = toNum(fixed.ai_fit_score);
+          const aiAlign = toNum(fixed.ai_alignment_score);
           return {
-            ...r,
+            ...fixed,
             // arrays
-            locations:          normalizeListField(r.locations),
-            key_requirements:   normalizeListField(r.key_requirements),
-            other_requirements: normalizeListField(r.other_requirements),
-            fits:               normalizeListField(r.fits),
-            gaps:               normalizeListField(r.gaps),
-            keywords:           normalizeListField(r.keywords),
+            locations:          normalizeListField(fixed.locations),
+            key_requirements:   normalizeListField(fixed.key_requirements),
+            other_requirements: normalizeListField(fixed.other_requirements),
+            fits:               normalizeListField(fixed.fits),
+            gaps:               normalizeListField(fixed.gaps),
+            keywords:           normalizeListField(fixed.keywords),
 
             // numbers
             ai_fit_score:              aiFit,
             ai_alignment_score:        aiAlign,
-            AI_fit_score:              aiFit,
-            AI_alignment_score:        aiAlign,
-            salary_min:                toNum(r.salary_min),
-            salary_max:                toNum(r.salary_max),
-            application_effort_rating: toNum(r.application_effort_rating),
-            application_chance_rating: toNum(r.application_chance_rating),
+            salary_min:                toNum(fixed.salary_min),
+            salary_max:                toNum(fixed.salary_max),
+            application_effort_rating: toNum(fixed.application_effort_rating),
+            application_chance_rating: toNum(fixed.application_chance_rating),
 
             // dates
-            applied_date: toISODateOrNull(r.applied_date),
+            applied_date:       fixed.applied_date ? toISODateOrNull(fixed.applied_date) : null,
+            status_update_date: fixed.status_update_date ? toISODateOrNull(fixed.status_update_date) : null,
 
             // strings
-            status: coerceStatus(r.status),
+            status: coerceStatus(fixed.status),
           };
         };
 
@@ -2177,8 +2177,8 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         <div class="detail-item"><div class="detail-label">URL</div><div class="detail-value">${url?`<a href="${url}" target="_blank" rel="noopener">${escapeHtml(url)}</a>`:'—'}</div></div>
       `;
 
-      const fit = Math.max(0, Math.min(100, (toNum(a.ai_fit_score ?? a.AI_fit_score) ?? 0)));
-      const align = Math.max(0, Math.min(100, (toNum(a.ai_alignment_score ?? a.AI_alignment_score) ?? 0)));
+      const fit = Math.max(0, Math.min(100, toNum(a.ai_fit_score ?? a.AI_fit_score) ?? 0));
+      const align = Math.max(0, Math.min(100, toNum(a.ai_alignment_score ?? a.AI_alignment_score) ?? 0));
       fitScoreEl.textContent = `${fit}%`; fitFillEl.style.width=`${fit}%`;
       alignScoreEl.textContent = `${align}%`; alignFillEl.style.width=`${align}%`;
 
@@ -2220,6 +2220,7 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         date_posted: a.date_posted || null,
         date_deadline: a.date_deadline || null,
         start_date: a.start_date || null,
+
         salary_min: toNum(salary.min ?? a.salary_min),
         salary_max: toNum(salary.max ?? a.salary_max),
         salary_currency: salary.currency ?? a.salary_currency ?? null,
@@ -2227,22 +2228,23 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         salary_raw: salary.salary_raw || a.salary_raw || '',
 
         locations: normalizeListField(a.locations),
-        // IMPORTANT: write lowercase to DB
-        ai_fit_score: toNum(a.ai_fit_score ?? a.AI_fit_score),
-        ai_alignment_score: toNum(a.ai_alignment_score ?? a.AI_alignment_score),
 
-        AI_cv_filename: a.AI_cv_recommendation?.filename || a.AI_cv_filename || '',
-        AI_cv_reason: a.AI_cv_recommendation?.reason || a.AI_cv_reason || '',
-        key_requirements: normalizeListField(a.key_requirements),
+        // LOWERCASE schema keys (accept legacy sources)
+        ai_fit_score:       toNum(a.ai_fit_score ?? a.AI_fit_score),
+        ai_alignment_score: toNum(a.ai_alignment_score ?? a.AI_alignment_score),
+        ai_cv_filename:     a.ai_cv_filename ?? a.AI_cv_filename ?? a.AI_cv_recommendation?.filename ?? '',
+        ai_cv_reason:       a.ai_cv_reason   ?? a.AI_cv_reason   ?? a.AI_cv_recommendation?.reason   ?? '',
+
+        key_requirements:   normalizeListField(a.key_requirements),
         other_requirements: normalizeListField(a.other_requirements),
-        fits: normalizeListField(a.fits),
-        gaps: normalizeListField(a.gaps),
-        job_summary: a.job_summary || '',
-        keywords: normalizeListField(a.keywords),
-        job_description: a.job_description || '',
+        fits:               normalizeListField(a.fits),
+        gaps:               normalizeListField(a.gaps),
+        job_summary:        a.job_summary || '',
+        keywords:           normalizeListField(a.keywords),
+        job_description:    a.job_description || '',
 
         status: opts.status,
-        applied_date: opts.status==='Applied' ? (opts.appliedDate || londonTodayISO()) : null,
+        applied_date: opts.status === 'Applied' ? (opts.appliedDate || londonTodayISO()) : null,
         application_effort_rating: toNum(opts.effort ?? a.application_effort_rating),
         application_chance_rating: toNum(opts.chance ?? a.application_chance_rating),
         status_update_date: londonTodayISO(),
@@ -2250,10 +2252,24 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
       };
     }
 
-    function cleanRowForDB(row){
+    function fixAIKeys(row){
       const out = { ...row };
+      if (out.AI_fit_score != null && out.ai_fit_score == null) out.ai_fit_score = toNum(out.AI_fit_score);
+      if (out.AI_alignment_score != null && out.ai_alignment_score == null) out.ai_alignment_score = toNum(out.AI_alignment_score);
+      if (out.AI_cv_filename != null && out.ai_cv_filename == null) out.ai_cv_filename = String(out.AI_cv_filename);
+      if (out.AI_cv_reason != null && out.ai_cv_reason == null) out.ai_cv_reason = String(out.AI_cv_reason);
+      delete out.AI_fit_score;
+      delete out.AI_alignment_score;
+      delete out.AI_cv_filename;
+      delete out.AI_cv_reason;
+      return out;
+    }
 
-      // arrays
+    function cleanRowForDB(row){
+      let out = fixAIKeys(row);
+      out = { ...out };
+
+      // arrays (must be JSON arrays, never null)
       out.locations          = normalizeListField(out.locations);
       out.key_requirements   = normalizeListField(out.key_requirements);
       out.other_requirements = normalizeListField(out.other_requirements);
@@ -2262,49 +2278,56 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
       out.keywords           = normalizeListField(out.keywords);
 
       // numbers
-      out.ai_fit_score        = toNum(out.ai_fit_score ?? out.AI_fit_score);
-      out.ai_alignment_score  = toNum(out.ai_alignment_score ?? out.AI_alignment_score);
-      delete out.AI_fit_score;
-      delete out.AI_alignment_score;
-
+      out.ai_fit_score              = toNum(out.ai_fit_score);
+      out.ai_alignment_score        = toNum(out.ai_alignment_score);
       out.salary_min                = toNum(out.salary_min);
       out.salary_max                = toNum(out.salary_max);
       out.application_effort_rating = toNum(out.application_effort_rating);
       out.application_chance_rating = toNum(out.application_chance_rating);
 
-      // dates/strings
-      out.applied_date = toISODateOrNull(out.applied_date);
+      // dates/text
+      out.applied_date       = toISODateOrNull(out.applied_date);
+      out.status_update_date = toISODateOrNull(out.status_update_date);
+
+      // strings
       out.status = coerceStatus(out.status);
 
+      // PK
+      if (!out.application_id) out.application_id = (crypto.randomUUID?.() || String(Date.now()));
       return out;
     }
     async function sbInsert(row){
       const cleaned = cleanRowForDB(row);
-      if (!cleaned.application_id) cleaned.application_id = (crypto.randomUUID?.() || String(Date.now()));
-      if (cleaned.status) cleaned.status_update_date = londonTodayISO(); // DATE only
-      const { data, error } = await db.from(TABLE).insert(cleaned).select('*').single();
-      if (error) throw error;
-      return data;
+      if (cleaned.status) cleaned.status_update_date = cleaned.status_update_date || londonTodayISO();
+      console.log('DB WRITE payload', cleaned);
+      const res = await db.from(TABLE).insert(cleaned).select('*').single();
+      console.log('DB RESPONSE', { status: res.status, error: res.error, data: res.data });
+      if (res.error) throw res.error;
+      return res.data;
     }
 
     async function sbUpsertOnId(row){
       const cleaned = cleanRowForDB(row);
-      if (cleaned.status) cleaned.status_update_date = londonTodayISO(); // DATE only
-      const { data, error } = await db.from(TABLE).upsert(cleaned, { onConflict:'application_id' }).select('*').single();
-      if (error) throw error;
-      return data;
+      if (cleaned.status) cleaned.status_update_date = cleaned.status_update_date || londonTodayISO();
+      console.log('DB WRITE payload', cleaned);
+      const res = await db.from(TABLE).upsert(cleaned, { onConflict:'application_id' }).select('*').single();
+      console.log('DB RESPONSE', { status: res.status, error: res.error, data: res.data });
+      if (res.error) throw res.error;
+      return res.data;
     }
 
     async function sbUpsertOnUnique(row){
       const cleaned = cleanRowForDB(row);
-      if (cleaned.status) cleaned.status_update_date = londonTodayISO();
-      const { data, error } = await db
+      if (cleaned.status) cleaned.status_update_date = cleaned.status_update_date || londonTodayISO();
+      console.log('DB WRITE payload', cleaned);
+      const res = await db
         .from(TABLE)
         .upsert(cleaned, { onConflict: 'canonical_job_url,company_name,title' })
         .select('*')
         .single();
-      if (error) throw error;
-      return data;
+      console.log('DB RESPONSE', { status: res.status, error: res.error, data: res.data });
+      if (res.error) throw res.error;
+      return res.data;
     }
 
     async function onSave(){
@@ -2444,8 +2467,8 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         ['Locations', escapeHtml(listToComma(raw.locations))],
         ['AI Fit Score', aiFitRaw],
         ['AI Alignment Score', aiAlignRaw],
-        ['AI CV Filename', raw.AI_cv_filename],
-        ['AI CV Reason', raw.AI_cv_reason],
+        ['AI CV Filename', raw.ai_cv_filename ?? raw.AI_cv_filename],
+        ['AI CV Reason', raw.ai_cv_reason ?? raw.AI_cv_reason],
         ['Status', (() => {
           const slug = card.status;
           const cls = STATUS_STYLE[slug] || STATUS_STYLE.default;
@@ -2542,10 +2565,10 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
           </div>
 
           <div class="form-field"><label>AI Fit %</label>
-            <input name="AI_fit_score" type="number" min="0" max="100" value="${escapeHtml((raw.ai_fit_score ?? raw.AI_fit_score ?? '') || 0)}"/>
+            <input name="ai_fit_score" type="number" min="0" max="100" value="${escapeHtml(raw.ai_fit_score ?? 0)}"/>
           </div>
           <div class="form-field"><label>AI Alignment %</label>
-            <input name="AI_alignment_score" type="number" min="0" max="100" value="${escapeHtml((raw.ai_alignment_score ?? raw.AI_alignment_score ?? '') || 0)}"/>
+            <input name="ai_alignment_score" type="number" min="0" max="100" value="${escapeHtml(raw.ai_alignment_score ?? 0)}"/>
           </div>
           <div class="form-field"><label>Effort /10</label>
             <input name="application_effort_rating" type="number" min="0" max="10" step="1" value="${escapeHtml(raw.application_effort_rating ?? '')}"/>
@@ -2604,8 +2627,8 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
           salary_currency: fd.get('salary_currency') || null,
           salary_period: fd.get('salary_period') || null,
 
-          ai_fit_score: fd.get('AI_fit_score'),
-          ai_alignment_score: fd.get('AI_alignment_score'),
+          ai_fit_score: fd.get('ai_fit_score'),
+          ai_alignment_score: fd.get('ai_alignment_score'),
           application_effort_rating: fd.get('application_effort_rating'),
           application_chance_rating: fd.get('application_chance_rating'),
 
@@ -2933,9 +2956,9 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         salary_period: fd.get('salary_period') || null,
         salary_raw: '',
         locations: toArraySmart(fd.get('locations')),
-        ai_fit_score: fd.get('AI_fit_score'),
-        ai_alignment_score: fd.get('AI_alignment_score'),
-        AI_cv_filename:'', AI_cv_reason:'',
+        ai_fit_score: fd.get('ai_fit_score'),
+        ai_alignment_score: fd.get('ai_alignment_score'),
+        ai_cv_filename:'', ai_cv_reason:'',
         key_requirements: [],
         other_requirements: [],
         fits: toArraySmart(fd.get('fits')),
