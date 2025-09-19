@@ -180,6 +180,8 @@
     .applications-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:1.1rem}
     .application-card{background:rgba(255,255,255,.95);border:1px solid rgba(255,255,255,.2);border-radius:16px;padding:1.1rem;box-shadow:var(--shadow-md);cursor:pointer;transition:.2s;position:relative}
     .application-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+    .application-card.lift-once{animation:liftIn .35s ease-out}
+    @keyframes liftIn{from{transform:translateY(8px);opacity:0}to{transform:translateY(0);opacity:1}}
     .application-status{position:absolute;top:.75rem;right:.75rem;padding:.2rem .65rem;border-radius:20px;font-size:.72rem;font-weight:800;text-transform:uppercase}
       .status-applied{background:var(--success-50);color:var(--success-600);border:1px solid #bbf7d0}
       .status-saved{background:var(--primary-50);color:var(--primary-600);border:1px solid #bfdbfe}
@@ -1608,6 +1610,21 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
     }
     function formatDate(d){ return d ? new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—'; }
 
+    function splitBySearchMatch(items, searchResults) {
+      if (!searchResults || !searchResults.hasQuery) {
+        return { matches: null, others: items };
+      }
+      const idSet = new Set(searchResults.results.map(r => r.id));
+      const matches = searchResults.results;
+      const others  = items.filter(it => !idSet.has(it.id));
+      return { matches, others };
+    }
+
+    function scrollGridToTop(el){
+      if (!el) return;
+      el.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
     // ---- Analytics helpers ----
     const STATUS_COLOR_PALETTE = ['#667eea', '#4facfe', '#38ef7d', '#f093fb', '#f5576c', '#9ca3af', '#a78bfa', '#fdba74'];
     let STATUS_COLORS = {};
@@ -2750,41 +2767,61 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
     function renderApplications(){
       let arr = [...applicationsList];
 
-      // Apply search if active
-      const searchResults = searchState.applications.results;
-      if (searchResults && searchResults.hasQuery) {
-        arr = searchResults.results;
-        updateSearchInfo('applications', searchResults.totalFound, searchResults.originalCount);
-      } else {
-        hideSearchInfo('applications');
-      }
-
-      // Apply status filter
       const s = statusFilter.value;
       if (s !== 'all') arr = arr.filter(a => normaliseStatus(a.status) === s);
 
-      // Apply sorting
-      const sort = sortFilter.value;
-      if (sort === 'relevance' && searchResults && searchResults.hasQuery) {
-        // Already sorted by relevance from search
-      } else if (sort==='date-desc') {
-        arr.sort((a,b)=> new Date(b.appliedDate||'2000-01-01') - new Date(a.appliedDate||'2000-01-01'));
-      } else if (sort==='date-asc') {
-        arr.sort((a,b)=> new Date(a.appliedDate||'2000-01-01') - new Date(b.appliedDate||'2000-01-01'));
-      } else if (sort==='fit-desc') {
-        arr.sort((a,b)=> (b.fitScore||0) - (a.fitScore||0));
-      } else if (sort==='company') {
-        arr.sort((a,b)=> (a.company||'').localeCompare(b.company||''));
+      const sr = searchState.applications.results;
+      if (sr && sr.hasQuery) {
+        const { matches, others } = splitBySearchMatch(arr, sr);
+        const allowedIds = new Set(arr.map(item => item.id));
+        const rankedMatches = (matches || []).filter(item => allowedIds.has(item.id));
+        rankedMatches.forEach((m, i) => {
+          if (!m.searchMeta) m.searchMeta = { hasMatch: true };
+          m.searchMeta.rank = i;
+        });
+
+        const sort = sortFilter.value;
+        let othersSorted = [...(others || [])];
+        if (sort === 'date-desc') {
+          othersSorted.sort((a,b)=> new Date(b.appliedDate||'2000-01-01') - new Date(a.appliedDate||'2000-01-01'));
+        } else if (sort === 'date-asc') {
+          othersSorted.sort((a,b)=> new Date(a.appliedDate||'2000-01-01') - new Date(b.appliedDate||'2000-01-01'));
+        } else if (sort === 'fit-desc') {
+          othersSorted.sort((a,b)=> (b.fitScore||0) - (a.fitScore||0));
+        } else if (sort === 'company') {
+          othersSorted.sort((a,b)=> (a.company||'').localeCompare(b.company||''));
+        }
+
+        arr = [...rankedMatches, ...othersSorted];
+
+        updateSearchInfo('applications', sr.totalFound, sr.originalCount);
+        scrollGridToTop(applicationsGrid);
+      } else {
+        hideSearchInfo('applications');
+        const sort = sortFilter.value;
+        if (sort==='date-desc') {
+          arr.sort((a,b)=> new Date(b.appliedDate||'2000-01-01') - new Date(a.appliedDate||'2000-01-01'));
+        } else if (sort==='date-asc') {
+          arr.sort((a,b)=> new Date(a.appliedDate||'2000-01-01') - new Date(b.appliedDate||'2000-01-01'));
+        } else if (sort==='fit-desc') {
+          arr.sort((a,b)=> (b.fitScore||0) - (a.fitScore||0));
+        } else if (sort==='company') {
+          arr.sort((a,b)=> (a.company||'').localeCompare(b.company||''));
+        } else if (sort==='relevance') {
+          // nothing to do without a query
+        }
       }
 
-      // Show/hide no results message
       const noResults = document.getElementById('applicationsNoResults');
       if (arr.length === 0) {
         applicationsGrid.innerHTML = '';
         if (noResults) noResults.style.display = 'block';
       } else {
         if (noResults) noResults.style.display = 'none';
-        applicationsGrid.innerHTML = arr.map(app => cardHTML(app, false)).join('');
+        applicationsGrid.innerHTML = arr.map(app => {
+          const html = cardHTML(app, false);
+          return app.searchMeta?.hasMatch ? html.replace('class="application-card', 'class="application-card lift-once') : html;
+        }).join('');
       }
     }
 
@@ -2799,6 +2836,17 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
             const cls  = STATUS_STYLE[slug] || STATUS_STYLE.default;
             const lab  = statusLabel(slug);
             return `<div class="application-status ${cls}">${escapeHtml(lab)}</div>`;
+          })()}
+          ${(() => {
+            const meta = app.searchMeta;
+            if (!meta || !meta.hasMatch) return '';
+            const rank = typeof meta.rank === 'number' ? meta.rank + 1 : null;
+            return `<div style="
+    position:absolute; left:.75rem; top:.75rem;
+    background:#fef3c7; color:#92400e; border:1px solid #fcd34d;
+    padding:.15rem .5rem; border-radius:999px; font-size:.72rem; font-weight:800;">
+    ${rank ? `Top match #${rank}` : 'Top match'}
+  </div>`;
           })()}
           <div class="application-title">${highlightMatches(app.title, matches, 'title')}</div>
           <div class="application-company">${highlightMatches(app.company, matches, 'company')}</div>
@@ -3056,35 +3104,54 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
     function renderSaved(){
       let arr = appsLive.saved.map(toCardShape);
 
-      // Apply search if active
-      const searchResults = searchState.saved.results;
-      if (searchResults && searchResults.hasQuery) {
-        arr = searchResults.results;
-        updateSearchInfo('saved', searchResults.totalFound, searchResults.originalCount);
+      const sr = searchState.saved.results;
+      if (sr && sr.hasQuery) {
+        const { matches, others } = splitBySearchMatch(arr, sr);
+        const allowedIds = new Set(arr.map(item => item.id));
+        const rankedMatches = (matches || []).filter(item => allowedIds.has(item.id));
+        rankedMatches.forEach((m, i) => {
+          if (!m.searchMeta) m.searchMeta = { hasMatch: true };
+          m.searchMeta.rank = i;
+        });
+
+        const sort = savedSort.value;
+        let othersSorted = [...(others || [])];
+        if (sort === 'date-desc') {
+          othersSorted.sort((a,b)=> new Date(b.appliedDate||'2000-01-01') - new Date(a.appliedDate||'2000-01-01'));
+        } else if (sort === 'fit-desc') {
+          othersSorted.sort((a,b)=> (b.fitScore||0)-(a.fitScore||0));
+        } else if (sort === 'company') {
+          othersSorted.sort((a,b)=> (a.company||'').localeCompare(b.company||''));
+        }
+
+        arr = [...rankedMatches, ...othersSorted];
+
+        updateSearchInfo('saved', sr.totalFound, sr.originalCount);
+        scrollGridToTop(savedGrid);
       } else {
         hideSearchInfo('saved');
+        const s = savedSort.value;
+        if (s==='date-desc') {
+          arr.sort((a,b)=> new Date(b.appliedDate||'2000-01-01') - new Date(a.appliedDate||'2000-01-01'));
+        } else if (s==='fit-desc') {
+          arr.sort((a,b)=> (b.fitScore||0)-(a.fitScore||0));
+        } else if (s==='company') {
+          arr.sort((a,b)=> (a.company||'').localeCompare(b.company||''));
+        } else if (s==='relevance') {
+          // nothing to do without a query
+        }
       }
 
-      // Apply sorting
-      const s = savedSort.value;
-      if (s === 'relevance' && searchResults && searchResults.hasQuery) {
-        // Already sorted by relevance from search
-      } else if (s==='date-desc') {
-        arr.sort((a,b)=> new Date(b.appliedDate||'2000-01-01') - new Date(a.appliedDate||'2000-01-01'));
-      } else if (s==='fit-desc') {
-        arr.sort((a,b)=> (b.fitScore||0)-(a.fitScore||0));
-      } else if (s==='company') {
-        arr.sort((a,b)=> (a.company||'').localeCompare(b.company||''));
-      }
-
-      // Show/hide no results message
       const noResults = document.getElementById('savedNoResults');
       if (arr.length === 0) {
         savedGrid.innerHTML = '';
         if (noResults) noResults.style.display = 'block';
       } else {
         if (noResults) noResults.style.display = 'none';
-        savedGrid.innerHTML = arr.map(app => cardHTML(app, true)).join('');
+        savedGrid.innerHTML = arr.map(app => {
+          const html = cardHTML(app, true);
+          return app.searchMeta?.hasMatch ? html.replace('class="application-card', 'class="application-card lift-once') : html;
+        }).join('');
       }
     }
     window.markSavedApplied = async function(id){
