@@ -2837,17 +2837,6 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
             const lab  = statusLabel(slug);
             return `<div class="application-status ${cls}">${escapeHtml(lab)}</div>`;
           })()}
-          ${(() => {
-            const meta = app.searchMeta;
-            if (!meta || !meta.hasMatch) return '';
-            const rank = typeof meta.rank === 'number' ? meta.rank + 1 : null;
-            return `<div style="
-    position:absolute; left:.75rem; top:.75rem;
-    background:#fef3c7; color:#92400e; border:1px solid #fcd34d;
-    padding:.15rem .5rem; border-radius:999px; font-size:.72rem; font-weight:800;">
-    ${rank ? `Top match #${rank}` : 'Top match'}
-  </div>`;
-          })()}
           <div class="application-title">${highlightMatches(app.title, matches, 'title')}</div>
           <div class="application-company">${highlightMatches(app.company, matches, 'company')}</div>
           <div class="application-detail">Sector: ${highlightMatches(app.sector || '—', matches, 'sector')}</div>
