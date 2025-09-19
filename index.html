@@ -199,6 +199,135 @@
     .application-company{color:var(--primary-600);font-weight:700;margin:.25rem 0}
     .application-detail{font-size:.85rem;color:var(--gray-600);margin-top:.25rem}
 
+    /* Smart Search Bar Styles */
+    .smart-search-container {
+      position: relative;
+      width: 100%;
+      max-width: 500px;
+      margin-bottom: 1.5rem;
+    }
+
+    .smart-search-input {
+      width: 100%;
+      padding: 1rem 3rem 1rem 1.25rem;
+      border: 2px solid var(--gray-200);
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--gray-800);
+      outline: none;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    .smart-search-input:focus {
+      border-color: var(--primary-500);
+      box-shadow:
+        0 0 0 4px rgba(59, 130, 246, 0.1),
+        0 10px 15px -3px rgba(0, 0, 0, 0.1),
+        0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      transform: translateY(-2px);
+    }
+
+    .smart-search-input::placeholder {
+      color: var(--gray-500);
+      font-weight: 400;
+    }
+
+    .search-icon {
+      position: absolute;
+      right: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--gray-400);
+      pointer-events: none;
+      transition: color 0.3s ease;
+    }
+
+    .smart-search-input:focus + .search-icon {
+      color: var(--primary-500);
+    }
+
+    .search-results-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding: 0.5rem 0;
+      font-size: 0.9rem;
+      color: var(--gray-600);
+    }
+
+    .search-results-count {
+      font-weight: 600;
+    }
+
+    .search-clear-btn {
+      background: none;
+      border: none;
+      color: var(--primary-600);
+      cursor: pointer;
+      font-weight: 600;
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+      transition: background-color 0.2s ease;
+    }
+
+    .search-clear-btn:hover {
+      background-color: var(--primary-50);
+    }
+
+    .no-results-message {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--gray-500);
+      background: rgba(255, 255, 255, 0.7);
+      border: 2px dashed var(--gray-300);
+      border-radius: 16px;
+      margin: 2rem 0;
+    }
+
+    .no-results-message h3 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: var(--gray-700);
+    }
+
+    .no-results-message p {
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    /* Enhanced application card highlighting */
+    .application-card.search-highlight {
+      border: 2px solid var(--primary-200);
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(255, 255, 255, 0.95));
+      box-shadow: 0 8px 25px -5px rgba(59, 130, 246, 0.25);
+    }
+
+    .search-match {
+      background: linear-gradient(135deg, #fef08a, #fde047);
+      padding: 0.1rem 0.2rem;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    /* Search container responsive */
+    @media (max-width: 768px) {
+      .smart-search-container {
+        max-width: 100%;
+      }
+
+      .search-results-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+      }
+    }
+
     .application-date{font-size:.85rem;color:var(--gray-500)}
     .application-scores{display:flex;gap:1rem;margin:.75rem 0}
     .mini-score{flex:1;text-align:center}
@@ -419,6 +548,29 @@
     <!-- Applications page -->
     <div id="applicationsPage" class="page-content">
       <div class="panel">
+        <!-- Smart Search Bar -->
+        <div class="smart-search-container">
+          <input
+            type="text"
+            id="applicationsSearch"
+            class="smart-search-input"
+            placeholder="Search applications by company, role, or keywords..."
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.35-4.35"/>
+          </svg>
+        </div>
+
+        <!-- Search Results Info -->
+        <div id="applicationsSearchInfo" class="search-results-info" style="display: none;">
+          <span id="applicationsResultsCount" class="search-results-count"></span>
+          <button id="applicationsClearSearch" class="search-clear-btn">Clear search</button>
+        </div>
+
+        <!-- Existing Filters -->
         <div class="filters">
           <select id="statusFilter" class="filter-select"></select>
           <select id="sortFilter" class="filter-select">
@@ -426,8 +578,16 @@
             <option value="date-asc">Oldest first</option>
             <option value="fit-desc">Best fit first</option>
             <option value="company">By company</option>
+            <option value="relevance">Most relevant</option>
           </select>
         </div>
+
+        <!-- No Results Message -->
+        <div id="applicationsNoResults" class="no-results-message" style="display: none;">
+          <h3>No applications found</h3>
+          <p>Try adjusting your search terms or filters to find what you're looking for.</p>
+        </div>
+
         <div id="applicationsGrid" class="applications-grid"></div>
       </div>
     </div>
@@ -439,14 +599,44 @@
     <!-- Saved page -->
     <div id="savedPage" class="page-content">
       <div class="panel">
+        <!-- Smart Search Bar -->
+        <div class="smart-search-container">
+          <input
+            type="text"
+            id="savedSearch"
+            class="smart-search-input"
+            placeholder="Search saved jobs by company, role, or keywords..."
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.35-4.35"/>
+          </svg>
+        </div>
+
+        <!-- Search Results Info -->
+        <div id="savedSearchInfo" class="search-results-info" style="display: none;">
+          <span id="savedResultsCount" class="search-results-count"></span>
+          <button id="savedClearSearch" class="search-clear-btn">Clear search</button>
+        </div>
+
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
           <h2 style="font-size:1.4rem;font-weight:900;color:var(--gray-900)">Saved for later</h2>
           <select id="savedSort" class="filter-select">
             <option value="date-desc">Newest first</option>
             <option value="fit-desc">Best fit first</option>
             <option value="company">By company</option>
+            <option value="relevance">Most relevant</option>
           </select>
         </div>
+
+        <!-- No Results Message -->
+        <div id="savedNoResults" class="no-results-message" style="display: none;">
+          <h3>No saved jobs found</h3>
+          <p>Try adjusting your search terms to find what you're looking for.</p>
+        </div>
+
         <div id="savedGrid" class="applications-grid"></div>
       </div>
     </div>
@@ -1472,6 +1662,164 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
     /* ######################## END: HELPERS (JS) ############### */
 
     /* ############################################################
+       BEGIN: FUZZY SEARCH IMPLEMENTATION
+    ############################################################ */
+
+    // Fuzzy search utility with advanced scoring
+    class FuzzySearch {
+      constructor() {
+        this.cache = new Map();
+      }
+
+      // Calculate Levenshtein distance with optimizations
+      levenshteinDistance(str1, str2) {
+        const key = `${str1}|${str2}`;
+        if (this.cache.has(key)) return this.cache.get(key);
+
+        const matrix = Array(str2.length + 1).fill().map(() => Array(str1.length + 1).fill(0));
+
+        for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
+        for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
+
+        for (let j = 1; j <= str2.length; j++) {
+          for (let i = 1; i <= str1.length; i++) {
+            const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+            matrix[j][i] = Math.min(
+              matrix[j - 1][i] + 1,     // deletion
+              matrix[j][i - 1] + 1,     // insertion
+              matrix[j - 1][i - 1] + cost // substitution
+            );
+          }
+        }
+
+        const result = matrix[str2.length][str1.length];
+        this.cache.set(key, result);
+        return result;
+      }
+
+      // Enhanced similarity scoring
+      similarity(str1, str2) {
+        if (!str1 || !str2) return 0;
+
+        const s1 = str1.toLowerCase().trim();
+        const s2 = str2.toLowerCase().trim();
+
+        if (s1 === s2) return 1;
+        if (s1.includes(s2) || s2.includes(s1)) return 0.9;
+
+        const maxLen = Math.max(s1.length, s2.length);
+        if (maxLen === 0) return 1;
+
+        const distance = this.levenshteinDistance(s1, s2);
+        return 1 - distance / maxLen;
+      }
+
+      // Comprehensive search scoring
+      searchScore(item, query) {
+        if (!query.trim()) return 0;
+
+        const q = query.toLowerCase().trim();
+        const words = q.split(/\s+/);
+
+        // Searchable fields with weights
+        const fields = [
+          { text: item.title, weight: 3.0, field: 'title' },
+          { text: item.company, weight: 2.5, field: 'company' },
+          { text: item.sector, weight: 1.5, field: 'sector' },
+          { text: item.roleType, weight: 1.5, field: 'roleType' },
+          { text: item.location, weight: 1.0, field: 'location' },
+          { text: (item.requirements || []).join(' '), weight: 1.2, field: 'requirements' },
+          { text: (item.fits || []).join(' '), weight: 1.0, field: 'fits' },
+          { text: (item.gaps || []).join(' '), weight: 0.8, field: 'gaps' }
+        ];
+
+        let totalScore = 0;
+        let matches = [];
+
+        fields.forEach(({ text, weight, field }) => {
+          if (!text) return;
+
+          const fieldText = String(text).toLowerCase();
+          let fieldScore = 0;
+          let bestMatch = '';
+
+          // Exact phrase match (highest score)
+          if (fieldText.includes(q)) {
+            fieldScore = 1.0;
+            bestMatch = q;
+          } else {
+            // Word-by-word matching
+            let wordScore = 0;
+            words.forEach(word => {
+              if (word.length < 2) return;
+
+              // Check for exact word match
+              if (fieldText.includes(word)) {
+                wordScore += 0.8;
+                bestMatch = bestMatch || word;
+              } else {
+                // Fuzzy match individual words
+                const fieldWords = fieldText.split(/\s+/);
+                fieldWords.forEach(fieldWord => {
+                  const sim = this.similarity(word, fieldWord);
+                  if (sim > 0.7) {
+                    wordScore += sim * 0.6;
+                    if (sim > 0.8 && !bestMatch) bestMatch = fieldWord;
+                  }
+                });
+              }
+            });
+            fieldScore = Math.min(wordScore / words.length, 1.0);
+          }
+
+          if (fieldScore > 0.1) {
+            totalScore += fieldScore * weight;
+            if (bestMatch) {
+              matches.push({ field, match: bestMatch, score: fieldScore });
+            }
+          }
+        });
+
+        return {
+          score: totalScore,
+          matches: matches,
+          hasMatch: totalScore > 0.2
+        };
+      }
+
+      // Main search function
+      search(items, query) {
+        if (!query.trim()) return { results: items, hasQuery: false };
+
+        const scored = items.map(item => ({
+          ...item,
+          searchMeta: this.searchScore(item, query)
+        })).filter(item => item.searchMeta.hasMatch);
+
+        const results = scored.sort((a, b) => b.searchMeta.score - a.searchMeta.score);
+
+        return {
+          results,
+          hasQuery: true,
+          totalFound: results.length,
+          originalCount: items.length
+        };
+      }
+    }
+
+    // Global search instances
+    const applicationsSearcher = new FuzzySearch();
+    const savedSearcher = new FuzzySearch();
+
+    // Search state
+    let searchState = {
+      applications: { query: '', results: null },
+      saved: { query: '', results: null }
+    };
+
+    /* ######################## END: FUZZY SEARCH IMPLEMENTATION ############### */
+
+    /* ############################################################
        BEGIN: DEADLINES MODULE (JS)
     ############################################################ */
     dayjs.extend(dayjs_plugin_utc);
@@ -2401,30 +2749,61 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
 
     function renderApplications(){
       let arr = [...applicationsList];
+
+      // Apply search if active
+      const searchResults = searchState.applications.results;
+      if (searchResults && searchResults.hasQuery) {
+        arr = searchResults.results;
+        updateSearchInfo('applications', searchResults.totalFound, searchResults.originalCount);
+      } else {
+        hideSearchInfo('applications');
+      }
+
+      // Apply status filter
       const s = statusFilter.value;
       if (s !== 'all') arr = arr.filter(a => normaliseStatus(a.status) === s);
-      const sort = sortFilter.value;
-      if (sort==='date-desc') arr.sort((a,b)=> new Date(b.appliedDate||'2000-01-01') - new Date(a.appliedDate||'2000-01-01'));
-      if (sort==='date-asc')  arr.sort((a,b)=> new Date(a.appliedDate||'2000-01-01') - new Date(b.appliedDate||'2000-01-01'));
-      if (sort==='fit-desc')  arr.sort((a,b)=> (b.fitScore||0) - (a.fitScore||0));
-      if (sort==='company')   arr.sort((a,b)=> (a.company||'').localeCompare(b.company||''));
 
-      applicationsGrid.innerHTML = arr.map(app => cardHTML(app,false)).join('');
+      // Apply sorting
+      const sort = sortFilter.value;
+      if (sort === 'relevance' && searchResults && searchResults.hasQuery) {
+        // Already sorted by relevance from search
+      } else if (sort==='date-desc') {
+        arr.sort((a,b)=> new Date(b.appliedDate||'2000-01-01') - new Date(a.appliedDate||'2000-01-01'));
+      } else if (sort==='date-asc') {
+        arr.sort((a,b)=> new Date(a.appliedDate||'2000-01-01') - new Date(b.appliedDate||'2000-01-01'));
+      } else if (sort==='fit-desc') {
+        arr.sort((a,b)=> (b.fitScore||0) - (a.fitScore||0));
+      } else if (sort==='company') {
+        arr.sort((a,b)=> (a.company||'').localeCompare(b.company||''));
+      }
+
+      // Show/hide no results message
+      const noResults = document.getElementById('applicationsNoResults');
+      if (arr.length === 0) {
+        applicationsGrid.innerHTML = '';
+        if (noResults) noResults.style.display = 'block';
+      } else {
+        if (noResults) noResults.style.display = 'none';
+        applicationsGrid.innerHTML = arr.map(app => cardHTML(app, false)).join('');
+      }
     }
 
     function cardHTML(app, isSaved=false){
+      const matches = app.searchMeta?.matches || [];
+      const isHighlighted = matches.length > 0;
+
       return `
-        <div class="application-card" onclick="openApplicationModal('${app.id}')">
+        <div class="application-card ${isHighlighted ? 'search-highlight' : ''}" onclick="openApplicationModal('${app.id}')">
           ${(() => {
             const slug = normaliseStatus(app.status);
             const cls  = STATUS_STYLE[slug] || STATUS_STYLE.default;
             const lab  = statusLabel(slug);
             return `<div class="application-status ${cls}">${escapeHtml(lab)}</div>`;
           })()}
-          <div class="application-title">${escapeHtml(app.title)}</div>
-          <div class="application-company">${escapeHtml(app.company)}</div>
-          <div class="application-detail">Sector: ${escapeHtml(app.sector || '—')}</div>
-          <div class="application-detail">Role Type: ${escapeHtml(app.roleType || '—')}</div>
+          <div class="application-title">${highlightMatches(app.title, matches, 'title')}</div>
+          <div class="application-company">${highlightMatches(app.company, matches, 'company')}</div>
+          <div class="application-detail">Sector: ${highlightMatches(app.sector || '—', matches, 'sector')}</div>
+          <div class="application-detail">Role Type: ${highlightMatches(app.roleType || '—', matches, 'roleType')}</div>
           <div class="application-detail">Start Date: ${formatDate(app.startDate)}</div>
           <div class="application-detail">Status Updated: ${formatDate(app.statusUpdateDate)}</div>
           <div style="margin-top:.6rem; display:flex; gap:.5rem; flex-wrap:wrap;">
@@ -2676,11 +3055,37 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
     savedSort.onchange = renderSaved;
     function renderSaved(){
       let arr = appsLive.saved.map(toCardShape);
+
+      // Apply search if active
+      const searchResults = searchState.saved.results;
+      if (searchResults && searchResults.hasQuery) {
+        arr = searchResults.results;
+        updateSearchInfo('saved', searchResults.totalFound, searchResults.originalCount);
+      } else {
+        hideSearchInfo('saved');
+      }
+
+      // Apply sorting
       const s = savedSort.value;
-      if (s==='date-desc') arr.sort((a,b)=> new Date(b.appliedDate||'2000-01-01') - new Date(a.appliedDate||'2000-01-01'));
-      if (s==='fit-desc')  arr.sort((a,b)=> (b.fitScore||0)-(a.fitScore||0));
-      if (s==='company')   arr.sort((a,b)=> (a.company||'').localeCompare(b.company||''));
-      savedGrid.innerHTML = arr.map(app => cardHTML(app,true)).join('');
+      if (s === 'relevance' && searchResults && searchResults.hasQuery) {
+        // Already sorted by relevance from search
+      } else if (s==='date-desc') {
+        arr.sort((a,b)=> new Date(b.appliedDate||'2000-01-01') - new Date(a.appliedDate||'2000-01-01'));
+      } else if (s==='fit-desc') {
+        arr.sort((a,b)=> (b.fitScore||0)-(a.fitScore||0));
+      } else if (s==='company') {
+        arr.sort((a,b)=> (a.company||'').localeCompare(b.company||''));
+      }
+
+      // Show/hide no results message
+      const noResults = document.getElementById('savedNoResults');
+      if (arr.length === 0) {
+        savedGrid.innerHTML = '';
+        if (noResults) noResults.style.display = 'block';
+      } else {
+        if (noResults) noResults.style.display = 'none';
+        savedGrid.innerHTML = arr.map(app => cardHTML(app, true)).join('');
+      }
     }
     window.markSavedApplied = async function(id){
       const raw = getRawRowById(id);
@@ -2707,6 +3112,134 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
     };
 
     /* ######################## END: SAVED RENDER (JS) ############### */
+
+    /* ############################################################
+       BEGIN: SEARCH EVENT HANDLERS
+    ############################################################ */
+
+    // Search utility functions
+    function updateSearchInfo(page, found, total) {
+      const info = document.getElementById(`${page}SearchInfo`);
+      const count = document.getElementById(`${page}ResultsCount`);
+
+      if (info && count) {
+        count.textContent = `Found ${found} of ${total} ${page}`;
+        info.style.display = 'flex';
+      }
+    }
+
+    function hideSearchInfo(page) {
+      const info = document.getElementById(`${page}SearchInfo`);
+      if (info) info.style.display = 'none';
+    }
+
+    function clearSearch(page) {
+      const input = document.getElementById(`${page}Search`);
+      if (input) {
+        input.value = '';
+        searchState[page] = { query: '', results: null };
+
+        if (page === 'applications') {
+          renderApplications();
+        } else if (page === 'saved') {
+          renderSaved();
+        }
+      }
+    }
+
+    // Enhanced cardHTML function to highlight search matches
+    function highlightMatches(text, matches, field) {
+      if (!matches || !matches.length) return escapeHtml(text);
+
+      let highlighted = escapeHtml(text);
+      const fieldMatches = matches.filter(m => m.field === field);
+
+      fieldMatches.forEach(match => {
+        const regex = new RegExp(`(${escapeRegex(match.match)})`, 'gi');
+        highlighted = highlighted.replace(regex, '<span class="search-match">$1</span>');
+      });
+
+      return highlighted;
+    }
+
+    function escapeRegex(string) {
+      return string.replace(/[.*+?^${}()|[\\]\\\\]/g, '\$&');
+    }
+
+    // Applications search setup
+    const applicationsSearchInput = document.getElementById('applicationsSearch');
+    const applicationsClearBtn = document.getElementById('applicationsClearSearch');
+
+    if (applicationsSearchInput) {
+      let searchTimeout;
+
+      applicationsSearchInput.addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        const query = e.target.value.trim();
+
+        searchTimeout = setTimeout(() => {
+          searchState.applications.query = query;
+
+          if (query.length === 0) {
+            searchState.applications.results = null;
+          } else {
+            const results = applicationsSearcher.search(applicationsList, query);
+            searchState.applications.results = results;
+          }
+
+          renderApplications();
+        }, 300); // Debounce for better performance
+      });
+
+      applicationsSearchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          clearSearch('applications');
+        }
+      });
+    }
+
+    if (applicationsClearBtn) {
+      applicationsClearBtn.addEventListener('click', () => clearSearch('applications'));
+    }
+
+    // Saved search setup
+    const savedSearchInput = document.getElementById('savedSearch');
+    const savedClearBtn = document.getElementById('savedClearSearch');
+
+    if (savedSearchInput) {
+      let searchTimeout;
+
+      savedSearchInput.addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        const query = e.target.value.trim();
+
+        searchTimeout = setTimeout(() => {
+          searchState.saved.query = query;
+
+          if (query.length === 0) {
+            searchState.saved.results = null;
+          } else {
+            const savedApps = appsLive.saved.map(toCardShape);
+            const results = savedSearcher.search(savedApps, query);
+            searchState.saved.results = results;
+          }
+
+          renderSaved();
+        }, 300);
+      });
+
+      savedSearchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          clearSearch('saved');
+        }
+      });
+    }
+
+    if (savedClearBtn) {
+      savedClearBtn.addEventListener('click', () => clearSearch('saved'));
+    }
+
+    /* ######################## END: SEARCH EVENT HANDLERS ############### */
 
     /* ############################################################
        BEGIN: ANALYTICS LOGIC (JS)
