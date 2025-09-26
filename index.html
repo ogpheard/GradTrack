@@ -7,7 +7,7 @@
 #  - BEGIN: SAVED PAGE (HTML)
 #  - BEGIN: ANALYTICS PAGE (HTML)
 #  - BEGIN: ADD PAGE (HTML)
-#  - BEGIN: ANALYZE PAGE (HTML)
+#  - BEGIN: ANALYSE PAGE (HTML)
 #  - BEGIN: APPLICATION MODAL (HTML)
 #  - BEGIN: CONFIRM DELETE MODAL (HTML)
 #  - BEGIN: TOAST (HTML)
@@ -114,14 +114,6 @@
     .page-content.active{display:block}
 
     /* Analyse page */
-    .search-section{position:relative}
-    .search-input{width:100%;padding:1rem 1.25rem;border:2px solid var(--gray-200);border-radius:16px;background:#fff;transition:.25s;outline:none}
-    .search-input:focus{border-color:var(--primary-500);box-shadow:0 0 0 4px rgba(59,130,246,.1);transform:translateY(-2px)}
-    .search-button{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:var(--gradient-primary);color:#fff;border:none;padding:.75rem 1.25rem;border-radius:12px;font-weight:700;cursor:pointer;box-shadow:var(--shadow-md);transition:.25s}
-    .search-button:hover:not(:disabled){transform:translateY(calc(-50% - 2px))}
-    .helper-text{margin-top:1rem;font-size:.9rem;color:var(--gray-500);display:flex;align-items:center;gap:.5rem}
-
-    /* Pasted JD input */
     .paste-wrap{margin-top:1rem;display:flex;flex-direction:column;gap:.5rem}
     #jobText{
       width:100%; min-height:7.5rem; max-height:16rem; /* ~6–10 rows */
@@ -135,6 +127,569 @@
     }
     .input-hint{display:flex;justify-content:space-between;align-items:center;gap:.75rem; color:var(--gray-500); font-size:.85rem}
     .mono{font-variant-numeric:tabular-nums}
+
+    .analyse-hero {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 3rem;
+      padding: 2rem 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-content {
+      flex: 1;
+      z-index: 2;
+    }
+
+    .hero-title {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--primary-600), var(--primary-500), #4facfe);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 0 0 1rem 0;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+
+    .hero-subtitle {
+      font-size: 1.2rem;
+      color: var(--gray-600);
+      font-weight: 500;
+      line-height: 1.5;
+      margin: 0;
+      max-width: 600px;
+    }
+
+    .hero-visual {
+      position: relative;
+      width: 200px;
+      height: 200px;
+      flex-shrink: 0;
+      margin-left: 2rem;
+    }
+
+    .floating-icon {
+      position: absolute;
+      font-size: 3rem;
+      animation: float 6s ease-in-out infinite;
+      opacity: 0.8;
+    }
+
+    .floating-icon:nth-child(1) {
+      top: 20%;
+      left: 20%;
+      animation-delay: 0s;
+    }
+
+    .floating-icon:nth-child(2) {
+      top: 60%;
+      right: 30%;
+      animation-delay: 2s;
+    }
+
+    .floating-icon:nth-child(3) {
+      bottom: 20%;
+      left: 50%;
+      animation-delay: 4s;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      33% { transform: translateY(-20px) rotate(5deg); }
+      66% { transform: translateY(10px) rotate(-3deg); }
+    }
+
+    .analyse-form {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .helper-text {
+      margin-top: 1.5rem;
+      font-size: 0.9rem;
+      color: var(--gray-500);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .helper-text svg {
+      color: var(--primary-500);
+    }
+
+    .input-section {
+      margin-bottom: 2rem;
+    }
+
+    .input-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .input-label {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--gray-900);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .optional-badge {
+      background: var(--gray-100);
+      color: var(--gray-500);
+      padding: 0.25rem 0.5rem;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .input-counter {
+      display: flex;
+      align-items: center;
+    }
+
+    .char-count {
+      font-size: 0.875rem;
+      color: var(--gray-500);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      background: var(--gray-50);
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      border: 1px solid var(--gray-200);
+    }
+
+    .textarea-container {
+      position: relative;
+    }
+
+    .job-textarea {
+      width: 100%;
+      min-height: 200px;
+      max-height: 400px;
+      padding: 1.5rem;
+      border: 2px solid var(--gray-200);
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.9);
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 1rem;
+      line-height: 1.6;
+      color: var(--gray-900);
+      outline: none;
+      resize: vertical;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    .job-textarea:focus {
+      border-color: var(--primary-500);
+      box-shadow: 
+        0 0 0 4px rgba(59, 130, 246, 0.1),
+        0 10px 25px -5px rgba(59, 130, 246, 0.25);
+      transform: translateY(-2px);
+      background: white;
+    }
+
+    .job-textarea::placeholder {
+      color: var(--gray-400);
+      line-height: 1.6;
+    }
+
+    .textarea-hint {
+      position: absolute;
+      bottom: 1rem;
+      right: 1rem;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--gray-200);
+      border-radius: 12px;
+      padding: 0.5rem 0.75rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .hint-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      color: var(--gray-600);
+      font-weight: 600;
+    }
+
+    .hint-icon {
+      background: var(--gray-100);
+      color: var(--gray-700);
+      padding: 0.15rem 0.3rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+
+    .url-container {
+      position: relative;
+    }
+
+    .url-input {
+      width: 100%;
+      padding: 1rem 1.25rem;
+      border: 2px solid var(--gray-200);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.9);
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 1rem;
+      color: var(--gray-900);
+      outline: none;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .url-input:focus {
+      border-color: var(--primary-500);
+      box-shadow: 
+        0 0 0 3px rgba(59, 130, 246, 0.1),
+        0 4px 12px rgba(59, 130, 246, 0.15);
+      transform: translateY(-1px);
+      background: white;
+    }
+
+    .url-hint {
+      margin-top: 0.5rem;
+      font-size: 0.875rem;
+      color: var(--gray-500);
+      font-weight: 500;
+    }
+
+    .action-section {
+      display: flex;
+      justify-content: center;
+      margin: 3rem 0 2rem;
+    }
+
+    .analyse-button {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: linear-gradient(135deg, var(--primary-600), var(--primary-500));
+      color: white;
+      border: none;
+      padding: 1.25rem 2.5rem;
+      border-radius: 20px;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+      box-shadow: 
+        0 4px 15px rgba(59, 130, 246, 0.4),
+        0 2px 4px rgba(0, 0, 0, 0.1);
+      min-width: 200px;
+      justify-content: center;
+    }
+
+    .analyse-button:hover:not(:disabled) {
+      transform: translateY(-3px) scale(1.02);
+      box-shadow: 
+        0 8px 25px rgba(59, 130, 246, 0.5),
+        0 4px 12px rgba(0, 0, 0, 0.15);
+      background: linear-gradient(135deg, var(--primary-500), #4facfe);
+    }
+
+    .analyse-button:active {
+      transform: translateY(-1px) scale(0.98);
+    }
+
+    .analyse-button:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .button-icon {
+      font-size: 1.3rem;
+      animation: pulse 2s infinite;
+    }
+
+    .button-text {
+      position: relative;
+      z-index: 2;
+    }
+
+    .button-shine {
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      animation: shine 3s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    @keyframes shine {
+      0% { left: -100%; }
+      100% { left: 100%; }
+    }
+
+    .loading-container {
+      padding: 3rem 2rem;
+      text-align: center;
+      background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(249,250,251,0.95));
+      border-radius: 24px;
+      border: 1px solid var(--gray-200);
+      margin: 2rem 0;
+    }
+
+    .loading-hero {
+      margin-bottom: 3rem;
+    }
+
+    .loading-animation {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+      height: 80px;
+    }
+
+    .pulse-circle {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary-500), #4facfe);
+      animation: loading-pulse 1.5s infinite ease-in-out;
+    }
+
+    .pulse-circle.delay-1 {
+      animation-delay: 0.3s;
+    }
+
+    .pulse-circle.delay-2 {
+      animation-delay: 0.6s;
+    }
+
+    @keyframes loading-pulse {
+      0%, 60%, 100% { 
+        transform: scale(0.8);
+        opacity: 0.5;
+      }
+      30% { 
+        transform: scale(1.2);
+        opacity: 1;
+      }
+    }
+
+    .loading-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--gray-900);
+      margin: 0 0 0.5rem 0;
+    }
+
+    .loading-subtitle {
+      font-size: 1rem;
+      color: var(--gray-600);
+      font-weight: 500;
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .loading-steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .step-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1.5rem 1rem;
+      background: white;
+      border: 2px solid var(--gray-100);
+      border-radius: 16px;
+      transition: all 0.3s ease;
+      opacity: 0.6;
+    }
+
+    .step-item.active {
+      opacity: 1;
+      border-color: var(--primary-200);
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), white);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+    }
+
+    .step-item.active .step-icon {
+      animation: bounce 1s infinite;
+    }
+
+    .step-icon {
+      font-size: 1.5rem;
+      padding: 0.5rem;
+      background: var(--gray-100);
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+
+    .step-item.active .step-icon {
+      background: linear-gradient(135deg, var(--primary-500), #4facfe);
+      transform: scale(1.1);
+    }
+
+    .step-text {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--gray-700);
+      text-align: center;
+      line-height: 1.3;
+    }
+
+    @keyframes bounce {
+      0%, 20%, 50%, 80%, 100% { transform: translateY(0) scale(1.1); }
+      40% { transform: translateY(-8px) scale(1.15); }
+      60% { transform: translateY(-4px) scale(1.12); }
+    }
+
+    .env-info {
+      display: flex;
+      justify-content: center;
+      margin-top: 2rem;
+      opacity: 0.7;
+    }
+
+    .env-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid var(--gray-200);
+      border-radius: 20px;
+      padding: 0.5rem 1rem;
+      font-size: 0.875rem;
+      color: var(--gray-600);
+      backdrop-filter: blur(10px);
+    }
+
+    .env-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success-500);
+      animation: glow 2s infinite;
+    }
+
+    @keyframes glow {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .env-text {
+      font-weight: 500;
+    }
+
+    @media (max-width: 768px) {
+      .analyse-hero {
+        flex-direction: column;
+        text-align: center;
+        gap: 2rem;
+      }
+
+      .hero-visual {
+        width: 150px;
+        height: 150px;
+        margin-left: 0;
+      }
+
+      .hero-title {
+        font-size: clamp(1.75rem, 8vw, 2.5rem);
+      }
+
+      .hero-subtitle {
+        font-size: 1.1rem;
+      }
+
+      .analyse-form {
+        max-width: 100%;
+      }
+
+      .job-textarea {
+        min-height: 150px;
+        padding: 1rem;
+      }
+
+      .textarea-hint {
+        position: static;
+        margin-top: 0.75rem;
+        background: var(--gray-50);
+        border-radius: 8px;
+      }
+
+      .analyse-button {
+        padding: 1rem 2rem;
+        font-size: 1rem;
+        min-width: 180px;
+      }
+
+      .loading-steps {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+
+      .step-item {
+        flex-direction: row;
+        text-align: left;
+        padding: 1rem;
+      }
+
+      .step-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .hero-title {
+        font-size: 1.75rem;
+      }
+
+      .analyse-button {
+        padding: 0.875rem 1.5rem;
+        gap: 0.5rem;
+      }
+
+      .loading-container {
+        padding: 2rem 1rem;
+      }
+    }
 
     .result-card{background:rgba(255,255,255,.95);border:1px solid rgba(255,255,255,.2);border-radius:24px;padding:2rem;box-shadow:var(--shadow-xl);display:none;animation:slideUp .6s ease-out;margin-top:1rem}
     @keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
@@ -605,12 +1160,12 @@
         <h1 class="title">Graduate Applications Assistant</h1>
         <div class="nav-controls">
           <nav class="nav-tabs">
-            <button id="analyzeTab" class="nav-tab active" data-tab="analyze">Analyze</button>
+            <button id="analyseTab" class="nav-tab active" data-tab="analyse">Analyse</button>
             <button id="applicationsTab" class="nav-tab" data-tab="applications">My Applications</button>
             <button id="savedTab" class="nav-tab" data-tab="saved">Saved</button>
+            <button id="deadlinesTab" class="nav-tab" data-tab="deadlines">Deadlines</button>
             <button id="analyticsTab" class="nav-tab" data-tab="analytics">Analytics</button>
             <button id="addTab" class="nav-tab" data-tab="add">Add Application</button>
-            <button id="deadlinesTab" class="nav-tab" data-tab="deadlines">Deadlines</button>
           </nav>
           <div class="env-selector" title="Development environment selector">
             <select id="envSelect" aria-label="Environment">
@@ -1012,44 +1567,90 @@
     <!-- ######################## END: ADD PAGE (HTML) ############## -->
 
     <!-- ############################################################
-    # BEGIN: ANALYZE PAGE (HTML)
+    # BEGIN: ANALYSE PAGE (HTML)
     ############################################################ -->
-    <!-- Analyze page -->
-    <div id="analyzePage" class="page-content active">
+    <!-- Analyse page -->
+    <div id="analysePage" class="page-content active">
       <div class="panel">
-        <div class="search-section">
-          <!-- Pasted JD -->
-          <div class="paste-wrap">
-            <label for="jobText" class="detail-label" style="display:block;margin-bottom:.25rem">Paste job description (required)</label>
-            <textarea id="jobText" placeholder="Cmd/Ctrl+A then Cmd/Ctrl+C on the job page, and paste here…" autocomplete="off"></textarea>
-            <div class="input-hint">
-              <span>We’ll extract title, company, salary, locations, keywords, etc.</span>
-              <span id="jobCharCount" class="mono">0 / 30000</span>
+        <section class="analyse-hero">
+          <div class="hero-content">
+            <h2 class="hero-title">Analyse any job in seconds</h2>
+            <p class="hero-subtitle">Paste the job description and we’ll surface key requirements, fit scores, and insights so you can prioritise your applications with confidence.</p>
+          </div>
+          <div class="hero-visual" aria-hidden="true">
+            <div class="floating-icon">🎓</div>
+            <div class="floating-icon">📊</div>
+            <div class="floating-icon">⚡️</div>
+          </div>
+        </section>
+
+        <div class="analyse-form">
+          <div class="input-section">
+            <div class="input-header">
+              <label for="jobText" class="input-label">Paste job description</label>
+              <div class="input-counter">
+                <span id="jobCharCount" class="char-count">0 / 30000</span>
+              </div>
+            </div>
+            <div class="textarea-container">
+              <textarea id="jobText" class="job-textarea" placeholder="Cmd/Ctrl+A then Cmd/Ctrl+C on the job page, and paste here…" autocomplete="off"></textarea>
+              <div class="textarea-hint">
+                <div class="hint-item"><span class="hint-icon">⌘</span><span>Press Cmd/Ctrl + Enter to analyse instantly</span></div>
+                <div class="hint-item"><span class="hint-icon">✨</span><span>We extract salary, skills, and key requirements</span></div>
+              </div>
             </div>
           </div>
 
-          <!-- Optional URL -->
-          <div class="paste-wrap" style="margin-top:.75rem">
-            <label for="jobSourceUrl" class="detail-label" style="display:block;margin-bottom:.25rem">Source URL (optional)</label>
-            <input id="jobSourceUrl" type="url" placeholder="https://example.com/jobs/role" autocomplete="off"/>
-            <div class="input-hint">
-              <span>Helps with canonical URL & employer attribution.</span>
-              <span class="mono">Optional</span>
+          <div class="input-section">
+            <div class="input-header">
+              <label for="jobSourceUrl" class="input-label">Source URL</label>
+              <span class="optional-badge">Optional</span>
             </div>
+            <div class="url-container">
+              <input id="jobSourceUrl" class="url-input" type="url" placeholder="https://example.com/jobs/role" autocomplete="off"/>
+            </div>
+            <div class="url-hint">Provide the original posting to auto-fill canonical links.</div>
           </div>
 
-          <!-- Action -->
-          <button id="analyzeBtn" class="search-button"><span id="analyzeText">Analyze</span></button>
+          <div class="action-section">
+            <button id="analyseBtn" class="analyse-button">
+              <span class="button-icon" aria-hidden="true">🔍</span>
+              <span class="button-text">Analyse role</span>
+              <span class="button-shine" aria-hidden="true"></span>
+            </button>
+          </div>
         </div>
+
         <div class="helper-text">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
           Test uses <code>/webhook-test/*</code>. Production uses <code>/webhook/*</code>.
         </div>
 
         <div id="resultCard" class="result-card" aria-live="polite">
-          <div id="loadingState" style="display:none">
-            <div style="height:16px;background:var(--gray-200);border-radius:8px;margin:.5rem 0;animation:loading 1.5s infinite;background-size:200% 100%;background-image:linear-gradient(90deg,var(--gray-200) 25%,var(--gray-100) 50%,var(--gray-200) 75%)"></div>
-            <div style="height:16px;background:var(--gray-200);border-radius:8px;margin:.5rem 0;animation:loading 1.5s infinite;background-size:200% 100%;background-image:linear-gradient(90deg,var(--gray-200) 25%,var(--gray-100) 50%,var(--gray-200) 75%)"></div>
+          <div id="loadingState" class="loading-container" style="display:none">
+            <div class="loading-hero">
+              <div class="loading-animation" aria-hidden="true">
+                <span class="pulse-circle"></span>
+                <span class="pulse-circle delay-1"></span>
+                <span class="pulse-circle delay-2"></span>
+              </div>
+              <h3 class="loading-title">Analysing your role</h3>
+              <p class="loading-subtitle">We’re highlighting crucial requirements, skills, and compensation details.</p>
+            </div>
+            <div class="loading-steps">
+              <div class="step-item" data-step="1">
+                <div class="step-icon">📥</div>
+                <div class="step-text">Capturing the job description</div>
+              </div>
+              <div class="step-item" data-step="2">
+                <div class="step-icon">🧠</div>
+                <div class="step-text">Extracting key skills & requirements</div>
+              </div>
+              <div class="step-item" data-step="3">
+                <div class="step-icon">🚀</div>
+                <div class="step-text">Summarising insights for you</div>
+              </div>
+            </div>
           </div>
 
           <div id="resultContent" style="display:none">
@@ -1167,9 +1768,16 @@
             </div>
           </div> <!-- /resultContent -->
         </div> <!-- /resultCard -->
+
+        <div class="env-info">
+          <div class="env-badge">
+            <span class="env-indicator" aria-hidden="true"></span>
+            <span id="envLabel" class="env-text">Test environment</span>
+          </div>
+        </div>
       </div>
     </div>
-    <!-- ######################## END: ANALYZE PAGE (HTML) ############## -->
+    <!-- ######################## END: ANALYSE PAGE (HTML) ############## -->
   </div>
 
   <!-- ############################################################
@@ -1225,7 +1833,7 @@
       <div class="modal-body">
         <p id="rateApplySummary" style="margin-bottom:1rem;color:var(--gray-700)"></p>
 
-        <!-- Reuse Analyze page styling -->
+        <!-- Reuse Analyse page styling -->
         <div class="rating-inputs show" id="rateApplyInputs" aria-hidden="false" style="display:flex">
           <div class="rating-input">
             <label for="rateEffort">Effort /10</label>
@@ -1410,7 +2018,7 @@
     const envSelect = document.getElementById('envSelect');
 
     // Tabs
-    const analyzeTab = document.getElementById('analyzeTab');
+    const analyseTab = document.getElementById('analyseTab');
     const applicationsTab = document.getElementById('applicationsTab');
     const savedTab = document.getElementById('savedTab');
     const analyticsTab = document.getElementById('analyticsTab');
@@ -1419,7 +2027,7 @@
     const deadlinesTab = document.getElementById('deadlinesTab');
 
     // Pages
-    const analyzePage = document.getElementById('analyzePage');
+    const analysePage = document.getElementById('analysePage');
     const applicationsPage = document.getElementById('applicationsPage');
     const savedPage = document.getElementById('savedPage');
     const analyticsPage = document.getElementById('analyticsPage');
@@ -1429,12 +2037,15 @@
     // Analyse page refs
     const jobText = document.getElementById('jobText');
     const jobSourceUrl = document.getElementById('jobSourceUrl');
-    const analyzeBtn = document.getElementById('analyzeBtn');
+    const analyseBtn = document.getElementById('analyseBtn');
     const resultCard = document.getElementById('resultCard');
     const loadingState = document.getElementById('loadingState');
     const resultContent = document.getElementById('resultContent');
     const toastEl = document.getElementById('toast');
     const jobCharCount = document.getElementById('jobCharCount');
+    const loadingSteps = Array.from(document.querySelectorAll('#loadingState .step-item'));
+    const envLabel = document.getElementById('envLabel');
+    const envIndicator = document.querySelector('.env-indicator');
 
     const jobTitleEl = document.getElementById('jobTitle');
     const jobCompanyEl = document.getElementById('jobCompany');
@@ -1563,6 +2174,7 @@
     ############################################################ */
     // Holds the pending delete payload
     let pendingDelete = null;
+    let loadingStepTimers = [];
 
     // Modal open/close
     function openDeleteConfirm(app){
@@ -1600,7 +2212,7 @@
         ${escapeHtml(raw.company_name || '—')}
       `;
 
-      // Prefill defaults (use existing ratings if present, else Analyze defaults 7/6)
+      // Prefill defaults (use existing ratings if present, else Analyse defaults 7/6)
       const eff = toNum(raw.application_effort_rating);
       const cha = toNum(raw.application_chance_rating);
       rateEffort.value = (eff ?? 7);
@@ -1688,6 +2300,7 @@
     let currentEnv = envSelect.value;
     let db = supabase.createClient(DB[currentEnv].url, DB[currentEnv].key,
       { auth:{ persistSession:false, autoRefreshToken:false, detectSessionInUrl:false } });
+    updateEnvironmentBadge();
 
     let draft = null;     // last analysis JSON
     let lastCover = null; // last cover JSON
@@ -2757,23 +3370,33 @@
       if (name==='deadlines') initDeadlinesPage();
       history.replaceState(null,'',`#${name}`);
     }
-    analyzeTab.onclick = () => switchTab('analyze');
+    analyseTab.onclick = () => switchTab('analyse');
     applicationsTab.onclick = () => switchTab('applications');
     savedTab.onclick = () => switchTab('saved');
     analyticsTab.onclick = () => switchTab('analytics');
     addTab.onclick = () => switchTab('add');
     deadlinesTab.onclick = () => switchTab('deadlines');
+    if (location.hash==='#analyse' || location.hash==='#analyze') switchTab('analyse');
     if (location.hash==='#applications') switchTab('applications');
     if (location.hash==='#saved') switchTab('saved');
     if (location.hash==='#analytics') switchTab('analytics');
     if (location.hash==='#add') switchTab('add');
     if (location.hash==='#deadlines') switchTab('deadlines');
+    if (!location.hash || location.hash==='#analyze') history.replaceState(null,'','#analyse');
 
     /* ######################## END: TABS/ROUTER (JS) ############### */
 
     /* ############################################################
        BEGIN: ENV SWITCH (JS)
     ############################################################ */
+    function updateEnvironmentBadge(){
+      if (envLabel) {
+        envLabel.textContent = currentEnv === 'prod' ? 'Production environment' : 'Test environment';
+      }
+      if (envIndicator) {
+        envIndicator.style.background = currentEnv === 'prod' ? 'var(--success-500)' : 'var(--warning-500)';
+      }
+    }
     envSelect.onchange = ()=>{
       currentEnv = envSelect.value;
       db = supabase.createClient(DB[currentEnv].url, DB[currentEnv].key,
@@ -2781,6 +3404,7 @@
       toast(`Switched to ${currentEnv.toUpperCase()}`);
       refreshData(true);
       if (deadlinesPage.classList.contains('active')) initDeadlinesPage();
+      updateEnvironmentBadge();
     };
     /* ######################## END: ENV SWITCH (JS) ############### */
 
@@ -2788,7 +3412,26 @@
        BEGIN: ANALYSE FLOW (JS)
     ############################################################ */
     // ====== Analyse flow
-    analyzeBtn.onclick = analyseUrl;
+    function startLoadingAnimation(){
+      if (!loadingSteps.length) return;
+      loadingStepTimers.forEach(clearTimeout);
+      loadingStepTimers = [];
+      loadingSteps.forEach(step => step.classList.remove('active'));
+      loadingSteps.forEach((step, index) => {
+        const timer = setTimeout(() => {
+          step.classList.add('active');
+        }, index * 800);
+        loadingStepTimers.push(timer);
+      });
+    }
+
+    function stopLoadingAnimation(){
+      loadingStepTimers.forEach(clearTimeout);
+      loadingStepTimers = [];
+      loadingSteps.forEach(step => step.classList.remove('active'));
+    }
+
+    analyseBtn.onclick = analyseUrl;
     // (No Enter-on-URL listener anymore; we use Cmd/Ctrl+Enter in textarea)
 
     const MAX_CHARS = 30000;
@@ -2801,7 +3444,7 @@
       jobCharCount.textContent = `${jobText.value.length} / ${MAX_CHARS}`;
     });
 
-    // Cmd/Ctrl + Enter to analyze
+    // Cmd/Ctrl + Enter to analyse
     jobText.addEventListener('keydown', (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') analyseUrl();
     });
@@ -2814,7 +3457,8 @@
       resultCard.style.display='block';
       loadingState.style.display='block';
       resultContent.style.display='none';
-      analyzeBtn.disabled = true;
+      analyseBtn.disabled = true;
+      startLoadingAnimation();
 
       try{
         const fd = new FormData();
@@ -2828,14 +3472,17 @@
         renderAnalysis(out);
       }catch(e){
         console.error(e);
+        stopLoadingAnimation();
         resultCard.style.display='none';
         toast(`Analysis failed (${currentEnv}). Check n8n & CORS.`);
       }finally{
-        analyzeBtn.disabled = false;
+        stopLoadingAnimation();
+        analyseBtn.disabled = false;
       }
     }
 
     function renderAnalysis(a){
+      stopLoadingAnimation();
       loadingState.style.display='none';
       resultContent.style.display='block';
 
