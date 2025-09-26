@@ -6898,7 +6898,7 @@ function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonR
         if (date && time){
           const localDateTime = dayjs.tz(`${date} ${time}`, 'YYYY-MM-DD HH:mm', 'Europe/London');
           payload.start_at = localDateTime.toISOString();
-          payload.end_at = null;
+          payload.end_at = localDateTime.toISOString();
         } else {
           throw new Error('Date and time are required for window-type deadlines');
         }
