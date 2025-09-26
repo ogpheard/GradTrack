@@ -7139,6 +7139,7 @@ function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonR
       }
     }
 
+    // Expose modal helpers globally before inline handlers execute.
     window.openEditDeadlineModal = openEditDeadlineModal;
     window.closeEditDeadlineModal = closeEditDeadlineModal;
     window.deleteDeadline = deleteDeadline;
