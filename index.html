@@ -6890,25 +6890,33 @@ function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonR
       };
 
       if (isWindow){
-        const date = trimmed('window_date');
-        const time = trimmed('window_time') || '23:59';
+        const dateField = isEdit ? 'edit_dl_window_date' : 'add_dl_window_date';
+        const timeField = isEdit ? 'edit_dl_window_time' : 'add_dl_window_time';
+        const date = trimmed(dateField);
+        const time = trimmed(timeField) || '23:59';
+
         if (date && time){
-          const timezone = payload.timezone;
-          const localDateTime = dayjs.tz(`${date} ${time}`, 'YYYY-MM-DD HH:mm', timezone);
+          const localDateTime = dayjs.tz(`${date} ${time}`, 'YYYY-MM-DD HH:mm', 'Europe/London');
           payload.start_at = localDateTime.toISOString();
           payload.end_at = null;
         } else {
           throw new Error('Date and time are required for window-type deadlines');
         }
       } else {
-        const date = trimmed('event_date');
-        const startTime = trimmed('event_start_time');
-        const endTime = trimmed('event_end_time');
-        const timezone = trimmed('timezone') || payload.timezone;
+        const dateField = isEdit ? 'edit_dl_event_date' : 'add_dl_event_date';
+        const startField = isEdit ? 'edit_dl_event_start_time' : 'add_dl_event_start_time';
+        const endField = isEdit ? 'edit_dl_event_end_time' : 'add_dl_event_end_time';
+        const timezoneField = isEdit ? 'edit_dl_timezone' : 'add_dl_timezone';
+
+        const date = trimmed(dateField);
+        const startTime = trimmed(startField);
+        const endTime = trimmed(endField);
+        const timezone = trimmed(timezoneField) || 'Europe/London';
 
         if (date && startTime){
           const startDateTime = dayjs.tz(`${date} ${startTime}`, 'YYYY-MM-DD HH:mm', timezone);
           payload.start_at = startDateTime.toISOString();
+          payload.timezone = timezone;
 
           if (endTime){
             const endDateTime = dayjs.tz(`${date} ${endTime}`, 'YYYY-MM-DD HH:mm', timezone);
@@ -6917,7 +6925,6 @@ function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonR
             const defaultEnd = startDateTime.add(1, 'hour');
             payload.end_at = defaultEnd.toISOString();
           }
-          payload.timezone = timezone;
         } else {
           throw new Error('Date and start time are required for event-type deadlines');
         }
@@ -7005,21 +7012,27 @@ function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonR
     }
 
     function setupEditModal(){
-      if (editDeadlineOverlay){
+      if (editDeadlineOverlay && !editDeadlineOverlay._wired){
         editDeadlineOverlay.addEventListener('click', closeEditDeadlineModal);
+        editDeadlineOverlay._wired = true;
       }
-      if (editDeadlineClose){
+      if (editDeadlineClose && !editDeadlineClose._wired){
         editDeadlineClose.addEventListener('click', closeEditDeadlineModal);
+        editDeadlineClose._wired = true;
       }
-      if (cancelEditDeadline){
+      if (cancelEditDeadline && !cancelEditDeadline._wired){
         cancelEditDeadline.addEventListener('click', closeEditDeadlineModal);
+        cancelEditDeadline._wired = true;
       }
 
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && editDeadlineModal?.classList.contains('show')){
-          closeEditDeadlineModal();
-        }
-      });
+      if (!setupEditModal._escapeWired){
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && editDeadlineModal?.classList.contains('show')){
+            closeEditDeadlineModal();
+          }
+        });
+        setupEditModal._escapeWired = true;
+      }
     }
 
     function openEditDeadlineModal(deadlineId){
