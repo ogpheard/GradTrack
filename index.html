@@ -6852,7 +6852,6 @@ function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonR
       const formData = new FormData(form);
       const timingField = isEdit ? 'edit_timing_type' : 'timing_type';
       const isWindow = (formData.get(timingField) || 'window') === 'window';
-
       const findDeadline = (id) => {
         const numeric = Number(id);
         return dl_state.all.find(d => {
@@ -6862,66 +6861,54 @@ function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonR
           return String(d.id) === String(id);
         });
       };
-
       const existing = isEdit ? findDeadline(formData.get('id')) : null;
 
       const trimmed = (name) => {
         const value = formData.get(name);
         return value == null ? '' : String(value).trim();
       };
-
       const optional = (name) => {
         const value = trimmed(name);
         return value ? value : null;
       };
 
-      const getFieldValue = (editName, addName) => {
-        return isEdit ? trimmed(editName) : trimmed(addName || editName);
-      };
+      const existingHasConflict = existing?.has_conflict ?? existing?.hasConflict;
 
       const payload = {
-        company: getFieldValue('company'),
-        role: getFieldValue('role'),
-        type: getFieldValue('type'),
+        company: trimmed('company'),
+        role: trimmed('role'),
+        type: trimmed('type'),
         is_window: isWindow,
-        priority: Number.parseInt(formData.get('priority'), 10) || 2,
-        location: optional(isEdit ? 'location' : 'location'),
-        meeting_url: optional(isEdit ? 'meeting_url' : 'meeting_url'),
-        notes: optional(isEdit ? 'notes' : 'notes'),
-        timezone: 'Europe/London',
+        priority: Number.parseInt(formData.get('priority'), 10) || (existing?.priority ?? 2),
+        location: optional('location'),
+        meeting_url: optional('meeting_url'),
+        notes: optional('notes'),
+        timezone: existing?.timezone || 'Europe/London',
         status: existing?.status || 'open',
         complete: Boolean(existing?.complete ?? false),
-        has_conflict: Boolean(existing?.has_conflict ?? existing?.hasConflict ?? false)
+        has_conflict: Boolean(existingHasConflict ?? false)
       };
 
       if (isWindow){
-        const dateField = isEdit ? 'window_date' : 'window_date';
-        const timeField = isEdit ? 'window_time' : 'window_time';
-        const date = trimmed(dateField);
-        const time = trimmed(timeField) || '23:59';
-
+        const date = trimmed('window_date');
+        const time = trimmed('window_time') || '23:59';
         if (date && time){
-          const localDateTime = dayjs.tz(`${date} ${time}`, 'YYYY-MM-DD HH:mm', 'Europe/London');
+          const timezone = payload.timezone;
+          const localDateTime = dayjs.tz(`${date} ${time}`, 'YYYY-MM-DD HH:mm', timezone);
           payload.start_at = localDateTime.toISOString();
           payload.end_at = null;
         } else {
           throw new Error('Date and time are required for window-type deadlines');
         }
       } else {
-        const dateField = isEdit ? 'event_date' : 'event_date';
-        const startField = isEdit ? 'event_start_time' : 'event_start_time';
-        const endField = isEdit ? 'event_end_time' : 'event_end_time';
-        const timezoneField = isEdit ? 'timezone' : 'timezone';
-
-        const date = trimmed(dateField);
-        const startTime = trimmed(startField);
-        const endTime = trimmed(endField);
-        const timezone = trimmed(timezoneField) || 'Europe/London';
+        const date = trimmed('event_date');
+        const startTime = trimmed('event_start_time');
+        const endTime = trimmed('event_end_time');
+        const timezone = trimmed('timezone') || payload.timezone;
 
         if (date && startTime){
           const startDateTime = dayjs.tz(`${date} ${startTime}`, 'YYYY-MM-DD HH:mm', timezone);
           payload.start_at = startDateTime.toISOString();
-          payload.timezone = timezone;
 
           if (endTime){
             const endDateTime = dayjs.tz(`${date} ${endTime}`, 'YYYY-MM-DD HH:mm', timezone);
@@ -6930,6 +6917,7 @@ function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonR
             const defaultEnd = startDateTime.add(1, 'hour');
             payload.end_at = defaultEnd.toISOString();
           }
+          payload.timezone = timezone;
         } else {
           throw new Error('Date and start time are required for event-type deadlines');
         }
@@ -6953,79 +6941,6 @@ function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonR
             throw new Error('Invalid deadline ID');
           }
           payload.updated_at = new Date().toISOString();
-
-          console.log('Updating deadline with ID:', id);
-          console.log('Update payload:', payload);
-
-          const { error, data } = await db
-            .from(DEADLINES_TABLE)
-            .update(payload)
-            .eq('id', id)
-            .select();
-
-          console.log('Update result:', { error, data });
-
-          if (error) throw error;
-
-          toast('Deadline updated successfully!');
-          closeEditDeadlineModal();
-        } else {
-          payload.created_at = new Date().toISOString();
-          payload.updated_at = payload.created_at;
-
-          const { error, data } = await db
-            .from(DEADLINES_TABLE)
-            .insert(payload)
-            .select();
-
-          console.log('Insert result:', { error, data });
-
-          if (error) throw error;
-
-          toast('Deadline created successfully!');
-          form.reset();
-          const defaultRadio = document.querySelector('input[name="timing_type"][value="window"]');
-          if (defaultRadio) defaultRadio.checked = true;
-          setAddTimingVisibility('window');
-        }
-
-        await dl_fetch();
-        dl_populateCompanies();
-        dl_applyFilters();
-        dl_updateKPIs();
-        dl_render();
-      } catch (error) {
-        console.error('Error saving deadline:', error);
-        toast(`Failed to save deadline: ${error.message}`);
-      } finally {
-        if (submitBtn){
-          submitBtn.innerHTML = originalText || '<span class="btn-icon">✅</span><span>Save</span>';
-          submitBtn.disabled = false;
-        }
-      }
-    }
-
-      console.log('Form data:', Object.fromEntries(formData.entries()));
-      console.log('Payload being sent to database:', payload);
-
-      let submitBtn = form.querySelector('button[type="submit"]');
-      const originalText = submitBtn ? submitBtn.innerHTML : '';
-
-      try {
-        if (submitBtn){
-          submitBtn.innerHTML = '<span class="btn-icon">⏳</span><span>Saving...</span>';
-          submitBtn.disabled = true;
-        }
-
-        if (isEdit){
-          const id = Number(formData.get('id'));
-          if (!Number.isFinite(id)){
-            throw new Error('Invalid deadline ID');
-          }
-          payload.updated_at = new Date().toISOString();
-
-          console.log('Updating deadline with ID:', id);
-          console.log('Update payload:', payload);
 
           const { error, data } = await db
             .from(DEADLINES_TABLE)
@@ -7090,27 +7005,21 @@ function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonR
     }
 
     function setupEditModal(){
-      if (editDeadlineOverlay && !editDeadlineOverlay._wired){
+      if (editDeadlineOverlay){
         editDeadlineOverlay.addEventListener('click', closeEditDeadlineModal);
-        editDeadlineOverlay._wired = true;
       }
-      if (editDeadlineClose && !editDeadlineClose._wired){
+      if (editDeadlineClose){
         editDeadlineClose.addEventListener('click', closeEditDeadlineModal);
-        editDeadlineClose._wired = true;
       }
-      if (cancelEditDeadline && !cancelEditDeadline._wired){
+      if (cancelEditDeadline){
         cancelEditDeadline.addEventListener('click', closeEditDeadlineModal);
-        cancelEditDeadline._wired = true;
       }
 
-      if (!setupEditModal._escapeWired){
-        document.addEventListener('keydown', (e) => {
-          if (e.key === 'Escape' && editDeadlineModal?.classList.contains('show')){
-            closeEditDeadlineModal();
-          }
-        });
-        setupEditModal._escapeWired = true;
-      }
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && editDeadlineModal?.classList.contains('show')){
+          closeEditDeadlineModal();
+        }
+      });
     }
 
     function openEditDeadlineModal(deadlineId){
@@ -7131,21 +7040,22 @@ function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonR
         return;
       }
 
-      if (editDeadlineForm) editDeadlineForm.reset();
-
-      const setFieldValue = (id, value) => {
-        const field = document.getElementById(id);
-        if (field) field.value = value || '';
-      };
-
-      setFieldValue('edit_dl_id', deadline.id);
-      setFieldValue('edit_dl_company', deadline.company);
-      setFieldValue('edit_dl_role', deadline.role);
-      setFieldValue('edit_dl_type', deadline.type);
-      setFieldValue('edit_dl_priority', String(deadline.priority ?? 2));
-      setFieldValue('edit_dl_location', deadline.location);
-      setFieldValue('edit_dl_meeting_url', deadline.meetingUrl);
-      setFieldValue('edit_dl_notes', deadline.notes);
+      const idField = document.getElementById('edit_dl_id');
+      if (idField) idField.value = deadline.id;
+      const companyField = document.getElementById('edit_dl_company');
+      if (companyField) companyField.value = deadline.company || '';
+      const roleField = document.getElementById('edit_dl_role');
+      if (roleField) roleField.value = deadline.role || '';
+      const typeField = document.getElementById('edit_dl_type');
+      if (typeField) typeField.value = deadline.type || '';
+      const priorityField = document.getElementById('edit_dl_priority');
+      if (priorityField) priorityField.value = String(deadline.priority ?? 2);
+      const locationField = document.getElementById('edit_dl_location');
+      if (locationField) locationField.value = deadline.location || '';
+      const meetingField = document.getElementById('edit_dl_meeting_url');
+      if (meetingField) meetingField.value = deadline.meetingUrl || '';
+      const notesField = document.getElementById('edit_dl_notes');
+      if (notesField) notesField.value = deadline.notes || '';
 
       const windowRadio = document.querySelector('input[name="edit_timing_type"][value="window"]');
       const eventRadio = document.querySelector('input[name="edit_timing_type"][value="event"]');
@@ -7153,54 +7063,51 @@ function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonR
       if (deadline.isWindow){
         if (windowRadio) windowRadio.checked = true;
         setEditTimingVisibility('window');
-
         const zone = deadline.timezone || 'Europe/London';
-        const dueDate = deadline.dueBy || deadline.startAt;
-
-        if (dueDate) {
-          const localDate = dayjs(dueDate).tz(zone);
-          setFieldValue('edit_dl_window_date', localDate.format('YYYY-MM-DD'));
-          setFieldValue('edit_dl_window_time', localDate.format('HH:mm'));
+        const dueDate = deadline.dueBy ? dayjs(deadline.dueBy).tz(zone) : null;
+        const windowDate = document.getElementById('edit_dl_window_date');
+        const windowTime = document.getElementById('edit_dl_window_time');
+        if (dueDate?.isValid()){
+          if (windowDate) windowDate.value = dueDate.format('YYYY-MM-DD');
+          if (windowTime) windowTime.value = dueDate.format('HH:mm');
+        } else {
+          if (windowDate) windowDate.value = '';
+          if (windowTime) windowTime.value = '';
         }
       } else {
         if (eventRadio) eventRadio.checked = true;
         setEditTimingVisibility('event');
-
         const zone = deadline.timezone || 'Europe/London';
+        const startAt = deadline.startAt ? dayjs(deadline.startAt).tz(zone) : null;
+        const endAt = deadline.endAt ? dayjs(deadline.endAt).tz(zone) : null;
+        const eventDate = document.getElementById('edit_dl_event_date');
+        const eventStart = document.getElementById('edit_dl_event_start_time');
+        const eventEnd = document.getElementById('edit_dl_event_end_time');
+        const timezoneField = document.getElementById('edit_dl_timezone');
 
-        if (deadline.startAt) {
-          const startDate = dayjs(deadline.startAt).tz(zone);
-          setFieldValue('edit_dl_event_date', startDate.format('YYYY-MM-DD'));
-          setFieldValue('edit_dl_event_start_time', startDate.format('HH:mm'));
+        if (startAt?.isValid()){
+          if (eventDate) eventDate.value = startAt.format('YYYY-MM-DD');
+          if (eventStart) eventStart.value = startAt.format('HH:mm');
+        } else {
+          if (eventDate) eventDate.value = '';
+          if (eventStart) eventStart.value = '';
         }
-
-        if (deadline.endAt) {
-          const endDate = dayjs(deadline.endAt).tz(zone);
-          setFieldValue('edit_dl_event_end_time', endDate.format('HH:mm'));
+        if (endAt?.isValid()){
+          if (eventEnd) eventEnd.value = endAt.format('HH:mm');
+        } else if (eventEnd) {
+          eventEnd.value = '';
         }
-
-        setFieldValue('edit_dl_timezone', zone);
+        if (timezoneField) timezoneField.value = zone;
       }
 
-      if (editDeadlineModal) {
-        editDeadlineModal.classList.add('show');
-        editDeadlineModal.setAttribute('aria-hidden', 'false');
-      }
+      editDeadlineModal?.classList.add('show');
+      editDeadlineModal?.setAttribute('aria-hidden', 'false');
     }
 
     function closeEditDeadlineModal(){
-      if (editDeadlineModal){
-        editDeadlineModal.classList.remove('show');
-        editDeadlineModal.setAttribute('aria-hidden', 'true');
-      }
-      if (editDeadlineForm) {
-        editDeadlineForm.reset();
-        const windowRadio = document.querySelector('input[name="edit_timing_type"][value="window"]');
-        if (windowRadio) {
-          windowRadio.checked = true;
-          setEditTimingVisibility('window');
-        }
-      }
+      editDeadlineModal?.classList.remove('show');
+      editDeadlineModal?.setAttribute('aria-hidden', 'true');
+      if (editDeadlineForm) editDeadlineForm.reset();
     }
 
     async function deleteDeadline(deadlineId){
