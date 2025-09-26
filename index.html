@@ -1465,6 +1465,8 @@
     let lastCover = null; // last cover JSON
 
     let appsLive = { applied: [], saved: [] }; // server truth from Workflow 4
+    // Holds all rows from Supabase (any status)
+    let rowsAll = [];
     let applicationsList = [];                  // flattened view for “My Applications”
 
     function toCardShape(r){
@@ -1499,9 +1501,7 @@
     }
 
     function getRawRowById(id){
-      const all = [...(appsLive.applied||[]), ...(appsLive.saved||[])];
-      // Prefer a direct application_id match, else fall back to the derived card id
-      return all.find(r =>
+      return rowsAll.find(r =>
         (r.application_id && r.application_id === id) ||
         (toCardShape(r).id === id)
       ) || null;
@@ -1548,6 +1548,7 @@
         };
 
         const dataNorm = (data || []).map(norm);
+        rowsAll = dataNorm;
         appsLive = {
           applied: (dataNorm).filter(r => (r.status||'').toLowerCase()==='applied'),
           saved:   (dataNorm).filter(r => (r.status||'').toLowerCase()==='saved')
@@ -2719,33 +2720,19 @@
     }
 
     function cleanRowForDB(row){
-      let out = fixAIKeys(row);
-      out = { ...out };
+      // Only coerce keys that are actually present on the incoming object.
+      const out = fixAIKeys({ ...row });
 
-      // arrays (must be JSON arrays, never null)
-      out.locations          = normalizeListField(out.locations);
-      out.key_requirements   = normalizeListField(out.key_requirements);
-      out.other_requirements = normalizeListField(out.other_requirements);
-      out.fits               = normalizeListField(out.fits);
-      out.gaps               = normalizeListField(out.gaps);
-      out.keywords           = normalizeListField(out.keywords);
+      const listKeys = ['locations','key_requirements','other_requirements','fits','gaps','keywords'];
+      listKeys.forEach(k => { if (k in out) out[k] = normalizeListField(out[k]); });
 
-      // numbers
-      out.ai_fit_score              = toNum(out.ai_fit_score);
-      out.ai_alignment_score        = toNum(out.ai_alignment_score);
-      out.salary_min                = toNum(out.salary_min);
-      out.salary_max                = toNum(out.salary_max);
-      out.application_effort_rating = toNum(out.application_effort_rating);
-      out.application_chance_rating = toNum(out.application_chance_rating);
+      const numKeys = ['ai_fit_score','ai_alignment_score','salary_min','salary_max','application_effort_rating','application_chance_rating'];
+      numKeys.forEach(k => { if (k in out) out[k] = toNum(out[k]); });
 
-      // dates/text
-      out.applied_date       = toISODateOrNull(out.applied_date);
-      out.status_update_date = toISODateOrNull(out.status_update_date);
+      ['applied_date','status_update_date'].forEach(k => { if (k in out) out[k] = toISODateOrNull(out[k]); });
 
-      // strings
-      out.status = coerceStatus(out.status);
+      if ('status' in out) out.status = coerceStatus(out.status);
 
-      // PK
       if (!out.application_id) out.application_id = (crypto.randomUUID?.() || String(Date.now()));
       return out;
     }
@@ -3115,7 +3102,8 @@
         const fd = new FormData(e.target);
 
         const statusSlug = normaliseStatus(fd.get('status') || 'saved');
-        const payload = cleanRowForDB({
+
+        const updates = {
           application_id: fd.get('application_id') || '',
           title: fd.get('title') || '',
           company_name: fd.get('company_name') || '',
@@ -3141,12 +3129,16 @@
 
           applied_date: fd.get('applied_date') || (statusSlug==='applied' ? londonTodayISO() : null),
           status_update_date: londonTodayISO()
-        });
+        };
 
-        if (!payload.application_id) throw new Error('Missing application_id');
+        if (!updates.application_id) throw new Error('Missing application_id');
+
+        // Merge existing DB row to avoid clearing fields not present in the form
+        const existing = getRawRowById(updates.application_id) || {};
+        const merged   = cleanRowForDB({ ...existing, ...updates });
 
         try{
-          await sbUpsertOnId(payload);
+          await sbUpsertOnId(merged);
           toast('Saved changes ✓');
           closeModal();
           await refreshData(true);
@@ -3235,7 +3227,12 @@
       const raw = getRawRowById(id);
       if (!raw) return;
       try{
-        await sbUpsertOnId({ application_id: raw.application_id, status:'Applied', applied_date:londonTodayISO() });
+        const today = londonTodayISO();
+        const { error } = await db
+          .from(TABLE)
+          .update({ status: 'Applied', applied_date: today, status_update_date: today })
+          .eq('application_id', raw.application_id);
+        if (error) throw error;
         toast('Marked applied ✅');
         await refreshData(true);
       }catch(e){ console.error(e); toast('Failed to update'); }
