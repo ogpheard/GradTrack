@@ -664,12 +664,14 @@
       <div class="panel animate-slide-in">
         <div class="analytics-header">
           <h2 class="analytics-title">Application Analytics</h2>
+          <!-- Replace the existing analytics range selector with this enhanced version -->
           <div class="filter-controls">
             <span class="filter-label">Timeframe</span>
             <select id="analyticsRange" class="filter-select">
               <option value="all">All time</option>
               <option value="90">Last 90 days</option>
               <option value="30">Last 30 days</option>
+              <option value="7">Last 7 days</option>
             </select>
           </div>
         </div>
@@ -716,6 +718,7 @@
           </div>
         </div>
 
+        <!-- Replace the existing charts-grid section with this expanded version -->
         <div class="charts-grid">
           <div class="chart-container">
             <div class="chart-header">
@@ -755,6 +758,28 @@
               </div>
             </div>
             <canvas id="chartRoleTypeBar" class="chart-canvas"></canvas>
+          </div>
+
+          <!-- NEW: Keywords Chart -->
+          <div class="chart-container">
+            <div class="chart-header">
+              <div>
+                <div class="chart-title">Top Keywords</div>
+                <div class="chart-subtitle">Most frequent job keywords</div>
+              </div>
+            </div>
+            <canvas id="chartKeywords" class="chart-canvas"></canvas>
+          </div>
+
+          <!-- NEW: Sector Success Rate Chart -->
+          <div class="chart-container">
+            <div class="chart-header">
+              <div>
+                <div class="chart-title">Sector Success Rate</div>
+                <div class="chart-subtitle">Non-rejection vs rejection by sector</div>
+              </div>
+            </div>
+            <canvas id="chartSectorSuccess" class="chart-canvas"></canvas>
           </div>
         </div>
       </div>
@@ -1218,10 +1243,6 @@
     function apiOutgoingStatus(slug){
       return STATUS_TO_ALLOWED[slug] || (slug ? slug.charAt(0).toUpperCase() + slug.slice(1) : 'Saved');
     }
-
-    // Sets used by Analytics
-const APPLIED_LIKE = new Set(STATUS_OPTIONS.map(o => o.value).filter(v => v !== 'saved'));
-const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','rejected','on-hold','role-closed']);
 
     function renderStatusSelect(selectEl, current='saved'){
       selectEl.innerHTML = STATUS_OPTIONS
@@ -1697,24 +1718,6 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
 
     function dateKey(d){  // YYYY-MM-DD
       return d.toISOString().slice(0,10);
-    }
-
-    function rangeDates(rangeValue, dataDates){
-      // rangeValue: 'all' | '90' | '30'
-      const today = new Date();
-      today.setHours(0,0,0,0);
-
-      if (rangeValue === 'all'){
-        // If "all", span from earliest applied_date seen (else 30 days window)
-        const minDate = dataDates.length ? new Date(Math.min(...dataDates)) : new Date(today - 29*86400000);
-        minDate.setHours(0,0,0,0);
-        return { start: minDate, end: today };
-      }
-
-      const days = Number(rangeValue);
-      const start = new Date(today - (days-1)*86400000);
-      start.setHours(0,0,0,0);
-      return { start, end: today };
     }
 
     function inRange(dateStr, start, end){
@@ -3390,220 +3393,595 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
 
     function destroyChart(c){ if (c) c.destroy(); }
 
-    function renderAnalytics(){
-      const data = Array.isArray(appsLive.applied) ? appsLive.applied : [];
+// Replace the existing renderAnalytics function and related code with this enhanced version
 
-      const appliedDates = data
-        .map(r => parseISO(r.applied_date))
-        .filter(Boolean);
+// Updated status sets for better classification
+const APPLIED_LIKE = new Set(['applied', 'oa', 'hirevue', 'interview', 'offer', 'rejected', 'withdrew', 'on-hold', 'role-closed', 'ghosted']);
+const RESPONDED_SET = new Set(['oa', 'hirevue', 'interview', 'offer', 'rejected', 'on-hold', 'role-closed']); // Excludes 'applied' and 'ghosted'
+const REJECTION_SET = new Set(['rejected', 'ghosted']);
+const NON_REJECTION_SET = new Set(['applied', 'oa', 'hirevue', 'interview', 'offer', 'withdrew', 'on-hold', 'role-closed']);
 
-      const { start, end } = rangeDates(analyticsRange.value, appliedDates);
+// Enhanced range dates function with weekly support
+function rangeDates(rangeValue, dataDates){
+  const today = new Date();
+  today.setHours(0,0,0,0);
 
-      const rowsInRange = data.filter(r => inRange(r.applied_date, start, end));
+  if (rangeValue === 'all'){
+    const minDate = dataDates.length ? new Date(Math.min(...dataDates)) : new Date(today - 29*86400000);
+    minDate.setHours(0,0,0,0);
+    return { start: minDate, end: today };
+  }
 
-      // ---- KPIs ----
-      const totalApps = rowsInRange.filter(r => APPLIED_LIKE.has(normaliseStatus(r.status))).length;
-      const totalResponses = rowsInRange.filter(r => RESPONDED_SET.has(normaliseStatus(r.status))).length;
-      const daysSpan = Math.max(1, Math.round(daysBetween(start, end) + 1));
-      const avgPerDay = totalApps / daysSpan;
+  if (rangeValue === '7') {
+    const start = new Date(today - 6*86400000);
+    start.setHours(0,0,0,0);
+    return { start, end: today };
+  }
 
-      // Avg time to response
-      const respDurations = rowsInRange
-        .filter(r => RESPONDED_SET.has(normaliseStatus(r.status)))
-        .map(r => {
-          const appliedAt = parseISO(r.applied_date);
-          const responseAt = parseISO(r.first_response_date || r.status_update_date);
-          if (!appliedAt || !responseAt) return null;
-          const d = daysBetween(appliedAt, responseAt);
-          return Number.isFinite(d) && d >= 0 ? d : null;
-        })
-        .filter(d => d != null);
-      const avgRespTime = respDurations.length
-        ? (respDurations.reduce((a,b)=>a+b,0) / respDurations.length)
-        : null;
+  const days = Number(rangeValue);
+  const start = new Date(today - (days-1)*86400000);
+  start.setHours(0,0,0,0);
+  return { start, end: today };
+}
 
-      // Previous period for trends
-      const prevEnd = new Date(start.getTime() - 86400000);
-      const prevStart = new Date(prevEnd.getTime() - (daysSpan - 1) * 86400000);
-      const rowsPrev = data.filter(r => inRange(r.applied_date, prevStart, prevEnd));
-      const prevTotalApps = rowsPrev.filter(r => APPLIED_LIKE.has(normaliseStatus(r.status))).length;
-      const prevTotalResponses = rowsPrev.filter(r => RESPONDED_SET.has(normaliseStatus(r.status))).length;
-      const prevAvgPerDay = prevTotalApps / daysSpan;
-      const prevRespDurations = rowsPrev
-        .filter(r => RESPONDED_SET.has(normaliseStatus(r.status)))
-        .map(r => {
-          const appliedAt = parseISO(r.applied_date);
-          const responseAt = parseISO(r.first_response_date || r.status_update_date);
-          if (!appliedAt || !responseAt) return null;
-          const d = daysBetween(appliedAt, responseAt);
-          return Number.isFinite(d) && d >= 0 ? d : null;
-        })
-        .filter(d => d != null);
-      const prevAvgRespTime = prevRespDurations.length
-        ? (prevRespDurations.reduce((a,b)=>a+b,0) / prevRespDurations.length)
-        : null;
+// Normalize sector and role type for consistency
+function normalizeSector(sector) {
+  if (!sector || !String(sector).trim()) return 'Other';
+  const normalized = String(sector).trim();
+  
+  // Capitalize first letter of each word
+  return normalized.split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
 
-      function setTrend(el, delta, unit='%'){
-        let cls='trend-neutral', arrow='—';
-        if (delta > 0.01){ cls='trend-up'; arrow='↗'; }
-        else if (delta < -0.01){ cls='trend-down'; arrow='↘'; }
-        const val = Math.abs(delta).toFixed(unit==='%'?0:1);
-        const sign = delta > 0 ? '+' : delta < 0 ? '-' : '0';
-        el.textContent = `${arrow} ${sign}${val}${unit}`;
-        el.className = `kpi-trend ${cls}`;
-      }
+function normalizeRoleType(roleType) {
+  if (!roleType || !String(roleType).trim()) return 'Other';
+  const normalized = String(roleType).trim();
+  
+  // Handle common variations
+  const variations = {
+    'internship': 'Internship',
+    'consulting': 'Consulting',
+    'graduate': 'Graduate',
+    'junior': 'Junior',
+    'senior': 'Senior',
+    'entry level': 'Entry Level',
+    'full-time': 'Full-time',
+    'part-time': 'Part-time',
+    'contract': 'Contract',
+    'freelance': 'Freelance'
+  };
+  
+  const lower = normalized.toLowerCase();
+  if (variations[lower]) return variations[lower];
+  
+  // Capitalize first letter of each word
+  return normalized.split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
 
-      // Write KPIs
-      kpiTotalApps.textContent = String(totalApps);
-      kpiTotalResponses.textContent = String(totalResponses);
-      kpiAvgPerDay.textContent = avgPerDay.toFixed(2);
-      kpiAvgRespTime.textContent = (avgRespTime == null) ? '—' : `${avgRespTime.toFixed(1)}d`;
-      const respRate = totalApps ? (totalResponses / totalApps) * 100 : 0;
-      kpiResponsesSubtitle.textContent = `${respRate.toFixed(0)}% response rate`;
-      kpiAvgPerDaySubtitle.textContent = `Over ${daysSpan} days`;
+// Enhanced analytics range selector
+function updateAnalyticsRangeSelector() {
+  analyticsRange.innerHTML = `
+    <option value="all">All time</option>
+    <option value="90">Last 90 days</option>
+    <option value="30">Last 30 days</option>
+    <option value="7">Last 7 days</option>
+  `;
+}
 
-      setTrend(kpiTrendApps, prevTotalApps ? ((totalApps - prevTotalApps)/prevTotalApps)*100 : 0);
-      setTrend(kpiTrendResponses, prevTotalResponses ? ((totalResponses - prevTotalResponses)/prevTotalResponses)*100 : 0);
-      setTrend(kpiTrendAvgPerDay, prevAvgPerDay ? ((avgPerDay - prevAvgPerDay)/prevAvgPerDay)*100 : 0);
-      setTrend(kpiTrendRespTime, (prevAvgRespTime != null && avgRespTime != null) ? (avgRespTime - prevAvgRespTime) : 0, 'd');
+// Main analytics rendering function
+function renderAnalytics(){
+  // Update range selector if needed
+  updateAnalyticsRangeSelector();
+  
+  const data = Array.isArray(appsLive.applied) ? appsLive.applied : [];
+  const allData = [...(appsLive.applied || []), ...(appsLive.saved || [])]; // Include saved for complete picture
 
-      // ---- Datasets for charts ----
+  const appliedDates = data
+    .map(r => parseISO(r.applied_date))
+    .filter(Boolean);
 
-      // 1) Line: daily total applications (count by applied_date)
-      const dayCounts = {};
-      for (let d = new Date(start); d <= end; d = new Date(d.getTime() + 86400000)){
-        dayCounts[dateKey(d)] = 0;
-      }
-      rowsInRange.forEach(r => {
-        const d = parseISO(r.applied_date);
-        if (!d) return;
-        const k = dateKey(d);
-        if (k in dayCounts) dayCounts[k] += 1;
-      });
-      const lineLabels = Object.keys(dayCounts).sort();
-      const lineData = lineLabels.map(k => dayCounts[k]);
+  const { start, end } = rangeDates(analyticsRange.value, appliedDates);
+  const rangeLabel = analyticsRange.value === 'all' ? 'all time' : 
+                    analyticsRange.value === '7' ? 'last 7 days' :
+                    `last ${analyticsRange.value} days`;
 
-      // 2) Pie: status distribution (within range)
-      const statusCounts = {};
-      rowsInRange.forEach(r => {
-        const s = normaliseStatus(r.status);
-        statusCounts[s] = (statusCounts[s] || 0) + 1;
-      });
-      const pieSlugLabels = Object.keys(statusCounts).sort();
-      const pieData = pieSlugLabels.map(k => statusCounts[k]);
-      const pieColors = pieSlugLabels.map(k => STATUS_COLORS[k] || '#9ca3af');
-      const pieLabels = pieSlugLabels.map(statusLabel);
-
-      // 3) Bar: per sector
-      const sectorCounts = {};
-      rowsInRange.forEach(r => {
-        const key = (r.sector && String(r.sector).trim()) ? r.sector : 'Unknown';
-        sectorCounts[key] = (sectorCounts[key] || 0) + 1;
-      });
-      const sectorLabels = Object.keys(sectorCounts).sort((a,b)=> sectorCounts[b]-sectorCounts[a]).slice(0,12);
-      const sectorData = sectorLabels.map(k => sectorCounts[k]);
-
-      // 4) Bar: per role_type
-      const roleCounts = {};
-      rowsInRange.forEach(r => {
-        const key = (r.role_type && String(r.role_type).trim()) ? r.role_type : 'Unknown';
-        roleCounts[key] = (roleCounts[key] || 0) + 1;
-      });
-      const roleLabels = Object.keys(roleCounts).sort((a,b)=> roleCounts[b]-roleCounts[a]).slice(0,12);
-      const roleData = roleLabels.map(k => roleCounts[k]);
-
-      // ---- Render charts ----
-      destroyChart(chartAppsLine);
-      destroyChart(chartStatusPie);
-      destroyChart(chartSectorBar);
-      destroyChart(chartRoleTypeBar);
-
-      chartAppsLine = new Chart(document.getElementById('chartAppsLine').getContext('2d'), {
-        type: 'line',
-        data: {
-          labels: lineLabels,
-          datasets: [{
-            data: lineData,
-            tension: 0.4,
-            borderColor: '#667eea',
-            backgroundColor: 'rgba(102, 126, 234, 0.1)',
-            borderWidth: 3,
-            fill: true,
-            pointBackgroundColor: '#667eea',
-            pointBorderColor: 'white',
-            pointBorderWidth: 2,
-            pointRadius: 6,
-            pointHoverRadius: 8
-          }]
-        },
-        options: {
-          ...chartDefaults,
-          scales: {
-            y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { family: 'Inter', weight: '500' } } },
-            x: { grid: { display: false }, ticks: { font: { family: 'Inter', weight: '500' } } }
-          }
-        }
-      });
-
-      chartStatusPie = new Chart(document.getElementById('chartStatusPie').getContext('2d'), {
-        type: 'doughnut',
-        data: {
-          labels: pieLabels,
-          datasets: [{
-            data: pieData,
-            backgroundColor: pieColors,
-            borderWidth: 0,
-            hoverOffset: 10
-          }]
-        },
-        options: {
-          ...chartDefaults,
-          cutout: '60%'
-        }
-      });
-
-      chartSectorBar = new Chart(document.getElementById('chartSectorBar').getContext('2d'), {
-        type: 'bar',
-        data: {
-          labels: sectorLabels,
-          datasets: [{
-            data: sectorData,
-            backgroundColor: ['#667eea', '#4facfe', '#38ef7d', '#f093fb', '#f5576c'],
-            borderRadius: 8,
-            borderSkipped: false
-          }]
-        },
-        options: {
-          ...chartDefaults,
-          plugins: { ...chartDefaults.plugins, legend: { display: false } },
-          scales: {
-            y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
-            x: { grid: { display: false } }
-          }
-        }
-      });
-
-      chartRoleTypeBar = new Chart(document.getElementById('chartRoleTypeBar').getContext('2d'), {
-        type: 'bar',
-        data: {
-          labels: roleLabels,
-          datasets: [{
-            data: roleData,
-            backgroundColor: '#667eea',
-            borderRadius: 8
-          }]
-        },
-        options: {
-          ...chartDefaults,
-          indexAxis: 'y',
-          plugins: { ...chartDefaults.plugins, legend: { display: false } },
-          scales: {
-            x: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
-            y: { grid: { display: false } }
-          }
-        }
-      });
+  // Filter data by range - use all applications for complete analytics
+  const rowsInRange = allData.filter(r => {
+    // For applied applications, use applied_date
+    if (APPLIED_LIKE.has(normaliseStatus(r.status))) {
+      return inRange(r.applied_date, start, end);
     }
+    // For saved applications, use created_at or status_update_date
+    const dateToCheck = r.status_update_date || r.created_at;
+    return inRange(dateToCheck, start, end);
+  });
+
+  // ---- Enhanced KPIs ----
+  const totalApps = rowsInRange.filter(r => APPLIED_LIKE.has(normaliseStatus(r.status))).length;
+  const totalResponses = rowsInRange.filter(r => RESPONDED_SET.has(normaliseStatus(r.status))).length;
+  const daysSpan = Math.max(1, Math.round(daysBetween(start, end) + 1));
+  const avgPerDay = totalApps / daysSpan;
+
+  // Applications in a single day (max)
+  const dayCounts = {};
+  rowsInRange.forEach(r => {
+    if (!APPLIED_LIKE.has(normaliseStatus(r.status))) return;
+    const d = parseISO(r.applied_date);
+    if (!d) return;
+    const k = dateKey(d);
+    dayCounts[k] = (dayCounts[k] || 0) + 1;
+  });
+  const maxAppsInDay = Math.max(0, ...Object.values(dayCounts));
+
+  // Previous period for trends
+  const prevEnd = new Date(start.getTime() - 86400000);
+  const prevStart = new Date(prevEnd.getTime() - (daysSpan - 1) * 86400000);
+  const rowsPrev = allData.filter(r => {
+    if (APPLIED_LIKE.has(normaliseStatus(r.status))) {
+      return inRange(r.applied_date, prevStart, prevEnd);
+    }
+    const dateToCheck = r.status_update_date || r.created_at;
+    return inRange(dateToCheck, prevStart, prevEnd);
+  });
+  
+  const prevTotalApps = rowsPrev.filter(r => APPLIED_LIKE.has(normaliseStatus(r.status))).length;
+  const prevTotalResponses = rowsPrev.filter(r => RESPONDED_SET.has(normaliseStatus(r.status))).length;
+  const prevAvgPerDay = prevTotalApps / daysSpan;
+
+  function setTrend(el, delta, unit='%'){
+    let cls='trend-neutral', arrow='—';
+    if (delta > 0.01){ cls='trend-up'; arrow='↗'; }
+    else if (delta < -0.01){ cls='trend-down'; arrow='↘'; }
+    const val = Math.abs(delta).toFixed(unit==='%'?0:1);
+    const sign = delta > 0 ? '+' : delta < 0 ? '-' : '';
+    el.textContent = `${arrow} ${sign}${val}${unit}`;
+    el.className = `kpi-trend ${cls}`;
+  }
+
+  // Write Enhanced KPIs
+  kpiTotalApps.textContent = String(totalApps);
+  kpiTotalResponses.textContent = String(totalResponses);
+  kpiAvgPerDay.textContent = avgPerDay.toFixed(2);
+  kpiAvgRespTime.textContent = String(maxAppsInDay);
+  
+  const respRate = totalApps ? (totalResponses / totalApps) * 100 : 0;
+  kpiResponsesSubtitle.textContent = `${respRate.toFixed(0)}% response rate`;
+  kpiAvgPerDaySubtitle.textContent = `Over ${daysSpan} days (${rangeLabel})`;
+  
+  // Update KPI labels
+  document.querySelector('.kpi:nth-child(4) .kpi-label').textContent = 'Max apps in one day';
+  document.querySelector('.kpi:nth-child(4) .kpi-subtitle').textContent = 'Peak daily applications';
+
+  setTrend(kpiTrendApps, prevTotalApps ? ((totalApps - prevTotalApps)/prevTotalApps)*100 : 0);
+  setTrend(kpiTrendResponses, prevTotalResponses ? ((totalResponses - prevTotalResponses)/prevTotalResponses)*100 : 0);
+  setTrend(kpiTrendAvgPerDay, prevAvgPerDay ? ((avgPerDay - prevAvgPerDay)/prevAvgPerDay)*100 : 0);
+  
+  // Max apps trend
+  const prevDayCounts = {};
+  rowsPrev.forEach(r => {
+    if (!APPLIED_LIKE.has(normaliseStatus(r.status))) return;
+    const d = parseISO(r.applied_date);
+    if (!d) return;
+    const k = dateKey(d);
+    prevDayCounts[k] = (prevDayCounts[k] || 0) + 1;
+  });
+  const prevMaxAppsInDay = Math.max(0, ...Object.values(prevDayCounts));
+  const maxAppsDelta = prevMaxAppsInDay ? ((maxAppsInDay - prevMaxAppsInDay) / prevMaxAppsInDay) * 100 : 0;
+  setTrend(kpiTrendRespTime, maxAppsDelta);
+
+  // ---- Enhanced Datasets for charts ----
+
+  // 1) Line: daily applications with better styling
+  const lineLabels = Object.keys(dayCounts).sort();
+  const lineData = lineLabels.map(k => dayCounts[k]);
+
+  // 2) Fixed Pie: status distribution
+  const statusCounts = {};
+  rowsInRange.forEach(r => {
+    const s = normaliseStatus(r.status);
+    if (APPLIED_LIKE.has(s)) { // Only count actual applications
+      statusCounts[s] = (statusCounts[s] || 0) + 1;
+    }
+  });
+  
+  // Assign colors to all possible statuses
+  const allStatuses = Object.keys(statusCounts);
+  assignStatusColors(allStatuses);
+  
+  const pieSlugLabels = Object.keys(statusCounts).sort();
+  const pieData = pieSlugLabels.map(k => statusCounts[k]);
+  const pieColors = pieSlugLabels.map(k => STATUS_COLORS[k] || '#9ca3af');
+  const pieLabels = pieSlugLabels.map(statusLabel);
+
+  // 3) Bar: per normalized sector with "Other" grouping
+  const sectorCounts = {};
+  rowsInRange.forEach(r => {
+    if (!APPLIED_LIKE.has(normaliseStatus(r.status))) return;
+    const normalized = normalizeSector(r.sector);
+    sectorCounts[normalized] = (sectorCounts[normalized] || 0) + 1;
+  });
+  
+  // Get top sectors and group rest as "Other"
+  const sortedSectors = Object.entries(sectorCounts)
+    .sort(([,a], [,b]) => b - a);
+  
+  const topSectors = sortedSectors.slice(0, 10);
+  const otherCount = sortedSectors.slice(10).reduce((sum, [,count]) => sum + count, 0);
+  
+  if (otherCount > 0) {
+    topSectors.push(['Other', otherCount]);
+  }
+  
+  const sectorLabels = topSectors.map(([label]) => label);
+  const sectorData = topSectors.map(([,count]) => count);
+
+  // 4) Bar: per normalized role type
+  const roleCounts = {};
+  rowsInRange.forEach(r => {
+    if (!APPLIED_LIKE.has(normaliseStatus(r.status))) return;
+    const normalized = normalizeRoleType(r.role_type);
+    roleCounts[normalized] = (roleCounts[normalized] || 0) + 1;
+  });
+  
+  const sortedRoles = Object.entries(roleCounts)
+    .sort(([,a], [,b]) => b - a);
+  
+  const topRoles = sortedRoles.slice(0, 10);
+  const otherRoleCount = sortedRoles.slice(10).reduce((sum, [,count]) => sum + count, 0);
+  
+  if (otherRoleCount > 0) {
+    topRoles.push(['Other', otherRoleCount]);
+  }
+  
+  const roleLabels = topRoles.map(([label]) => label);
+  const roleData = topRoles.map(([,count]) => count);
+
+  // 5) NEW: Keywords analysis
+  const keywordCounts = {};
+  rowsInRange.forEach(r => {
+    if (!APPLIED_LIKE.has(normaliseStatus(r.status))) return;
+    const keywords = normalizeListField(r.keywords);
+    keywords.forEach(keyword => {
+      const normalized = keyword.trim();
+      if (normalized) {
+        keywordCounts[normalized] = (keywordCounts[normalized] || 0) + 1;
+      }
+    });
+  });
+  
+  const topKeywords = Object.entries(keywordCounts)
+    .sort(([,a], [,b]) => b - a)
+    .slice(0, 15);
+  
+  const keywordLabels = topKeywords.map(([keyword]) => keyword);
+  const keywordData = topKeywords.map(([,count]) => count);
+
+  // 6) NEW: Sector Success Rate (Non-rejection vs Rejection)
+  const sectorSuccessData = {};
+  rowsInRange.forEach(r => {
+    if (!APPLIED_LIKE.has(normaliseStatus(r.status))) return;
+    const sector = normalizeSector(r.sector);
+    if (!sectorSuccessData[sector]) {
+      sectorSuccessData[sector] = { nonRejection: 0, rejection: 0 };
+    }
+    
+    const status = normaliseStatus(r.status);
+    if (REJECTION_SET.has(status)) {
+      sectorSuccessData[sector].rejection++;
+    } else if (NON_REJECTION_SET.has(status)) {
+      sectorSuccessData[sector].nonRejection++;
+    }
+  });
+  
+  const sectorSuccessLabels = Object.keys(sectorSuccessData)
+    .filter(sector => (sectorSuccessData[sector].nonRejection + sectorSuccessData[sector].rejection) >= 2) // Only sectors with 2+ applications
+    .sort((a, b) => {
+      const totalA = sectorSuccessData[a].nonRejection + sectorSuccessData[a].rejection;
+      const totalB = sectorSuccessData[b].nonRejection + sectorSuccessData[b].rejection;
+      return totalB - totalA;
+    })
+    .slice(0, 8);
+  
+  const nonRejectionData = sectorSuccessLabels.map(sector => sectorSuccessData[sector].nonRejection);
+  const rejectionData = sectorSuccessLabels.map(sector => sectorSuccessData[sector].rejection);
+
+  // ---- Render Enhanced Charts ----
+  destroyChart(chartAppsLine);
+  destroyChart(chartStatusPie);
+  destroyChart(chartSectorBar);
+  destroyChart(chartRoleTypeBar);
+
+  // Applications over time - enhanced line chart
+  chartAppsLine = new Chart(document.getElementById('chartAppsLine').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: lineLabels.map(date => {
+        const d = new Date(date);
+        return analyticsRange.value === '7' ? 
+          d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' }) :
+          d.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' });
+      }),
+      datasets: [{
+        label: 'Applications',
+        data: lineData,
+        tension: 0.4,
+        borderColor: '#667eea',
+        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+        borderWidth: 3,
+        fill: true,
+        pointBackgroundColor: '#667eea',
+        pointBorderColor: 'white',
+        pointBorderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 8
+      }]
+    },
+    options: {
+      ...chartDefaults,
+      scales: {
+        y: { 
+          beginAtZero: true, 
+          grid: { color: 'rgba(0,0,0,0.05)' }, 
+          ticks: { 
+            font: { family: 'Inter', weight: '500' },
+            stepSize: 1
+          } 
+        },
+        x: { 
+          grid: { display: false }, 
+          ticks: { 
+            font: { family: 'Inter', weight: '500' },
+            maxTicksLimit: analyticsRange.value === '7' ? 7 : 10
+          } 
+        }
+      },
+      plugins: {
+        ...chartDefaults.plugins,
+        legend: { display: false }
+      }
+    }
+  });
+
+  // Fixed status pie chart
+  chartStatusPie = new Chart(document.getElementById('chartStatusPie').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: pieLabels,
+      datasets: [{
+        data: pieData,
+        backgroundColor: pieColors,
+        borderWidth: 0,
+        hoverOffset: 10
+      }]
+    },
+    options: {
+      ...chartDefaults,
+      cutout: '60%',
+      plugins: {
+        ...chartDefaults.plugins,
+        legend: {
+          position: 'bottom',
+          labels: {
+            usePointStyle: true,
+            padding: 15,
+            font: { family: 'Inter', size: 11, weight: '600' },
+            generateLabels: function(chart) {
+              const data = chart.data;
+              if (data.labels.length && data.datasets.length) {
+                return data.labels.map((label, i) => ({
+                  text: `${label} (${data.datasets[0].data[i]})`,
+                  fillStyle: data.datasets[0].backgroundColor[i],
+                  strokeStyle: data.datasets[0].backgroundColor[i],
+                  pointStyle: 'circle'
+                }));
+              }
+              return [];
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // Enhanced sector bar chart
+  chartSectorBar = new Chart(document.getElementById('chartSectorBar').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: sectorLabels,
+      datasets: [{
+        label: 'Applications',
+        data: sectorData,
+        backgroundColor: '#667eea',
+        borderRadius: 8,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      ...chartDefaults,
+      plugins: { 
+        ...chartDefaults.plugins, 
+        legend: { display: false },
+        tooltip: {
+          ...chartDefaults.plugins.tooltip,
+          callbacks: {
+            label: function(context) {
+              return `${context.parsed.y} applications`;
+            }
+          }
+        }
+      },
+      scales: {
+        y: { 
+          beginAtZero: true, 
+          grid: { color: 'rgba(0,0,0,0.05)' },
+          ticks: { stepSize: 1 }
+        },
+        x: { 
+          grid: { display: false },
+          ticks: {
+            maxRotation: 45,
+            font: { size: 10 }
+          }
+        }
+      }
+    }
+  });
+
+  // Enhanced role type bar chart
+  chartRoleTypeBar = new Chart(document.getElementById('chartRoleTypeBar').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: roleLabels,
+      datasets: [{
+        label: 'Applications',
+        data: roleData,
+        backgroundColor: '#4facfe',
+        borderRadius: 8
+      }]
+    },
+    options: {
+      ...chartDefaults,
+      indexAxis: 'y',
+      plugins: { 
+        ...chartDefaults.plugins, 
+        legend: { display: false },
+        tooltip: {
+          ...chartDefaults.plugins.tooltip,
+          callbacks: {
+            label: function(context) {
+              return `${context.parsed.x} applications`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { 
+          beginAtZero: true, 
+          grid: { color: 'rgba(0,0,0,0.05)' },
+          ticks: { stepSize: 1 }
+        },
+        y: { 
+          grid: { display: false },
+          ticks: { font: { size: 11 } }
+        }
+      }
+    }
+  });
+
+  // Render new charts if containers exist
+  renderNewAnalyticsCharts(keywordLabels, keywordData, sectorSuccessLabels, nonRejectionData, rejectionData);
+}
+
+// New function to render additional charts
+function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonRejectionData, rejectionData) {
+  // Keywords chart
+  const keywordsCanvas = document.getElementById('chartKeywords');
+  if (keywordsCanvas) {
+    const existingChart = Chart.getChart(keywordsCanvas);
+    if (existingChart) existingChart.destroy();
+    
+    new Chart(keywordsCanvas.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: keywordLabels,
+        datasets: [{
+          label: 'Frequency',
+          data: keywordData,
+          backgroundColor: '#38ef7d',
+          borderRadius: 6
+        }]
+      },
+      options: {
+        ...chartDefaults,
+        indexAxis: 'y',
+        plugins: { 
+          ...chartDefaults.plugins, 
+          legend: { display: false }
+        },
+        scales: {
+          x: { 
+            beginAtZero: true, 
+            grid: { color: 'rgba(0,0,0,0.05)' },
+            ticks: { stepSize: 1 }
+          },
+          y: { 
+            grid: { display: false },
+            ticks: { font: { size: 10 } }
+          }
+        }
+      }
+    });
+  }
+
+  // Sector success rate chart
+  const sectorSuccessCanvas = document.getElementById('chartSectorSuccess');
+  if (sectorSuccessCanvas) {
+    const existingChart = Chart.getChart(sectorSuccessCanvas);
+    if (existingChart) existingChart.destroy();
+    
+    new Chart(sectorSuccessCanvas.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: sectorLabels,
+        datasets: [
+          {
+            label: 'Non-Rejection',
+            data: nonRejectionData,
+            backgroundColor: '#38ef7d',
+            borderRadius: 4
+          },
+          {
+            label: 'Rejection',
+            data: rejectionData,
+            backgroundColor: '#f5576c',
+            borderRadius: 4
+          }
+        ]
+      },
+      options: {
+        ...chartDefaults,
+        responsive: true,
+        scales: {
+          x: { 
+            stacked: true,
+            grid: { display: false },
+            ticks: { 
+              maxRotation: 45,
+              font: { size: 10 }
+            }
+          },
+          y: { 
+            stacked: true,
+            beginAtZero: true,
+            grid: { color: 'rgba(0,0,0,0.05)' },
+            ticks: { stepSize: 1 }
+          }
+        },
+        plugins: {
+          ...chartDefaults.plugins,
+          tooltip: {
+            ...chartDefaults.plugins.tooltip,
+            callbacks: {
+              afterLabel: function(context) {
+                const datasetIndex = context.datasetIndex;
+                const dataIndex = context.dataIndex;
+                const nonRej = nonRejectionData[dataIndex] || 0;
+                const rej = rejectionData[dataIndex] || 0;
+                const total = nonRej + rej;
+                const successRate = total > 0 ? ((nonRej / total) * 100).toFixed(1) : 0;
+                return datasetIndex === 0 ? `Success Rate: ${successRate}%` : '';
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+}
 
     /* ######################## END: ANALYTICS LOGIC (JS) ############### */
 
