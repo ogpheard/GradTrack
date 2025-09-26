@@ -1119,22 +1119,64 @@
     ############################################################ */
     // ===== Status catalogs
     const STATUS_STARTER = [
-      { value: 'saved',       label: 'Saved' },
+      { value: 'saved',       label: 'Saved' },          // UI-only
       { value: 'applied',     label: 'Applied' },
-      { value: 'oa',          label: 'Online assessment' },
-      { value: 'hirevue',     label: 'Video interview (HireVue)' },
+      { value: 'oa',          label: 'OA' },
+      { value: 'hirevue',     label: 'HireVue' },
       { value: 'interview',   label: 'Interview' },
-      { value: 'response',    label: 'Got response' },
       { value: 'offer',       label: 'Offer' },
       { value: 'rejected',    label: 'Rejected' },
-      { value: 'ghosted',     label: 'Ghosted' },
       { value: 'withdrew',    label: 'Withdrew' },
-      { value: 'on-hold',     label: 'On hold' },
-      { value: 'role-closed', label: 'Role closed' }
+      { value: 'on-hold',     label: 'On-hold' },
+      { value: 'role-closed', label: 'Role-closed' },
+      { value: 'ghosted',     label: 'Ghosted' }
     ];
     const STATUS_ADVANCED = [];
-    // Use ONLY the starter set for now:
     const STATUS_OPTIONS = [...STATUS_STARTER];
+
+    // Canonical values we want to WRITE to DB / accept from backend
+    const ALLOWED_STATUSES = ["Applied","OA","HireVue","Interview","Offer","Rejected","Withdrew","On-hold","Role-closed","Ghosted"];
+
+    // Map UI slug -> canonical (DB/back-end) string
+    const STATUS_TO_ALLOWED = {
+      saved:        "Saved",       // UI-only
+      applied:      "Applied",
+      oa:           "OA",
+      hirevue:      "HireVue",
+      interview:    "Interview",
+      offer:        "Offer",
+      rejected:     "Rejected",
+      withdrew:     "Withdrew",
+      "on-hold":    "On-hold",
+      "role-closed":"Role-closed",
+      ghosted:      "Ghosted",
+      // legacy/local aliases (kept for safety)
+      response:     "Applied"
+    };
+
+    // Normalise any incoming free-text/legacy status to our UI slug
+    function toStatusSlug(s) {
+      const raw = String(s || '').trim();
+      if (!raw) return '';
+      const lc = raw.toLowerCase();
+      const alias = {
+        'online assessment': 'oa',
+        'online-assessment': 'oa',
+        'video interview (hirevue)': 'hirevue',
+        'video-interview-(hirevue)': 'hirevue',
+        'hire vue': 'hirevue',
+        'on hold': 'on-hold',
+        'role closed': 'role-closed',
+        'got response': 'response'
+      };
+      if (alias[lc]) return alias[lc];
+      // If the backend already sends canonical (e.g., OA, HireVue, On-hold, Role-closed)
+      if (ALLOWED_STATUSES.includes(raw)) {
+        return raw.toLowerCase().replace(/\s+/g, '-');
+      }
+      // Generic fallback
+      return lc.replace(/\s+/g, '-');
+    }
 
     // Style class per slug
     const STATUS_STYLE = {
@@ -1155,7 +1197,7 @@
 
     // Normalise to slug
     function normaliseStatus(s){
-      return String(s || '').trim().toLowerCase();
+      return toStatusSlug(s);
     }
     // Find display label for a slug (fallback: Title Case)
     function statusLabel(slug){
@@ -1166,9 +1208,7 @@
 
     // Outgoing status string (human-friendly) for payloads
     function apiOutgoingStatus(slug){
-      if (slug === 'saved') return 'Saved';
-      if (slug === 'applied') return 'Applied';
-      return statusLabel(slug); // readable label for everything else
+      return STATUS_TO_ALLOWED[slug] || (slug ? slug.charAt(0).toUpperCase() + slug.slice(1) : 'Saved');
     }
 
     // Sets used by Analytics
@@ -1404,7 +1444,7 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         canonical_job_url: r.canonical_job_url || '',
         title: r.title || 'Untitled role',
         company: r.company_name || '',
-        status: (r.status||'').trim().toLowerCase().replace(/\s+/g,'-') || 'saved',
+        status: toStatusSlug(r.status) || 'saved',
         sector: r.sector || '',
         roleType: r.role_type || '',
         startDate: r.start_date || null,
