@@ -3726,7 +3726,7 @@
       if (!d.complete){
         actions.push(`<button class="dl-btn dl-btn-success" onclick="dl_markDone(${Number(d.id)})">Mark done</button>`);
       }
-      const idForHandler = JSON.stringify(String(d.id));
+      const idForHandler = `'${String(d.id).replace(/'/g, "\\'")}'`;
       actions.push(`
         <button class="dl-btn dl-btn-outline dl-btn-edit" onclick="openEditDeadlineModal(${idForHandler})">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
