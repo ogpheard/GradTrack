@@ -3028,76 +3028,561 @@
       const bullet = arr => asArray(arr).map(x=>`• ${escapeHtml(x)}`).join('<br/>') || '—';
       const aiFitRaw = toNum(raw.ai_fit_score ?? raw.AI_fit_score);
       const aiAlignRaw = toNum(raw.ai_alignment_score ?? raw.AI_alignment_score);
-      const detailFields = [
-        ['Source URL', raw.source_url
-          ? `<a href="${escapeHtml(raw.source_url)}" target="_blank" rel="noopener">Link</a>`
-          : '—'
-        ],
-        ['Title', raw.title],
-        ['Company Name', raw.company_name],
-        ['Seniority', raw.seniority],
-        ['Role Type', raw.role_type],
-        ['Sector', raw.sector],
-        ['Contact Email', raw.contact_email],
-        ['Date Posted', formatDate(raw.date_posted)],
-        ['Date Deadline', formatDate(raw.date_deadline)],
-        ['Start Date', formatDate(raw.start_date)],
-        ['Salary Min', raw.salary_min],
-        ['Salary Max', raw.salary_max],
-        ['Salary Currency', raw.salary_currency],
-        ['Salary Period', raw.salary_period],
-        ['Salary Raw', raw.salary_raw],
-        ['Locations', escapeHtml(listToComma(raw.locations))],
-        ['AI Fit Score', aiFitRaw],
-        ['AI Alignment Score', aiAlignRaw],
-        ['AI CV Filename', raw.ai_cv_filename ?? raw.AI_cv_filename],
-        ['AI CV Reason', raw.ai_cv_reason ?? raw.AI_cv_reason],
-        ['Status', (() => {
-          const slug = card.status;
-          const cls = STATUS_STYLE[slug] || STATUS_STYLE.default;
-          const lab = statusLabel(slug);
-          return `<div class="application-status ${cls}">${escapeHtml(lab)}</div>`;
-        })()],
-        ['Applied Date', formatDate(raw.applied_date)],
-        ['Application Effort Rating', raw.application_effort_rating],
-        ['Application Chance Rating', raw.application_chance_rating],
-        ['Status Update Date', formatDate(raw.status_update_date)]
-      ];
-
-      const detailsHtml = detailFields.map(([label, value])=>{
-        let v = value;
-        if (v === undefined || v === null || v === '' || (typeof v === 'string' && v.trim()==='')) v = '—';
-        return `<div class="detail-item"><div class="detail-label">${label}</div><div class="detail-value">${v}</div></div>`;
-      }).join('');
-
+      
       const fit = Math.max(0, Math.min(100, Number(aiFitRaw ?? 0)));
       const align = Math.max(0, Math.min(100, Number(aiAlignRaw ?? 0)));
 
+      const slug = normaliseStatus(card.status);
+      const statusClass = STATUS_STYLE[slug] || STATUS_STYLE.default;
+      const statusLabelText = statusLabel(slug);
+      const statusBadgeColor = statusColor(slug);
+
       modalBody.innerHTML = `
-        <div class="job-details">${detailsHtml}</div>
-        <div class="scores-section">
-          <div class="score-card"><div class="score-label">AI Fit</div><div class="score-value">${fit}%</div><div class="score-bar"><div class="score-fill" style="width:${fit}%"></div></div></div>
-          <div class="score-card"><div class="score-label">Alignment</div><div class="score-value">${align}%</div><div class="score-bar"><div class="score-fill" style="width:${align}%"></div></div></div>
-        </div>
-        <div class="columns" style="margin-top:1rem">
-          <div class="column"><h3>Key requirements</h3><div class="list-content">${bullet(raw.key_requirements)}</div></div>
-          <div class="column"><h3>Other requirements</h3><div class="list-content">${bullet(raw.other_requirements)}</div></div>
-        </div>
-        <div class="columns" style="margin-top:1rem">
-          <div class="column"><h3>✅ Fits</h3><div class="list-content">${bullet(raw.fits)}</div></div>
-          <div class="column"><h3>⚠️ Gaps</h3><div class="list-content">${bullet(raw.gaps)}</div></div>
-        </div>
-        <div class="section"><h3 class="section-title">Job summary</h3><div class="summary"><div>${escapeHtml(raw.job_summary||'—')}</div></div></div>
-        <div class="section"><h3 class="section-title">Keywords</h3><div class="keywords">${asArray(raw.keywords).map(k=>`<span class="keyword">${escapeHtml(k)}</span>`).join('') || '—'}</div></div>
-        <div class="section"><h3 class="section-title">Job description</h3><div class="summary"><div>${sanitizeHtml(raw.job_description||'').replace(/\n/g,'<br/>') || '—'}</div></div></div>
-        <div style="display:flex;gap:.5rem;margin-top:1rem">
-          <button class="btn btn-primary" id="editBtn">Edit</button>
+        <div class="enhanced-modal-container">
+          <!-- Header Section with Company & Status -->
+          <div class="modal-header-section">
+            <div class="company-info">
+              <h2 class="company-name">${escapeHtml(raw.company_name || 'Unknown Company')}</h2>
+              <div class="role-title">${escapeHtml(raw.title || 'Untitled Role')}</div>
+            </div>
+            <div class="status-container">
+              <div class="application-status ${statusClass}" style="background-color: ${statusBadgeColor}">${escapeHtml(statusLabelText)}</div>
+            </div>
+          </div>
+
+          <!-- AI Scores Section -->
+          <div class="scores-showcase">
+            <div class="score-item">
+              <div class="score-label">AI Fit</div>
+              <div class="score-value">${fit}%</div>
+              <div class="score-bar">
+                <div class="score-fill" style="width: ${fit}%; background: linear-gradient(135deg, #667eea, #764ba2)"></div>
+              </div>
+            </div>
+            <div class="score-item">
+              <div class="score-label">Alignment</div>
+              <div class="score-value">${align}%</div>
+              <div class="score-bar">
+                <div class="score-fill" style="width: ${align}%; background: linear-gradient(135deg, #11998e, #38ef7d)"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Key Information Grid -->
+          <div class="info-grid">
+            <div class="info-item">
+              <div class="info-label">Location</div>
+              <div class="info-value">${escapeHtml(listToComma(raw.locations) || '—')}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Start Date</div>
+              <div class="info-value">${formatDate(raw.start_date)}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Application Deadline</div>
+              <div class="info-value">${formatDate(raw.date_deadline)}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Salary</div>
+              <div class="info-value">${(() => {
+                const parts = [
+                  raw.salary_currency || '',
+                  raw.salary_min ? raw.salary_min : '',
+                  raw.salary_max ? `- ${raw.salary_max}` : '',
+                  raw.salary_period || ''
+                ].filter(Boolean);
+                const combined = parts.length ? parts.join(' ') : (raw.salary_raw || '—');
+                return escapeHtml(String(combined));
+              })()}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Sector</div>
+              <div class="info-value">${escapeHtml(raw.sector || '—')}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Role Type</div>
+              <div class="info-value">${escapeHtml(raw.role_type || '—')}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Applied Date</div>
+              <div class="info-value">${formatDate(raw.applied_date)}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Effort Rating</div>
+              <div class="info-value">${raw.application_effort_rating ? `${raw.application_effort_rating}/10` : '—'}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Chance Rating</div>
+              <div class="info-value">${raw.application_chance_rating ? `${raw.application_chance_rating}/10` : '—'}</div>
+            </div>
+            <div class="info-item full-width">
+              <div class="info-label">Source URL</div>
+              <div class="info-value">
+                ${raw.source_url ? `<a href="${escapeHtml(raw.source_url)}" target="_blank" rel="noopener" class="source-link">View Original Job Posting ↗</a>` : '—'}
+              </div>
+            </div>
+          </div>
+
+          <!-- Requirements & Analysis Section -->
+          <div class="analysis-section">
+            <div class="analysis-column">
+              <h3 class="analysis-title">📋 Key Requirements</h3>
+              <div class="analysis-content">${bullet(raw.key_requirements)}</div>
+            </div>
+            <div class="analysis-column">
+              <h3 class="analysis-title">📝 Other Requirements</h3>
+              <div class="analysis-content">${bullet(raw.other_requirements)}</div>
+            </div>
+          </div>
+
+          <!-- Fits & Gaps Section -->
+          <div class="analysis-section">
+            <div class="analysis-column">
+              <h3 class="analysis-title">✅ Perfect Fits</h3>
+              <div class="analysis-content fits-content">${bullet(raw.fits)}</div>
+            </div>
+            <div class="analysis-column">
+              <h3 class="analysis-title">⚠️ Areas to Address</h3>
+              <div class="analysis-content gaps-content">${bullet(raw.gaps)}</div>
+            </div>
+          </div>
+
+          <!-- Job Summary -->
+          <div class="summary-section">
+            <h3 class="section-title">📄 Job Summary</h3>
+            <div class="summary-content">${escapeHtml(raw.job_summary || 'No summary provided')}</div>
+          </div>
+
+          <!-- Keywords -->
+          <div class="keywords-section">
+            <h3 class="section-title">🏷️ Keywords</h3>
+            <div class="keywords-container">
+              ${asArray(raw.keywords).map(k => `<span class="keyword-tag">${escapeHtml(k)}</span>`).join('') || '<span class="no-keywords">No keywords identified</span>'}
+            </div>
+          </div>
+
+          <!-- CV Recommendation -->
+          ${(raw.ai_cv_filename || raw.AI_cv_filename) ? `
+            <div class="cv-section">
+              <h3 class="section-title">📄 Recommended CV</h3>
+              <div class="cv-info">
+                <div class="cv-filename">${escapeHtml(raw.ai_cv_filename || raw.AI_cv_filename)}</div>
+                <div class="cv-reason">${escapeHtml(raw.ai_cv_reason || raw.AI_cv_reason || '')}</div>
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Job Description (Collapsible) -->
+          <div class="description-section">
+            <button class="description-toggle" onclick="toggleDescription(this)">
+              <h3 class="section-title">📋 Full Job Description</h3>
+              <span class="toggle-icon">▼</span>
+            </button>
+            <div class="description-content" style="display: none;">
+              ${sanitizeHtml(raw.job_description || 'No description provided').replace(/\n/g, '<br/>')}
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="modal-actions">
+            <button class="btn btn-primary" id="editBtn">
+              <span>✏️ Edit Application</span>
+            </button>
+            ${raw.source_url ? `<button class="btn btn-outline" onclick="window.open('${escapeHtml(raw.source_url)}', '_blank')">
+              <span>🔗 View Original</span>
+            </button>` : ''}
+          </div>
         </div>
       `;
 
-      document.getElementById('editBtn').onclick = ()=> openEditModal(id);
-      modal.classList.add('show'); modal.setAttribute('aria-hidden','false');
+      // Add the toggle function for job description
+      window.toggleDescription = function(button) {
+        const content = button.nextElementSibling;
+        const icon = button.querySelector('.toggle-icon');
+        const isVisible = content.style.display !== 'none';
+        
+        content.style.display = isVisible ? 'none' : 'block';
+        icon.textContent = isVisible ? '▼' : '▲';
+      };
+
+      document.getElementById('editBtn').onclick = () => openEditModal(id);
+      modal.classList.add('show');
+      modal.setAttribute('aria-hidden', 'false');
     };
+
+    // Add the enhanced CSS styles - add this to your existing CSS
+    const enhancedModalStyles = `
+    <style>
+    .enhanced-modal-container {
+      padding: 0;
+      max-width: none;
+    }
+
+    .modal-header-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 2px solid var(--gray-100);
+      gap: 1rem;
+    }
+
+    .company-info {
+      flex: 1;
+    }
+
+    .company-name {
+      font-size: 1.8rem;
+      font-weight: 900;
+      color: var(--gray-900);
+      margin: 0 0 0.5rem 0;
+      line-height: 1.2;
+    }
+
+    .role-title {
+      font-size: 1.2rem;
+      color: var(--gray-600);
+      font-weight: 600;
+      line-height: 1.3;
+    }
+
+    .status-container {
+      flex-shrink: 0;
+      margin-top: 0.25rem;
+    }
+
+    .modal-header-section .application-status {
+      position: static;
+      top: auto;
+      right: auto;
+      margin: 0;
+      padding: 0.5rem 1rem;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .scores-showcase {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+      padding: 1.5rem;
+      background: linear-gradient(135deg, var(--gray-50), rgba(255,255,255,0.8));
+      border-radius: 16px;
+      border: 1px solid var(--gray-200);
+    }
+
+    .score-item {
+      text-align: center;
+    }
+
+    .score-item .score-label {
+      font-size: 0.9rem;
+      color: var(--gray-600);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+
+    .score-item .score-value {
+      font-size: 2.5rem;
+      font-weight: 900;
+      color: var(--gray-900);
+      line-height: 1;
+      margin-bottom: 0.75rem;
+    }
+
+    .score-item .score-bar {
+      height: 8px;
+      background: var(--gray-200);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .score-item .score-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 1s ease-out;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .info-item {
+      background: rgba(255,255,255,0.7);
+      border: 1px solid var(--gray-200);
+      border-radius: 12px;
+      padding: 1rem;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .info-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .info-item.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .info-label {
+      font-size: 0.75rem;
+      color: var(--gray-500);
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+
+    .info-value {
+      font-size: 1rem;
+      color: var(--gray-900);
+      font-weight: 600;
+      line-height: 1.3;
+    }
+
+    .source-link {
+      color: var(--primary-600);
+      text-decoration: none;
+      font-weight: 700;
+      transition: color 0.2s ease;
+    }
+
+    .source-link:hover {
+      color: var(--primary-700);
+      text-decoration: underline;
+    }
+
+    .analysis-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .analysis-column {
+      background: rgba(255,255,255,0.8);
+      border: 1px solid var(--gray-200);
+      border-radius: 16px;
+      padding: 1.5rem;
+    }
+
+    .analysis-title {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--gray-900);
+      margin: 0 0 1rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .analysis-content {
+      color: var(--gray-700);
+      line-height: 1.6;
+      font-size: 0.95rem;
+    }
+
+    .fits-content {
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.05), rgba(255,255,255,0.8));
+      padding: 1rem;
+      border-radius: 8px;
+      border-left: 4px solid var(--success-500);
+    }
+
+    .gaps-content {
+      background: linear-gradient(135deg, rgba(245, 101, 101, 0.05), rgba(255,255,255,0.8));
+      padding: 1rem;
+      border-radius: 8px;
+      border-left: 4px solid var(--warning-500);
+    }
+
+    .summary-section, .keywords-section, .cv-section {
+      margin-bottom: 2rem;
+    }
+
+    .section-title {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--gray-900);
+      margin: 0 0 1rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .summary-content {
+      background: linear-gradient(135deg, var(--primary-50), rgba(255,255,255,0.9));
+      border: 1px solid var(--primary-200);
+      border-radius: 12px;
+      padding: 1.5rem;
+      color: var(--gray-700);
+      line-height: 1.6;
+      font-size: 1rem;
+    }
+
+    .keywords-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .keyword-tag {
+      background: var(--primary-500);
+      color: white;
+      padding: 0.4rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: transform 0.2s ease;
+    }
+
+    .keyword-tag:hover {
+      transform: translateY(-1px);
+    }
+
+    .no-keywords {
+      color: var(--gray-500);
+      font-style: italic;
+    }
+
+    .cv-section {
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(255,255,255,0.9));
+      border: 1px solid var(--primary-200);
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+
+    .cv-filename {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--primary-700);
+      margin-bottom: 0.5rem;
+    }
+
+    .cv-reason {
+      color: var(--gray-600);
+      line-height: 1.5;
+    }
+
+    .description-section {
+      margin-bottom: 2rem;
+    }
+
+    .description-toggle {
+      width: 100%;
+      background: var(--gray-50);
+      border: 1px solid var(--gray-200);
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .description-toggle:hover {
+      background: var(--gray-100);
+      transform: translateY(-1px);
+    }
+
+    .toggle-icon {
+      font-size: 0.9rem;
+      color: var(--gray-500);
+      transition: transform 0.2s ease;
+    }
+
+    .description-content {
+      background: rgba(255,255,255,0.8);
+      border: 1px solid var(--gray-200);
+      border-top: none;
+      border-radius: 0 0 12px 12px;
+      padding: 1.5rem;
+      color: var(--gray-700);
+      line-height: 1.6;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 1rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--gray-200);
+      flex-wrap: wrap;
+    }
+
+    .modal-actions .btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border-radius: 12px;
+      font-weight: 700;
+      transition: all 0.2s ease;
+    }
+
+    .modal-actions .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    @media (max-width: 768px) {
+      .modal-header-section {
+        flex-direction: column;
+        gap: 1rem;
+      }
+      
+      .status-container {
+        align-self: flex-start;
+      }
+      
+      .scores-showcase {
+        grid-template-columns: 1fr;
+      }
+      
+      .analysis-section {
+        grid-template-columns: 1fr;
+      }
+      
+      .info-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .keywords-container {
+        justify-content: flex-start;
+      }
+      
+      .modal-actions {
+        flex-direction: column;
+      }
+      
+      .modal-actions .btn {
+        justify-content: center;
+      }
+    }
+    </style>
+    `;
+
+    // Add the styles to the document head
+    if (!document.getElementById('enhanced-modal-styles')) {
+      const styleSheet = document.createElement('style');
+      styleSheet.id = 'enhanced-modal-styles';
+      styleSheet.textContent = enhancedModalStyles.replace(/<\/?style>/g, '');
+      document.head.appendChild(styleSheet);
+    }
 
     function openEditModal(id){
       const raw = getRawRowById(id);
