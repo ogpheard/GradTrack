@@ -2490,11 +2490,20 @@
       return `${y}-${m}-${d}`;
     }
     function salaryText(a){
-      const s=a.salary||{};
-      if (s.salary_raw) return s.salary_raw;
-      if (s.min && s.max) return `${s.currency||''} ${s.min}–${s.max} ${s.period||''}`.trim();
-      if (s.min) return `${s.currency||''} ${s.min} ${s.period||''}`.trim();
-      return a.salary_raw || a.salary || '';
+      const s = (a && typeof a.salary === 'object' && !Array.isArray(a.salary)) ? a.salary : (typeof a?.salary === 'string' ? { salary_raw: a.salary } : {});
+      const raw = typeof (s?.salary_raw ?? a?.salary_raw) === 'string' ? (s.salary_raw ?? a.salary_raw).trim() : '';
+      const min = toNum(s?.min ?? a?.salary_min);
+      const max = toNum(s?.max ?? a?.salary_max);
+      const currency = (s?.currency ?? a?.salary_currency ?? '').toString().trim();
+      const period = (s?.period ?? a?.salary_period ?? '').toString().trim();
+
+      if (raw) return raw;
+      if (min != null || max != null){
+        const range = (min != null && max != null) ? `${min}–${max}` : (min != null ? `${min}` : `${max}`);
+        return `${currency ? currency + ' ' : ''}${range}${period ? ' ' + period : ''}`.trim();
+      }
+      // nothing meaningful – return dash
+      return '—';
     }
     function canonicalize(u){
       try{
@@ -3490,6 +3499,8 @@
       const company = a.company_name || a.job?.company_name || '';
       const locs = normalizeListField(a.locations || a.job?.locations).join(' • ');
       const salTxt = salaryText(a);
+      const recCVName = (a.ai_cv_filename ?? a.AI_cv_filename ?? a.AI_cv_recommendation?.filename ?? '').toString().trim();
+      const recCVWhy  = (a.ai_cv_reason   ?? a.AI_cv_reason   ?? a.AI_cv_recommendation?.reason   ?? '').toString().trim();
       const deadline = a.date_deadline || a.job?.date_deadline || '';
       const start = a.start_date || a.job?.start_date || '';
       const url = a.source_url || a.job?.source_url || '';
@@ -3511,31 +3522,46 @@
             <div class="detail-icon">📍</div>
             <div class="detail-content">
               <div class="detail-label">Locations</div>
-              <div class="detail-value">${escapeHtml(locs || 'Not specified')}</div>
+              <div class="detail-value">${escapeHtml(locs || '—')}</div>
             </div>
           </div>
+
           <div class="detail-card">
             <div class="detail-icon">💰</div>
             <div class="detail-content">
               <div class="detail-label">Salary</div>
-              <div class="detail-value">${escapeHtml(salTxt || 'Not disclosed')}</div>
+              <div class="detail-value">${escapeHtml(salTxt || '—')}</div>
             </div>
           </div>
+
           <div class="detail-card">
             <div class="detail-icon">📅</div>
             <div class="detail-content">
               <div class="detail-label">Key Dates</div>
               <div class="detail-value">
-                ${[start ? `Start: ${start}` : '', deadline ? `Deadline: ${deadline}` : ''].filter(Boolean).join(' • ') || 'Not specified'}
+                ${[start ? `Start: ${start}` : '', deadline ? `Deadline: ${deadline}` : ''].filter(Boolean).join(' • ') || '—'}
               </div>
             </div>
           </div>
+
           <div class="detail-card">
             <div class="detail-icon">🔗</div>
             <div class="detail-content">
               <div class="detail-label">Source</div>
               <div class="detail-value">
-                ${url ? `<a href="${url}" target="_blank" rel="noopener" class="source-link">${escapeHtml(urlDisplay)} ↗</a>` : 'Direct application'}
+                ${url ? `<a href="${url}" target="_blank" rel="noopener" class="source-link">${escapeHtml(urlDisplay)} ↗</a>` : '—'}
+              </div>
+            </div>
+          </div>
+
+          <!-- NEW: Recommended CV -->
+          <div class="detail-card">
+            <div class="detail-icon">📄</div>
+            <div class="detail-content">
+              <div class="detail-label">Recommended CV</div>
+              <div class="detail-value">
+                <div class="cv-filename">${escapeHtml(recCVName || '—')}</div>
+                ${recCVWhy ? `<div class="cv-reason">${escapeHtml(recCVWhy)}</div>` : ''}
               </div>
             </div>
           </div>
@@ -3557,6 +3583,13 @@
       fitsEl.textContent = bullets(normalizeListField(a.fits));
       gapsEl.textContent = bullets(normalizeListField(a.gaps));
       summaryEl.textContent = a.job_summary || a.summary || 'No summary provided';
+
+      // Move the collapsible "View more" block directly under the Job summary
+      const detailsSectionEl = document.querySelector('.details-section');
+      const summarySectionEl = summaryEl.closest('.section');
+      if (detailsSectionEl && summarySectionEl){
+        summarySectionEl.insertAdjacentElement('afterend', detailsSectionEl);
+      }
 
       const keywordsSection = document.querySelector('#keywords').closest('.section');
       let requirementsSection = document.querySelector('.requirements-section');
@@ -4021,10 +4054,32 @@
   }
 }
 
-* {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+  /* ==== ACTION BAR OVERRIDES (horizontal layout) ==== */
+  .enhanced-actions{
+    display:flex !important;
+    flex-wrap:wrap;
+    gap:1rem;
+    margin-top:1.25rem;
+  }
+  .enhanced-actions .action-btn{
+    flex:1 1 calc(25% - 1rem);
+    min-width:220px;
+  }
+  @media (max-width: 1024px){
+    .enhanced-actions .action-btn{ flex:1 1 calc(50% - 1rem); }
+  }
+  @media (max-width: 520px){
+    .enhanced-actions .action-btn{ flex:1 1 100%; }
+  }
+
+  /* Small polish for CV detail in header cards */
+  .detail-value .cv-filename{ font-weight:800; }
+  .detail-value .cv-reason{ color:var(--gray-600); font-size:.9rem; margin-top:.25rem; line-height:1.4; }
+
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
 .result-card {
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
