@@ -89,9 +89,27 @@
     .nav-tab{display:flex;align-items:center;gap:.5rem;padding:.75rem 1.25rem;border:none;background:transparent;color:var(--gray-600);font-weight:600;border-radius:10px;cursor:pointer;transition:.25s}
     .nav-tab:hover{background:var(--gray-200);color:var(--gray-800)}
     .nav-tab.active{background:#fff;color:var(--primary-600);box-shadow:var(--shadow-sm)}
-    .env-selector{display:flex;align-items:center;gap:.75rem;background:var(--gray-50);padding:.75rem 1rem;border-radius:16px;border:1px solid var(--gray-200)}
-    .env-selector label{font-size:.9rem;color:var(--gray-600);font-weight:500}
-    .env-selector select{background:#fff;border:1px solid var(--gray-300);border-radius:8px;padding:.5rem .75rem;font-size:.9rem;color:var(--gray-700)}
+    .env-selector{
+      position:relative;
+      background:rgba(0,0,0,0.02);
+      border:1px solid rgba(0,0,0,0.06);
+      border-radius:20px;
+      padding:.35rem .6rem;
+      opacity:0.7;
+      transition:opacity .2s, transform .2s;
+      cursor:pointer;
+    }
+    .env-selector:hover{opacity:1; transform:translateY(-1px)}
+    .env-selector select{
+      background:transparent;
+      border:none;
+      font-size:.8rem;
+      color:var(--gray-600);
+      font-weight:600;
+      padding:0;
+      outline:none;
+      cursor:pointer;
+    }
     .page-content{display:none}
     .page-content.active{display:block}
 
@@ -178,28 +196,53 @@
     .filters{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}
     .filter-select{padding:.6rem .85rem;border:1px solid var(--gray-300);border-radius:10px;background:#fff;font-weight:600}
     .applications-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:1.1rem}
-    .application-card{background:rgba(255,255,255,.95);border:1px solid rgba(255,255,255,.2);border-radius:16px;padding:1.1rem;box-shadow:var(--shadow-md);cursor:pointer;transition:.2s;position:relative}
-    .application-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+    /* Card polish + status accent */
+    .application-card{
+      background:rgba(255,255,255,.95);
+      border:1px solid rgba(0,0,0,0.06);
+      border-left:4px solid var(--status-color, var(--gray-200));
+      border-radius:16px;
+      padding:1.1rem;
+      box-shadow:var(--shadow-sm);
+      cursor:pointer;
+      transition:.2s;
+      position:relative;
+    }
+    .application-card:hover{
+      transform:translateY(-3px);
+      box-shadow:var(--shadow-lg);
+      border-color:rgba(0,0,0,0.12);
+    }
     .application-card.lift-once{animation:liftIn .35s ease-out}
     @keyframes liftIn{from{transform:translateY(8px);opacity:0}to{transform:translateY(0);opacity:1}}
-    .application-status{position:absolute;top:.75rem;right:.75rem;padding:.2rem .65rem;border-radius:20px;font-size:.72rem;font-weight:800;text-transform:uppercase}
-      .status-applied{background:var(--success-50);color:var(--success-600);border:1px solid #bbf7d0}
-      .status-saved{background:var(--primary-50);color:var(--primary-600);border:1px solid #bfdbfe}
-      .status-response{background:var(--warning-50);color:var(--warning-600);border:1px solid #fde68a}
-      /* Extended status chips */
-      .status-default{ background:var(--gray-100); color:var(--gray-700); border:1px solid var(--gray-300); }
-      .status-oa{ background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe; }            /* indigo */
-      .status-hirevue{ background:#f5f3ff; color:#6d28d9; border:1px solid #ddd6fe; }        /* violet */
-      .status-interview{ background:#ecfeff; color:#0891b2; border:1px solid #a5f3fc; }      /* cyan */
-      .status-offer{ background:var(--success-50); color:var(--success-600); border:1px solid #bbf7d0; }
-      .status-rejected{ background:var(--danger-50); color:var(--danger-600); border:1px solid #fecaca; }
-      .status-ghosted{ background:var(--gray-100); color:var(--gray-600); border:1px solid var(--gray-300); }
-      .status-withdrew{ background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; }       /* slate */
-      .status-onhold{ background:var(--warning-50); color:var(--warning-600); border:1px solid #fde68a; }
-      .status-roleclosed{ background:#f3f4f6; color:#4b5563; border:1px solid #e5e7eb; }
-    .application-title{font-size:1.1rem;font-weight:800;color:var(--gray-900)}
-    .application-company{color:var(--primary-600);font-weight:700;margin:.25rem 0}
-    .application-detail{font-size:.85rem;color:var(--gray-600);margin-top:.25rem}
+    /* Status chip — unified with analytics colors */
+    .application-status{
+      position:absolute;top:.75rem;right:.75rem;
+      padding:.35rem .8rem;border-radius:20px;
+      font-size:.72rem;font-weight:800;text-transform:uppercase;
+      color:#fff;box-shadow:var(--shadow-sm);letter-spacing:.02em
+    }
+    .status-applied{background:#667eea}
+    .status-saved{background:#2196f3}
+    .status-response{background:#00bcd4} /* legacy */
+    .status-oa{background:#4facfe}
+    .status-hirevue{background:#9c27b0}
+    .status-interview{background:#00bcd4}
+    .status-offer{background:#4caf50}
+    .status-rejected{background:#f44336}
+    .status-ghosted{background:#9e9e9e}
+    .status-withdrew{background:#607d8b}
+    .status-onhold{background:#ff9800}
+    .status-roleclosed{background:#795548}
+    .status-default{background:#9ca3af}
+    .application-title{font-size:1.1rem;font-weight:800;color:var(--gray-900);line-height:1.25}
+    .application-company{color:var(--primary-600);font-weight:700;margin:.3rem 0 .35rem}
+    .application-detail{font-size:.86rem;color:var(--gray-600);margin-top:.2rem}
+    .application-meta{
+      display:flex;justify-content:space-between;align-items:center;
+      margin-top:.6rem;padding-top:.6rem;border-top:1px solid var(--gray-200);
+      font-size:.9rem;color:var(--gray-600)
+    }
 
     /* Smart Search Bar Styles */
     .smart-search-container {
@@ -335,7 +378,6 @@
     .mini-score{flex:1;text-align:center}
     .mini-score-label{font-size:.75rem;color:var(--gray-500)}
     .mini-score-value{font-weight:800;color:var(--primary-600)}
-    .application-meta{display:flex;justify-content:space-between;align-items:center;margin-top:.6rem;padding-top:.6rem;border-top:1px solid var(--gray-200);font-size:.9rem;color:var(--gray-600)}
 
     /* Modal */
     .modal{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1000;display:none;align-items:center;justify-content:center;padding:2rem}
@@ -345,6 +387,32 @@
     .modal-header{display:flex;justify-content:space-between;align-items:center;padding:1.25rem 1.5rem;border-bottom:1px solid var(--gray-200)}
     .modal-body{padding:1.25rem;overflow:auto}
     .modal-close{background:none;border:none;color:var(--gray-500);cursor:pointer;padding:.5rem;border-radius:8px}
+
+    /* Modal detail polish */
+    .modal .job-details{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+      gap:.9rem;
+    }
+    .modal .detail-item{
+      background:var(--gray-50);
+      border:1px solid var(--gray-200);
+      border-radius:12px;
+      padding:.8rem;
+    }
+    .modal .detail-label{
+      font-size:.72rem;
+      color:var(--gray-500);
+      font-weight:800;
+      letter-spacing:.03em;
+      text-transform:uppercase;
+      margin-bottom:.2rem;
+    }
+    .modal .detail-value a{
+      color:var(--primary-600);
+      text-decoration:none;
+      font-weight:700;
+    }
 
     /* Analytics */
     .analytics-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2.5rem;flex-wrap:wrap;gap:1rem}
@@ -544,9 +612,8 @@
             <button id="addTab" class="nav-tab" data-tab="add">Add Application</button>
             <button id="deadlinesTab" class="nav-tab" data-tab="deadlines">Deadlines</button>
           </nav>
-          <div class="env-selector">
-            <label>Environment:</label>
-            <select id="envSelect">
+          <div class="env-selector" title="Development environment selector">
+            <select id="envSelect" aria-label="Environment">
               <option value="test">Test</option>
               <option value="prod">Production</option>
             </select>
@@ -1249,6 +1316,27 @@
         .map(o => `<option value="${o.value}" ${o.value===current?'selected':''}>${o.label}</option>`)
         .join('');
     }
+
+    // Enhanced status colors that match analytics pie chart
+    const STATUS_COLORS_ENHANCED = {
+      applied:      '#667eea',  // Blue - in progress
+      oa:           '#4facfe',  // Light blue - assessment
+      hirevue:      '#9c27b0',  // Purple - video interview
+      interview:    '#00bcd4',  // Cyan - interview stage
+      offer:        '#4caf50',  // Green - success
+      rejected:     '#f44336',  // Red - rejection
+      ghosted:      '#9e9e9e',  // Grey - no response
+      withdrew:     '#607d8b',  // Blue-grey - withdrew
+      'on-hold':    '#ff9800',  // Orange - waiting
+      'role-closed':'#795548',  // Brown - closed
+      saved:        '#2196f3',  // Blue - saved for later
+      default:      '#9ca3af'   // Default grey
+    };
+
+    // Helper to get a status color (slug in, hex out)
+    function statusColor(slug) {
+      return STATUS_COLORS_ENHANCED[slug] || STATUS_COLORS_ENHANCED.default;
+    }
     /* ######################## END: STATUS CATALOGS (JS) ############### */
 
     /* ############################################################
@@ -1696,15 +1784,6 @@
     }
 
     // ---- Analytics helpers ----
-    const STATUS_COLOR_PALETTE = ['#667eea', '#4facfe', '#38ef7d', '#f093fb', '#f5576c', '#9ca3af', '#a78bfa', '#fdba74'];
-    let STATUS_COLORS = {};
-    function assignStatusColors(statuses){
-      STATUS_COLORS = {};
-      statuses.forEach((s, idx)=>{
-        STATUS_COLORS[s] = STATUS_COLOR_PALETTE[idx % STATUS_COLOR_PALETTE.length];
-      });
-    }
-
     function parseISO(d){
       // Accept YYYY-MM-DD or ISO; return Date or null
       if (!d) return null;
@@ -2907,25 +2986,31 @@
     function cardHTML(app, isSaved=false){
       const matches = app.searchMeta?.matches || [];
       const isHighlighted = matches.length > 0;
+      const slug = normaliseStatus(app.status);
+      const cls  = STATUS_STYLE[slug] || STATUS_STYLE.default;
+      const lab  = statusLabel(slug);
+      const accent = statusColor(slug);
 
       return `
-        <div class="application-card ${isHighlighted ? 'search-highlight' : ''}" onclick="openApplicationModal('${app.id}')">
-          ${(() => {
-            const slug = normaliseStatus(app.status);
-            const cls  = STATUS_STYLE[slug] || STATUS_STYLE.default;
-            const lab  = statusLabel(slug);
-            return `<div class="application-status ${cls}">${escapeHtml(lab)}</div>`;
-          })()}
+        <div class="application-card ${isHighlighted ? 'search-highlight' : ''}"
+             style="--status-color:${accent}"
+             onclick="openApplicationModal('${app.id}')">
+
+          <div class="application-status ${cls}">${escapeHtml(lab)}</div>
+
           <div class="application-title">${highlightMatches(app.title, matches, 'title')}</div>
           <div class="application-company">${highlightMatches(app.company, matches, 'company')}</div>
+
           <div class="application-detail">Sector: ${highlightMatches(app.sector || '—', matches, 'sector')}</div>
           <div class="application-detail">Role Type: ${highlightMatches(app.roleType || '—', matches, 'roleType')}</div>
           <div class="application-detail">Start Date: ${formatDate(app.startDate)}</div>
           <div class="application-detail">Status Updated: ${formatDate(app.statusUpdateDate)}</div>
+
           <div style="margin-top:.6rem; display:flex; gap:.5rem; flex-wrap:wrap;">
             <button class="btn btn-primary btn-sm"
               onclick="event.stopPropagation(); openEditModal('${app.id}')">✏️ Edit</button>
-            ${isSaved ? `<button class="btn btn-success btn-sm" onclick="event.stopPropagation(); markSavedApplied('${app.id}')">Mark applied</button>` : ''}
+            ${isSaved ? `<button class="btn btn-success btn-sm"
+              onclick="event.stopPropagation(); markSavedApplied('${app.id}')">Mark applied</button>` : ''}
             <button class="btn btn-danger btn-sm"
               onclick="event.stopPropagation(); requestDelete('${app.id}', '${isSaved ? 'saved' : 'applied'}')">🗑️ Delete</button>
           </div>
@@ -2944,7 +3029,10 @@
       const aiFitRaw = toNum(raw.ai_fit_score ?? raw.AI_fit_score);
       const aiAlignRaw = toNum(raw.ai_alignment_score ?? raw.AI_alignment_score);
       const detailFields = [
-        ['Source URL', raw.source_url ? `<a href="${escapeHtml(raw.source_url)}" target="_blank" rel="noopener">${escapeHtml(raw.source_url)}</a>` : '—'],
+        ['Source URL', raw.source_url
+          ? `<a href="${escapeHtml(raw.source_url)}" target="_blank" rel="noopener">Link</a>`
+          : '—'
+        ],
         ['Title', raw.title],
         ['Company Name', raw.company_name],
         ['Seniority', raw.seniority],
@@ -3576,13 +3664,9 @@ function renderAnalytics(){
     }
   });
   
-  // Assign colors to all possible statuses
-  const allStatuses = Object.keys(statusCounts);
-  assignStatusColors(allStatuses);
-  
   const pieSlugLabels = Object.keys(statusCounts).sort();
   const pieData = pieSlugLabels.map(k => statusCounts[k]);
-  const pieColors = pieSlugLabels.map(k => STATUS_COLORS[k] || '#9ca3af');
+  const pieColors = pieSlugLabels.map(k => STATUS_COLORS_ENHANCED[k] || STATUS_COLORS_ENHANCED.default);
   const pieLabels = pieSlugLabels.map(statusLabel);
 
   // 3) Bar: per normalized sector with "Other" grouping
