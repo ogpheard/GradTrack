@@ -1213,6 +1213,41 @@
   <!-- ######################## END: CONFIRM DELETE MODAL (HTML) ############## -->
 
   <!-- ############################################################
+  # BEGIN: RATE APPLY MODAL (HTML)
+  ############################################################ -->
+  <div id="rateApplyModal" class="modal" aria-hidden="true">
+    <div class="modal-overlay" id="rateApplyOverlay"></div>
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="rateApplyTitle">
+      <div class="modal-header">
+        <h3 id="rateApplyTitle" style="font-weight:900;color:var(--gray-900)">Mark as applied</h3>
+        <button id="rateApplyClose" class="modal-close" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <p id="rateApplySummary" style="margin-bottom:1rem;color:var(--gray-700)"></p>
+
+        <!-- Reuse Analyze page styling -->
+        <div class="rating-inputs show" id="rateApplyInputs" aria-hidden="false" style="display:flex">
+          <div class="rating-input">
+            <label for="rateEffort">Effort /10</label>
+            <input id="rateEffort" type="number" min="0" max="10" step="1" value="7"/>
+          </div>
+          <div class="rating-input">
+            <label for="rateChance">Chance /10</label>
+            <input id="rateChance" type="number" min="0" max="10" step="1" value="6"/>
+          </div>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-left:auto">
+            <button id="rateApplyConfirm" class="btn btn-success">Confirm & Apply</button>
+            <button id="rateApplyCancel" class="btn btn-outline" type="button">Cancel</button>
+          </div>
+        </div>
+
+        <p class="help" style="margin-top:.5rem">Your ratings will be saved with this application.</p>
+      </div>
+    </div>
+  </div>
+  <!-- ######################## END: RATE APPLY MODAL (HTML) ############## -->
+
+  <!-- ############################################################
   # BEGIN: TOAST (HTML)
   ############################################################ -->
   <!-- Toast -->
@@ -1510,6 +1545,17 @@
     const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
     const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
     const confirmDeleteSummary = document.getElementById('confirmDeleteSummary');
+
+    // ====== Rate & Apply modal refs
+    const rateApplyModal   = document.getElementById('rateApplyModal');
+    const rateApplyOverlay = document.getElementById('rateApplyOverlay');
+    const rateApplyClose   = document.getElementById('rateApplyClose');
+    const rateApplyTitle   = document.getElementById('rateApplyTitle');
+    const rateApplySummary = document.getElementById('rateApplySummary');
+    const rateEffort       = document.getElementById('rateEffort');
+    const rateChance       = document.getElementById('rateChance');
+    const rateApplyConfirm = document.getElementById('rateApplyConfirm');
+    const rateApplyCancel  = document.getElementById('rateApplyCancel');
     /* ######################## END: ELEMENT LOOKUPS (JS) ############### */
 
     /* ############################################################
@@ -1537,6 +1583,76 @@
     confirmDeleteClose.onclick = closeDeleteConfirm;
     cancelDeleteBtn.onclick = closeDeleteConfirm;
     document.addEventListener('keydown',(e)=>{ if (e.key==='Escape' && confirmDeleteModal.classList.contains('show')) closeDeleteConfirm(); });
+
+    // Rate & Apply modal state
+    let pendingApplyApp = null;
+
+    function openRateApplyModal(id){
+      const raw = getRawRowById(id);
+      if (!raw) { toast('Could not find that job'); return; }
+
+      pendingApplyApp = raw;
+
+      // Header + summary
+      rateApplyTitle.textContent = 'Mark as applied';
+      rateApplySummary.innerHTML = `
+        <strong>${escapeHtml(raw.title || 'Untitled')}</strong><br/>
+        ${escapeHtml(raw.company_name || '—')}
+      `;
+
+      // Prefill defaults (use existing ratings if present, else Analyze defaults 7/6)
+      const eff = toNum(raw.application_effort_rating);
+      const cha = toNum(raw.application_chance_rating);
+      rateEffort.value = (eff ?? 7);
+      rateChance.value = (cha ?? 6);
+
+      rateApplyModal.classList.add('show');
+      rateApplyModal.setAttribute('aria-hidden','false');
+    }
+
+    function closeRateApplyModal(){
+      rateApplyModal.classList.remove('show');
+      rateApplyModal.setAttribute('aria-hidden','true');
+      pendingApplyApp = null;
+    }
+
+    // Wire modal controls
+    if (rateApplyOverlay) rateApplyOverlay.onclick = closeRateApplyModal;
+    if (rateApplyClose)   rateApplyClose.onclick   = closeRateApplyModal;
+    if (rateApplyCancel)  rateApplyCancel.onclick  = closeRateApplyModal;
+    document.addEventListener('keydown', (e)=>{
+      if (e.key==='Escape' && rateApplyModal?.classList.contains('show')) closeRateApplyModal();
+    });
+
+    // Confirm & Apply
+    if (rateApplyConfirm) rateApplyConfirm.onclick = async ()=>{
+      if (!pendingApplyApp) return;
+      try{
+        const today = londonTodayISO();
+        const eff = toNum(rateEffort.value);
+        const cha = toNum(rateChance.value);
+
+        const { error } = await db
+          .from(TABLE)
+          .update({
+            status: 'Applied',
+            applied_date: today,
+            status_update_date: today,
+            application_effort_rating: eff,
+            application_chance_rating: cha
+          })
+          .eq('application_id', pendingApplyApp.application_id);
+
+        if (error) throw error;
+
+        toast('Marked as applied 🎉');
+        closeRateApplyModal();
+        await refreshData(true);
+      }catch(e){
+        console.error(e);
+        toast('Failed to update');
+      }
+    };
 
     // Perform deletion
     confirmDeleteBtn.onclick = async ()=>{
@@ -4343,19 +4459,8 @@
         }).join('');
       }
     }
-    window.markSavedApplied = async function(id){
-      const raw = getRawRowById(id);
-      if (!raw) return;
-      try{
-        const today = londonTodayISO();
-        const { error } = await db
-          .from(TABLE)
-          .update({ status: 'Applied', applied_date: today, status_update_date: today })
-          .eq('application_id', raw.application_id);
-        if (error) throw error;
-        toast('Marked applied ✅');
-        await refreshData(true);
-      }catch(e){ console.error(e); toast('Failed to update'); }
+    window.markSavedApplied = function(id){
+      openRateApplyModal(id);
     };
 
     window.requestDelete = function(id, sourceHint){
