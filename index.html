@@ -2752,7 +2752,7 @@
 
     async function sbUpsertOnId(row){
       const cleaned = cleanRowForDB(row);
-      if (cleaned.status) cleaned.status_update_date = cleaned.status_update_date || londonTodayISO();
+      // status_update_date is now controlled by the caller (only set when status changes)
       console.log('DB WRITE payload', cleaned);
       const res = await db.from(TABLE).upsert(cleaned, { onConflict:'application_id' }).select('*').single();
       console.log('DB RESPONSE', { status: res.status, error: res.error, data: res.data });
@@ -2762,7 +2762,7 @@
 
     async function sbUpsertOnUnique(row){
       const cleaned = cleanRowForDB(row);
-      if (cleaned.status) cleaned.status_update_date = cleaned.status_update_date || londonTodayISO();
+      // no automatic status_update_date here
       console.log('DB WRITE payload', cleaned);
       const res = await db
         .from(TABLE)
@@ -3105,15 +3105,19 @@
         e.preventDefault();
         const fd = new FormData(e.target);
 
-        const statusSlug = normaliseStatus(fd.get('status') || 'saved');
-
         const applicationId = fd.get('application_id') || '';
         const existing = getRawRowById(applicationId) || {};
+
+        const prevStatusRaw = fd.get('__prev_status') || '';
+        const prevSlug      = normaliseStatus(prevStatusRaw);
+        const statusSlug    = normaliseStatus(fd.get('status') || 'saved');
+        const statusChanged = prevSlug !== statusSlug;
 
         const updates = {
           application_id: applicationId,
           title: fd.get('title') || '',
           company_name: fd.get('company_name') || '',
+
           status: apiOutgoingStatus(statusSlug),
 
           locations: toArraySmart(fd.get('locations')),
@@ -3134,14 +3138,17 @@
           job_summary: fd.get('job_summary') || '',
           job_description: fd.get('job_description') || '',
 
-          applied_date: fd.get('applied_date') || existing.applied_date || (statusSlug==='applied' ? londonTodayISO() : null),
-          status_update_date: londonTodayISO()
+          applied_date: fd.get('applied_date') || existing.applied_date || (statusSlug==='applied' ? londonTodayISO() : null)
         };
+
+        if (statusChanged) {
+          updates.status_update_date = londonTodayISO();
+        }
 
         if (!updates.application_id) throw new Error('Missing application_id');
 
         // Merge existing DB row to avoid clearing fields not present in the form
-        const merged   = cleanRowForDB({ ...existing, ...updates });
+        const merged = cleanRowForDB({ ...existing, ...updates });
 
         try{
           await sbUpsertOnId(merged);
