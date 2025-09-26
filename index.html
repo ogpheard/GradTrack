@@ -3479,10 +3479,12 @@
         .order('updated_at', { ascending:false })
         .limit(1000);
       if (error) throw error;
+      console.log('Raw data from database:', data);
 
       dl_state.all = (data||[])
         .map(dl_toItemShape)
-        .filter(d => d.company && d.role && d.type && (d.isWindow ? d.dueBy : (d.startAt && d.endAt)));
+        .filter(d => d.company && d.role && d.type && (d.isWindow ? (d.dueBy || d.startAt) : (d.startAt && d.endAt)));
+      console.log('Processed deadlines:', dl_state.all);
       dl_detectConflicts();
     }
 
@@ -6850,7 +6852,15 @@ function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonR
       const formData = new FormData(form);
       const timingField = isEdit ? 'edit_timing_type' : 'timing_type';
       const isWindow = (formData.get(timingField) || 'window') === 'window';
-      const findDeadline = (id) => dl_state.all.find(d => String(d.id) === String(id));
+      const findDeadline = (id) => {
+        const numeric = Number(id);
+        return dl_state.all.find(d => {
+          if (Number.isFinite(numeric)){
+            return Number(d.id) === numeric;
+          }
+          return String(d.id) === String(id);
+        });
+      };
       const existing = isEdit ? findDeadline(formData.get('id')) : null;
 
       const trimmed = (name) => {
@@ -6862,6 +6872,8 @@ function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonR
         return value ? value : null;
       };
 
+      const existingHasConflict = existing?.has_conflict ?? existing?.hasConflict;
+
       const payload = {
         company: trimmed('company'),
         role: trimmed('role'),
@@ -6870,39 +6882,49 @@ function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonR
         priority: Number.parseInt(formData.get('priority'), 10) || (existing?.priority ?? 2),
         location: optional('location'),
         meeting_url: optional('meeting_url'),
-        notes: optional('notes')
+        notes: optional('notes'),
+        timezone: existing?.timezone || 'Europe/London',
+        status: existing?.status || 'open',
+        complete: Boolean(existing?.complete ?? false),
+        has_conflict: Boolean(existingHasConflict ?? false)
       };
 
       if (isWindow){
         const date = trimmed('window_date');
         const time = trimmed('window_time') || '23:59';
         if (date && time){
-          const iso = new Date(`${date}T${time}:00`);
-          payload.start_at = iso.toISOString();
+          const timezone = payload.timezone;
+          const localDateTime = dayjs.tz(`${date} ${time}`, 'YYYY-MM-DD HH:mm', timezone);
+          payload.start_at = localDateTime.toISOString();
           payload.end_at = null;
-          payload.due_by = payload.start_at;
+        } else {
+          throw new Error('Date and time are required for window-type deadlines');
         }
-        payload.timezone = existing?.timezone || 'Europe/London';
       } else {
         const date = trimmed('event_date');
         const startTime = trimmed('event_start_time');
         const endTime = trimmed('event_end_time');
+        const timezone = trimmed('timezone') || payload.timezone;
+
         if (date && startTime){
-          const startIso = new Date(`${date}T${startTime}:00`);
-          payload.start_at = startIso.toISOString();
+          const startDateTime = dayjs.tz(`${date} ${startTime}`, 'YYYY-MM-DD HH:mm', timezone);
+          payload.start_at = startDateTime.toISOString();
 
           if (endTime){
-            const endIso = new Date(`${date}T${endTime}:00`);
-            payload.end_at = endIso.toISOString();
+            const endDateTime = dayjs.tz(`${date} ${endTime}`, 'YYYY-MM-DD HH:mm', timezone);
+            payload.end_at = endDateTime.toISOString();
           } else {
-            const defaultEnd = new Date(startIso);
-            defaultEnd.setHours(defaultEnd.getHours() + 1);
+            const defaultEnd = startDateTime.add(1, 'hour');
             payload.end_at = defaultEnd.toISOString();
           }
+          payload.timezone = timezone;
+        } else {
+          throw new Error('Date and start time are required for event-type deadlines');
         }
-        payload.due_by = null;
-        payload.timezone = trimmed('timezone') || existing?.timezone || 'Europe/London';
       }
+
+      console.log('Form data:', Object.fromEntries(formData.entries()));
+      console.log('Payload being sent to database:', payload);
 
       let submitBtn = form.querySelector('button[type="submit"]');
       const originalText = submitBtn ? submitBtn.innerHTML : '';
@@ -6914,15 +6936,19 @@ function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonR
         }
 
         if (isEdit){
-          const id = formData.get('id');
-          const idNumber = Number(id);
-          const eqValue = Number.isFinite(idNumber) ? idNumber : id;
+          const id = Number(formData.get('id'));
+          if (!Number.isFinite(id)){
+            throw new Error('Invalid deadline ID');
+          }
           payload.updated_at = new Date().toISOString();
 
-          const { error } = await db
+          const { error, data } = await db
             .from(DEADLINES_TABLE)
             .update(payload)
-            .eq('id', eqValue);
+            .eq('id', id)
+            .select();
+
+          console.log('Update result:', { error, data });
 
           if (error) throw error;
 
@@ -6931,12 +6957,13 @@ function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonR
         } else {
           payload.created_at = new Date().toISOString();
           payload.updated_at = payload.created_at;
-          payload.status = 'open';
-          payload.complete = false;
 
-          const { error } = await db
+          const { error, data } = await db
             .from(DEADLINES_TABLE)
-            .insert(payload);
+            .insert(payload)
+            .select();
+
+          console.log('Insert result:', { error, data });
 
           if (error) throw error;
 
@@ -6947,10 +6974,14 @@ function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonR
           setAddTimingVisibility('window');
         }
 
-        await initDeadlinesPage();
+        await dl_fetch();
+        dl_populateCompanies();
+        dl_applyFilters();
+        dl_updateKPIs();
+        dl_render();
       } catch (error) {
         console.error('Error saving deadline:', error);
-        toast('Failed to save deadline. Please try again.');
+        toast(`Failed to save deadline: ${error.message}`);
       } finally {
         if (submitBtn){
           submitBtn.innerHTML = originalText || '<span class="btn-icon">✅</span><span>Save</span>';
@@ -6992,7 +7023,18 @@ function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonR
     }
 
     function openEditDeadlineModal(deadlineId){
-      const deadline = dl_state.all.find(d => String(d.id) === String(deadlineId));
+      const numericId = Number(deadlineId);
+      const deadline = dl_state.all.find(d => {
+        if (Number.isFinite(numericId)){
+          return Number(d.id) === numericId;
+        }
+        return String(d.id) === String(deadlineId);
+      });
+
+      console.log('Looking for deadline ID:', deadlineId, typeof deadlineId);
+      console.log('Available deadlines:', dl_state.all.map(d => ({ id: d.id, type: typeof d.id })));
+      console.log('Found deadline:', deadline);
+
       if (!deadline){
         toast('Deadline not found');
         return;
