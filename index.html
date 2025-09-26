@@ -1146,6 +1146,392 @@
       #deadlinesPage .dl-calendar-grid{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
     }
     /* END: DEADLINES (SCOPED CSS) */
+
+    /* ############################################################
+    # BEGIN: ADD DEADLINE PAGE & EDIT MODAL STYLES
+    ############################################################ */
+
+    /* Add Deadline Page Hero */
+    .add-deadline-hero {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 3rem;
+      padding: 2rem 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .add-deadline-hero .hero-content {
+      flex: 1;
+      z-index: 2;
+    }
+
+    .add-deadline-hero .hero-title {
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--primary-600), #4facfe);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 0 0 1rem 0;
+      line-height: 1.1;
+    }
+
+    .add-deadline-hero .hero-subtitle {
+      font-size: 1.1rem;
+      color: var(--gray-600);
+      font-weight: 500;
+      line-height: 1.5;
+      margin: 0;
+      max-width: 600px;
+    }
+
+    .add-deadline-hero .hero-visual {
+      position: relative;
+      width: 150px;
+      height: 150px;
+      flex-shrink: 0;
+      margin-left: 2rem;
+    }
+
+    /* Deadline Form */
+    .deadline-form {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .deadline-form .form-sections {
+      display: flex;
+      flex-direction: column;
+      gap: 2.5rem;
+      margin-bottom: 3rem;
+    }
+
+    .deadline-form .form-section {
+      background: rgba(255, 255, 255, 0.7);
+      border: 2px solid var(--gray-100);
+      border-radius: 20px;
+      padding: 2rem;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .deadline-form .form-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: var(--gradient-primary);
+      border-radius: 20px 20px 0 0;
+    }
+
+    .deadline-form .form-section:hover {
+      border-color: var(--primary-200);
+      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.1);
+    }
+
+    .deadline-form .section-header {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: var(--gray-900);
+      margin: 0 0 1.5rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .deadline-form .section-header::before {
+      content: '📋';
+      font-size: 1.2rem;
+    }
+
+    .deadline-form .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .deadline-form .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .deadline-form .form-field label {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--gray-700);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .deadline-form .form-field input,
+    .deadline-form .form-field select,
+    .deadline-form .form-field textarea {
+      padding: 0.875rem 1rem;
+      border: 2px solid var(--gray-200);
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--gray-800);
+      background: rgba(255, 255, 255, 0.9);
+      transition: all 0.3s ease;
+      font-family: inherit;
+    }
+
+    .deadline-form .form-field input:focus,
+    .deadline-form .form-field select:focus,
+    .deadline-form .form-field textarea:focus {
+      outline: none;
+      border-color: var(--primary-500);
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+      background: white;
+    }
+
+    .deadline-form .form-field textarea {
+      resize: vertical;
+      min-height: 100px;
+      line-height: 1.5;
+    }
+
+    /* Timing Type Selector */
+    .deadline-form .timing-type-selector {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .deadline-form .radio-option {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      padding: 1.25rem;
+      background: rgba(255, 255, 255, 0.8);
+      border: 2px solid var(--gray-200);
+      border-radius: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .deadline-form .radio-option:hover {
+      border-color: var(--primary-300);
+      background: rgba(59, 130, 246, 0.05);
+    }
+
+    .deadline-form .radio-option input[type="radio"] {
+      display: none;
+    }
+
+    .deadline-form .radio-custom {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--gray-300);
+      border-radius: 50%;
+      position: relative;
+      flex-shrink: 0;
+      transition: all 0.3s ease;
+      margin-top: 2px;
+    }
+
+    .deadline-form .radio-option input[type="radio"]:checked + .radio-custom {
+      border-color: var(--primary-500);
+      background: var(--primary-500);
+    }
+
+    .deadline-form .radio-option input[type="radio"]:checked + .radio-custom::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 8px;
+      height: 8px;
+      background: white;
+      border-radius: 50%;
+    }
+
+    .deadline-form .radio-option input[type="radio"]:checked ~ .radio-content .radio-title {
+      color: var(--primary-600);
+      font-weight: 700;
+    }
+
+    .deadline-form .radio-content {
+      flex: 1;
+    }
+
+    .deadline-form .radio-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--gray-800);
+      margin-bottom: 0.25rem;
+      transition: all 0.3s ease;
+    }
+
+    .deadline-form .radio-desc {
+      font-size: 0.85rem;
+      color: var(--gray-600);
+      line-height: 1.3;
+    }
+
+    /* Timing Fields */
+    .deadline-form .timing-fields {
+      position: relative;
+    }
+
+    /* Form Actions */
+    .deadline-form .form-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      padding: 2rem 0;
+      border-top: 2px solid var(--gray-100);
+    }
+
+    .deadline-submit-btn,
+    .deadline-form .btn-primary,
+    .edit-deadline-modal .btn-primary {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: linear-gradient(135deg, var(--primary-600), var(--primary-500));
+      color: white;
+      border: none;
+      padding: 1rem 2rem;
+      border-radius: 16px;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      min-width: 180px;
+      justify-content: center;
+      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+    }
+
+    .deadline-submit-btn:hover,
+    .deadline-form .btn-primary:hover,
+    .edit-deadline-modal .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+    }
+
+    .deadline-form .btn-secondary,
+    .edit-deadline-modal .btn-secondary {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: rgba(255, 255, 255, 0.9);
+      color: var(--gray-700);
+      border: 2px solid var(--gray-300);
+      padding: 1rem 2rem;
+      border-radius: 16px;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      min-width: 150px;
+      justify-content: center;
+    }
+
+    .deadline-form .btn-secondary:hover,
+    .edit-deadline-modal .btn-secondary:hover {
+      border-color: var(--gray-400);
+      background: white;
+      transform: translateY(-1px);
+    }
+
+    .deadline-form .btn-icon,
+    .edit-deadline-modal .btn-icon {
+      font-size: 1.1rem;
+    }
+
+    /* Edit Modal Specific Styles */
+    .edit-deadline-modal {
+      max-width: 800px;
+    }
+
+    .edit-deadline-modal .form-sections {
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .edit-deadline-modal .form-section {
+      padding: 1.5rem;
+    }
+
+    .edit-deadline-modal .section-header {
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+    }
+
+    .edit-deadline-modal .form-actions {
+      padding: 1.5rem 0 0;
+    }
+
+    /* Enhanced card actions in deadlines list */
+    #deadlinesPage .card-actions .dl-btn-edit {
+      background: var(--primary-500);
+      color: white;
+    }
+
+    #deadlinesPage .card-actions .dl-btn-edit:hover {
+      background: var(--primary-600);
+    }
+
+    #deadlinesPage .card-actions .dl-btn-delete {
+      background: var(--danger-500);
+      color: white;
+    }
+
+    #deadlinesPage .card-actions .dl-btn-delete:hover {
+      background: var(--danger-600);
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .add-deadline-hero {
+        flex-direction: column;
+        text-align: center;
+        gap: 2rem;
+      }
+
+      .add-deadline-hero .hero-visual {
+        width: 120px;
+        height: 120px;
+        margin-left: 0;
+      }
+
+      .deadline-form .timing-type-selector {
+        grid-template-columns: 1fr;
+      }
+
+      .deadline-form .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .deadline-form .form-actions {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .deadline-submit-btn,
+      .deadline-form .btn-primary,
+      .deadline-form .btn-secondary {
+        width: 100%;
+        max-width: 300px;
+      }
+    }
+
+    /* ############################################################
+    # END: ADD DEADLINE PAGE & EDIT MODAL STYLES
+    ############################################################ */
   </style>
   <!-- ######################## END: CSS (GLOBAL) ############## -->
 </head>
@@ -1164,6 +1550,7 @@
             <button id="applicationsTab" class="nav-tab" data-tab="applications">My Applications</button>
             <button id="savedTab" class="nav-tab" data-tab="saved">Saved</button>
             <button id="deadlinesTab" class="nav-tab" data-tab="deadlines">Deadlines</button>
+            <button id="addDeadlineTab" class="nav-tab" data-tab="addDeadline">Add Deadline</button>
             <button id="analyticsTab" class="nav-tab" data-tab="analytics">Analytics</button>
             <button id="addTab" class="nav-tab" data-tab="add">Add Application</button>
           </nav>
@@ -1521,6 +1908,155 @@
     <!-- ######################## END: DEADLINES PAGE (HTML) ############## -->
 
     <!-- ############################################################
+    # BEGIN: ADD DEADLINE PAGE (HTML)
+    ############################################################ -->
+    <div id="addDeadlinePage" class="page-content">
+      <div class="panel">
+        <div class="add-deadline-hero">
+          <div class="hero-content">
+            <h2 class="hero-title">Add New Deadline</h2>
+            <p class="hero-subtitle">Create custom deadlines for interviews, assessments, and other important milestones.</p>
+          </div>
+          <div class="hero-visual" aria-hidden="true">
+            <div class="floating-icon">📅</div>
+            <div class="floating-icon">⏰</div>
+            <div class="floating-icon">🎯</div>
+          </div>
+        </div>
+
+        <form id="addDeadlineForm" class="deadline-form">
+          <div class="form-sections">
+            <!-- Basic Information -->
+            <div class="form-section">
+              <h3 class="section-header">Basic Information</h3>
+              <div class="form-grid">
+                <div class="form-field">
+                  <label for="add_dl_company">Company *</label>
+                  <input id="add_dl_company" name="company" required placeholder="e.g. Google, Microsoft, Meta">
+                </div>
+                <div class="form-field">
+                  <label for="add_dl_role">Role *</label>
+                  <input id="add_dl_role" name="role" required placeholder="e.g. Software Engineer, Product Manager">
+                </div>
+                <div class="form-field">
+                  <label for="add_dl_type">Type *</label>
+                  <select id="add_dl_type" name="type" required>
+                    <option value="">Select type...</option>
+                    <option value="OA">Online Assessment</option>
+                    <option value="HireVue">HireVue</option>
+                    <option value="Interview">Interview</option>
+                    <option value="Assessment">Assessment</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label for="add_dl_priority">Priority</label>
+                  <select id="add_dl_priority" name="priority">
+                    <option value="1">High (1)</option>
+                    <option value="2" selected>Medium (2)</option>
+                    <option value="3">Low (3)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Timing Information -->
+            <div class="form-section">
+              <h3 class="section-header">Timing</h3>
+              <div class="timing-type-selector">
+                <label class="radio-option">
+                  <input type="radio" name="timing_type" value="window" checked>
+                  <span class="radio-custom"></span>
+                  <div class="radio-content">
+                    <div class="radio-title">Time Window</div>
+                    <div class="radio-desc">Deadline with a closing time (e.g. submit by 11:59 PM)</div>
+                  </div>
+                </label>
+                <label class="radio-option">
+                  <input type="radio" name="timing_type" value="event">
+                  <span class="radio-custom"></span>
+                  <div class="radio-content">
+                    <div class="radio-title">Scheduled Event</div>
+                    <div class="radio-desc">Fixed time appointment (e.g. interview at 2:00 PM)</div>
+                  </div>
+                </label>
+              </div>
+
+              <div class="timing-fields">
+                <div class="form-grid" id="windowFields">
+                  <div class="form-field">
+                    <label for="add_dl_window_date">Deadline Date *</label>
+                    <input type="date" id="add_dl_window_date" name="window_date" required>
+                  </div>
+                  <div class="form-field">
+                    <label for="add_dl_window_time">Deadline Time *</label>
+                    <input type="time" id="add_dl_window_time" name="window_time" value="23:59" required>
+                  </div>
+                </div>
+
+                <div class="form-grid" id="eventFields" style="display: none;">
+                  <div class="form-field">
+                    <label for="add_dl_event_date">Event Date *</label>
+                    <input type="date" id="add_dl_event_date" name="event_date">
+                  </div>
+                  <div class="form-field">
+                    <label for="add_dl_event_start_time">Start Time *</label>
+                    <input type="time" id="add_dl_event_start_time" name="event_start_time">
+                  </div>
+                  <div class="form-field">
+                    <label for="add_dl_event_end_time">End Time</label>
+                    <input type="time" id="add_dl_event_end_time" name="event_end_time">
+                  </div>
+                  <div class="form-field">
+                    <label for="add_dl_timezone">Timezone</label>
+                    <select id="add_dl_timezone" name="timezone">
+                      <option value="Europe/London" selected>Europe/London (GMT/BST)</option>
+                      <option value="America/New_York">America/New_York (EST/EDT)</option>
+                      <option value="America/Los_Angeles">America/Los_Angeles (PST/PDT)</option>
+                      <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+                      <option value="Australia/Sydney">Australia/Sydney (AEST/AEDT)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Additional Details -->
+            <div class="form-section">
+              <h3 class="section-header">Additional Details</h3>
+              <div class="form-grid">
+                <div class="form-field">
+                  <label for="add_dl_location">Location</label>
+                  <input id="add_dl_location" name="location" placeholder="e.g. Video call, Office address">
+                </div>
+                <div class="form-field">
+                  <label for="add_dl_meeting_url">Meeting URL</label>
+                  <input type="url" id="add_dl_meeting_url" name="meeting_url" placeholder="https://...">
+                </div>
+              </div>
+              <div class="form-field">
+                <label for="add_dl_notes">Notes</label>
+                <textarea id="add_dl_notes" name="notes" rows="3" placeholder="Any additional information or preparation notes..."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn-primary deadline-submit-btn">
+              <span class="btn-icon">✅</span>
+              <span>Create Deadline</span>
+            </button>
+            <button type="button" class="btn-secondary" id="clearDeadlineForm">
+              <span class="btn-icon">🔄</span>
+              <span>Clear Form</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <!-- ######################## END: ADD DEADLINE PAGE (HTML) ############## -->
+
+    <!-- ############################################################
     # BEGIN: ADD PAGE (HTML)
     ############################################################ -->
     <!-- Add application page -->
@@ -1856,6 +2392,151 @@
   <!-- ######################## END: RATE APPLY MODAL (HTML) ############## -->
 
   <!-- ############################################################
+  # BEGIN: EDIT DEADLINE MODAL (HTML)
+  ############################################################ -->
+  <div id="editDeadlineModal" class="modal" aria-hidden="true">
+    <div class="modal-overlay" id="editDeadlineOverlay"></div>
+    <div class="modal-content edit-deadline-modal" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h3 id="editDeadlineTitle" style="font-weight:900;color:var(--gray-900)">Edit Deadline</h3>
+        <button id="editDeadlineClose" class="modal-close" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="editDeadlineForm" class="deadline-form">
+          <input type="hidden" name="id" id="edit_dl_id">
+
+          <div class="form-sections">
+            <!-- Basic Information -->
+            <div class="form-section">
+              <h3 class="section-header">Basic Information</h3>
+              <div class="form-grid">
+                <div class="form-field">
+                  <label for="edit_dl_company">Company *</label>
+                  <input id="edit_dl_company" name="company" required>
+                </div>
+                <div class="form-field">
+                  <label for="edit_dl_role">Role *</label>
+                  <input id="edit_dl_role" name="role" required>
+                </div>
+                <div class="form-field">
+                  <label for="edit_dl_type">Type *</label>
+                  <select id="edit_dl_type" name="type" required>
+                    <option value="OA">Online Assessment</option>
+                    <option value="HireVue">HireVue</option>
+                    <option value="Interview">Interview</option>
+                    <option value="Assessment">Assessment</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label for="edit_dl_priority">Priority</label>
+                  <select id="edit_dl_priority" name="priority">
+                    <option value="1">High (1)</option>
+                    <option value="2">Medium (2)</option>
+                    <option value="3">Low (3)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Timing Information -->
+            <div class="form-section">
+              <h3 class="section-header">Timing</h3>
+              <div class="timing-type-selector">
+                <label class="radio-option">
+                  <input type="radio" name="edit_timing_type" value="window">
+                  <span class="radio-custom"></span>
+                  <div class="radio-content">
+                    <div class="radio-title">Time Window</div>
+                    <div class="radio-desc">Deadline with a closing time</div>
+                  </div>
+                </label>
+                <label class="radio-option">
+                  <input type="radio" name="edit_timing_type" value="event">
+                  <span class="radio-custom"></span>
+                  <div class="radio-content">
+                    <div class="radio-title">Scheduled Event</div>
+                    <div class="radio-desc">Fixed time appointment</div>
+                  </div>
+                </label>
+              </div>
+
+              <div class="timing-fields">
+                <div class="form-grid" id="editWindowFields">
+                  <div class="form-field">
+                    <label for="edit_dl_window_date">Deadline Date *</label>
+                    <input type="date" id="edit_dl_window_date" name="window_date">
+                  </div>
+                  <div class="form-field">
+                    <label for="edit_dl_window_time">Deadline Time *</label>
+                    <input type="time" id="edit_dl_window_time" name="window_time">
+                  </div>
+                </div>
+
+                <div class="form-grid" id="editEventFields" style="display: none;">
+                  <div class="form-field">
+                    <label for="edit_dl_event_date">Event Date *</label>
+                    <input type="date" id="edit_dl_event_date" name="event_date">
+                  </div>
+                  <div class="form-field">
+                    <label for="edit_dl_event_start_time">Start Time *</label>
+                    <input type="time" id="edit_dl_event_start_time" name="event_start_time">
+                  </div>
+                  <div class="form-field">
+                    <label for="edit_dl_event_end_time">End Time</label>
+                    <input type="time" id="edit_dl_event_end_time" name="event_end_time">
+                  </div>
+                  <div class="form-field">
+                    <label for="edit_dl_timezone">Timezone</label>
+                    <select id="edit_dl_timezone" name="timezone">
+                      <option value="Europe/London">Europe/London (GMT/BST)</option>
+                      <option value="America/New_York">America/New_York (EST/EDT)</option>
+                      <option value="America/Los_Angeles">America/Los_Angeles (PST/PDT)</option>
+                      <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+                      <option value="Australia/Sydney">Australia/Sydney (AEST/AEDT)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Additional Details -->
+            <div class="form-section">
+              <h3 class="section-header">Additional Details</h3>
+              <div class="form-grid">
+                <div class="form-field">
+                  <label for="edit_dl_location">Location</label>
+                  <input id="edit_dl_location" name="location">
+                </div>
+                <div class="form-field">
+                  <label for="edit_dl_meeting_url">Meeting URL</label>
+                  <input type="url" id="edit_dl_meeting_url" name="meeting_url">
+                </div>
+              </div>
+              <div class="form-field">
+                <label for="edit_dl_notes">Notes</label>
+                <textarea id="edit_dl_notes" name="notes" rows="3"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn-primary deadline-submit-btn">
+              <span class="btn-icon">💾</span>
+              <span>Save Changes</span>
+            </button>
+            <button type="button" class="btn-secondary" id="cancelEditDeadline">
+              <span class="btn-icon">❌</span>
+              <span>Cancel</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <!-- ######################## END: EDIT DEADLINE MODAL (HTML) ############## -->
+
+  <!-- ############################################################
   # BEGIN: TOAST (HTML)
   ############################################################ -->
   <!-- Toast -->
@@ -2025,6 +2706,7 @@
     const addTab = document.getElementById('addTab');
     // Deadlines tab
     const deadlinesTab = document.getElementById('deadlinesTab');
+    const addDeadlineTab = document.getElementById('addDeadlineTab');
 
     // Pages
     const analysePage = document.getElementById('analysePage');
@@ -2033,6 +2715,7 @@
     const analyticsPage = document.getElementById('analyticsPage');
     const addPage = document.getElementById('addPage');
     const deadlinesPage = document.getElementById('deadlinesPage');
+    const addDeadlinePage = document.getElementById('addDeadlinePage');
 
     // Analyse page refs
     const jobText = document.getElementById('jobText');
@@ -3041,6 +3724,27 @@
       if (!d.complete){
         actions.push(`<button class="dl-btn dl-btn-success" onclick="dl_markDone(${Number(d.id)})">Mark done</button>`);
       }
+      const idForHandler = JSON.stringify(String(d.id));
+      actions.push(`
+        <button class="dl-btn dl-btn-outline dl-btn-edit" onclick="openEditDeadlineModal(${idForHandler})">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+          Edit
+        </button>
+      `);
+      actions.push(`
+        <button class="dl-btn dl-btn-outline dl-btn-delete" onclick="deleteDeadline(${idForHandler})">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3,6 5,6 21,6"/>
+            <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
+            <line x1="10" y1="11" x2="10" y2="17"/>
+            <line x1="14" y1="11" x2="14" y2="17"/>
+          </svg>
+          Delete
+        </button>
+      `);
 
       return `
     <div class="${cardClasses.join(' ')}" id="dl_card_${d.id}">
@@ -3370,13 +4074,16 @@
     function switchTab(name){
       document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
       document.querySelectorAll('.page-content').forEach(p=>p.classList.remove('active'));
-      document.getElementById(name+'Tab').classList.add('active');
-      document.getElementById(name+'Page').classList.add('active');
+      const tabEl = document.getElementById(name+'Tab');
+      const pageEl = document.getElementById(name+'Page');
+      if (tabEl) tabEl.classList.add('active');
+      if (pageEl) pageEl.classList.add('active');
 
       if (name==='applications') renderApplications();
       if (name==='saved') renderSaved();
       if (name==='analytics') renderAnalytics();
       if (name==='deadlines') initDeadlinesPage();
+      if (name==='addDeadline') initAddDeadlinePage();
       history.replaceState(null,'',`#${name}`);
     }
     analyseTab.onclick = () => switchTab('analyse');
@@ -3385,12 +4092,14 @@
     analyticsTab.onclick = () => switchTab('analytics');
     addTab.onclick = () => switchTab('add');
     deadlinesTab.onclick = () => switchTab('deadlines');
+    if (addDeadlineTab) addDeadlineTab.onclick = () => switchTab('addDeadline');
     if (location.hash==='#analyse' || location.hash==='#analyze') switchTab('analyse');
     if (location.hash==='#applications') switchTab('applications');
     if (location.hash==='#saved') switchTab('saved');
     if (location.hash==='#analytics') switchTab('analytics');
     if (location.hash==='#add') switchTab('add');
     if (location.hash==='#deadlines') switchTab('deadlines');
+    if (location.hash==='#addDeadline') switchTab('addDeadline');
     if (!location.hash || location.hash==='#analyze') history.replaceState(null,'','#analyse');
 
     /* ######################## END: TABS/ROUTER (JS) ############### */
@@ -6021,6 +6730,382 @@ function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonR
     };
 
     /* ######################## END: ADD FORM (JS) ############### */
+
+    /* ############################################################
+       BEGIN: ADD DEADLINE & EDIT FUNCTIONALITY (JS)
+    ############################################################ */
+    const addDeadlineForm = document.getElementById('addDeadlineForm');
+    const clearDeadlineForm = document.getElementById('clearDeadlineForm');
+    const timingTypeRadios = document.querySelectorAll('input[name="timing_type"]');
+    const windowFields = document.getElementById('windowFields');
+    const eventFields = document.getElementById('eventFields');
+
+    const editDeadlineModal = document.getElementById('editDeadlineModal');
+    const editDeadlineOverlay = document.getElementById('editDeadlineOverlay');
+    const editDeadlineClose = document.getElementById('editDeadlineClose');
+    const editDeadlineForm = document.getElementById('editDeadlineForm');
+    const cancelEditDeadline = document.getElementById('cancelEditDeadline');
+    const editTimingTypeRadios = document.querySelectorAll('input[name="edit_timing_type"]');
+    const editWindowFields = document.getElementById('editWindowFields');
+    const editEventFields = document.getElementById('editEventFields');
+
+    function initAddDeadlinePage(){
+      if (!addDeadlinePage) return;
+      if (!initAddDeadlinePage._initialized){
+        setupTimingTypeToggle();
+        setupFormSubmission();
+        setupFormClear();
+        setupEditModal();
+        initAddDeadlinePage._initialized = true;
+      }
+
+      const defaultMode = Array.from(timingTypeRadios).find(r => r.checked)?.value || 'window';
+      setAddTimingVisibility(defaultMode);
+    }
+
+    function setupTimingTypeToggle(){
+      if (timingTypeRadios.length){
+        timingTypeRadios.forEach(radio => {
+          radio.addEventListener('change', () => setAddTimingVisibility(radio.value));
+        });
+      }
+
+      if (editTimingTypeRadios.length){
+        editTimingTypeRadios.forEach(radio => {
+          radio.addEventListener('change', () => setEditTimingVisibility(radio.value));
+        });
+      }
+
+      const initialEditMode = Array.from(editTimingTypeRadios).find(r => r.checked)?.value;
+      if (initialEditMode) setEditTimingVisibility(initialEditMode);
+    }
+
+    function setAddTimingVisibility(mode){
+      if (!windowFields || !eventFields) return;
+      const windowDate = document.getElementById('add_dl_window_date');
+      const windowTime = document.getElementById('add_dl_window_time');
+      const eventDate = document.getElementById('add_dl_event_date');
+      const eventStart = document.getElementById('add_dl_event_start_time');
+
+      if (mode === 'window'){
+        windowFields.style.display = 'grid';
+        eventFields.style.display = 'none';
+        if (windowDate) windowDate.required = true;
+        if (windowTime) windowTime.required = true;
+        if (eventDate) eventDate.required = false;
+        if (eventStart) eventStart.required = false;
+      } else {
+        windowFields.style.display = 'none';
+        eventFields.style.display = 'grid';
+        if (windowDate) windowDate.required = false;
+        if (windowTime) windowTime.required = false;
+        if (eventDate) eventDate.required = true;
+        if (eventStart) eventStart.required = true;
+      }
+    }
+
+    function setEditTimingVisibility(mode){
+      if (!editWindowFields || !editEventFields) return;
+      const windowDate = document.getElementById('edit_dl_window_date');
+      const windowTime = document.getElementById('edit_dl_window_time');
+      const eventDate = document.getElementById('edit_dl_event_date');
+      const eventStart = document.getElementById('edit_dl_event_start_time');
+
+      if (mode === 'window'){
+        editWindowFields.style.display = 'grid';
+        editEventFields.style.display = 'none';
+        if (windowDate) windowDate.required = true;
+        if (windowTime) windowTime.required = true;
+        if (eventDate) eventDate.required = false;
+        if (eventStart) eventStart.required = false;
+      } else {
+        editWindowFields.style.display = 'none';
+        editEventFields.style.display = 'grid';
+        if (windowDate) windowDate.required = false;
+        if (windowTime) windowTime.required = false;
+        if (eventDate) eventDate.required = true;
+        if (eventStart) eventStart.required = true;
+      }
+    }
+
+    function setupFormSubmission(){
+      if (addDeadlineForm && !addDeadlineForm._wired){
+        addDeadlineForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          await handleDeadlineSubmission(e.target, false);
+        });
+        addDeadlineForm._wired = true;
+      }
+
+      if (editDeadlineForm && !editDeadlineForm._wired){
+        editDeadlineForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          await handleDeadlineSubmission(e.target, true);
+        });
+        editDeadlineForm._wired = true;
+      }
+    }
+
+    async function handleDeadlineSubmission(form, isEdit){
+      const formData = new FormData(form);
+      const timingField = isEdit ? 'edit_timing_type' : 'timing_type';
+      const isWindow = (formData.get(timingField) || 'window') === 'window';
+      const findDeadline = (id) => dl_state.all.find(d => String(d.id) === String(id));
+      const existing = isEdit ? findDeadline(formData.get('id')) : null;
+
+      const trimmed = (name) => {
+        const value = formData.get(name);
+        return value == null ? '' : String(value).trim();
+      };
+      const optional = (name) => {
+        const value = trimmed(name);
+        return value ? value : null;
+      };
+
+      const payload = {
+        company: trimmed('company'),
+        role: trimmed('role'),
+        type: trimmed('type'),
+        is_window: isWindow,
+        priority: Number.parseInt(formData.get('priority'), 10) || (existing?.priority ?? 2),
+        location: optional('location'),
+        meeting_url: optional('meeting_url'),
+        notes: optional('notes')
+      };
+
+      if (isWindow){
+        const date = trimmed('window_date');
+        const time = trimmed('window_time') || '23:59';
+        if (date && time){
+          const iso = new Date(`${date}T${time}:00`);
+          payload.start_at = iso.toISOString();
+          payload.end_at = null;
+          payload.due_by = payload.start_at;
+        }
+        payload.timezone = existing?.timezone || 'Europe/London';
+      } else {
+        const date = trimmed('event_date');
+        const startTime = trimmed('event_start_time');
+        const endTime = trimmed('event_end_time');
+        if (date && startTime){
+          const startIso = new Date(`${date}T${startTime}:00`);
+          payload.start_at = startIso.toISOString();
+
+          if (endTime){
+            const endIso = new Date(`${date}T${endTime}:00`);
+            payload.end_at = endIso.toISOString();
+          } else {
+            const defaultEnd = new Date(startIso);
+            defaultEnd.setHours(defaultEnd.getHours() + 1);
+            payload.end_at = defaultEnd.toISOString();
+          }
+        }
+        payload.due_by = null;
+        payload.timezone = trimmed('timezone') || existing?.timezone || 'Europe/London';
+      }
+
+      let submitBtn = form.querySelector('button[type="submit"]');
+      const originalText = submitBtn ? submitBtn.innerHTML : '';
+
+      try {
+        if (submitBtn){
+          submitBtn.innerHTML = '<span class="btn-icon">⏳</span><span>Saving...</span>';
+          submitBtn.disabled = true;
+        }
+
+        if (isEdit){
+          const id = formData.get('id');
+          const idNumber = Number(id);
+          const eqValue = Number.isFinite(idNumber) ? idNumber : id;
+          payload.updated_at = new Date().toISOString();
+
+          const { error } = await db
+            .from(DEADLINES_TABLE)
+            .update(payload)
+            .eq('id', eqValue);
+
+          if (error) throw error;
+
+          toast('Deadline updated successfully!');
+          closeEditDeadlineModal();
+        } else {
+          payload.created_at = new Date().toISOString();
+          payload.updated_at = payload.created_at;
+          payload.status = 'open';
+          payload.complete = false;
+
+          const { error } = await db
+            .from(DEADLINES_TABLE)
+            .insert(payload);
+
+          if (error) throw error;
+
+          toast('Deadline created successfully!');
+          form.reset();
+          const defaultRadio = document.querySelector('input[name="timing_type"][value="window"]');
+          if (defaultRadio) defaultRadio.checked = true;
+          setAddTimingVisibility('window');
+        }
+
+        await initDeadlinesPage();
+      } catch (error) {
+        console.error('Error saving deadline:', error);
+        toast('Failed to save deadline. Please try again.');
+      } finally {
+        if (submitBtn){
+          submitBtn.innerHTML = originalText || '<span class="btn-icon">✅</span><span>Save</span>';
+          submitBtn.disabled = false;
+        }
+      }
+    }
+
+    function setupFormClear(){
+      if (clearDeadlineForm && !clearDeadlineForm._wired){
+        clearDeadlineForm.addEventListener('click', () => {
+          if (!addDeadlineForm) return;
+          addDeadlineForm.reset();
+          const defaultRadio = document.querySelector('input[name="timing_type"][value="window"]');
+          if (defaultRadio) defaultRadio.checked = true;
+          setAddTimingVisibility('window');
+          toast('Form cleared');
+        });
+        clearDeadlineForm._wired = true;
+      }
+    }
+
+    function setupEditModal(){
+      if (editDeadlineOverlay){
+        editDeadlineOverlay.addEventListener('click', closeEditDeadlineModal);
+      }
+      if (editDeadlineClose){
+        editDeadlineClose.addEventListener('click', closeEditDeadlineModal);
+      }
+      if (cancelEditDeadline){
+        cancelEditDeadline.addEventListener('click', closeEditDeadlineModal);
+      }
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && editDeadlineModal?.classList.contains('show')){
+          closeEditDeadlineModal();
+        }
+      });
+    }
+
+    function openEditDeadlineModal(deadlineId){
+      const deadline = dl_state.all.find(d => String(d.id) === String(deadlineId));
+      if (!deadline){
+        toast('Deadline not found');
+        return;
+      }
+
+      const idField = document.getElementById('edit_dl_id');
+      if (idField) idField.value = deadline.id;
+      const companyField = document.getElementById('edit_dl_company');
+      if (companyField) companyField.value = deadline.company || '';
+      const roleField = document.getElementById('edit_dl_role');
+      if (roleField) roleField.value = deadline.role || '';
+      const typeField = document.getElementById('edit_dl_type');
+      if (typeField) typeField.value = deadline.type || '';
+      const priorityField = document.getElementById('edit_dl_priority');
+      if (priorityField) priorityField.value = String(deadline.priority ?? 2);
+      const locationField = document.getElementById('edit_dl_location');
+      if (locationField) locationField.value = deadline.location || '';
+      const meetingField = document.getElementById('edit_dl_meeting_url');
+      if (meetingField) meetingField.value = deadline.meetingUrl || '';
+      const notesField = document.getElementById('edit_dl_notes');
+      if (notesField) notesField.value = deadline.notes || '';
+
+      const windowRadio = document.querySelector('input[name="edit_timing_type"][value="window"]');
+      const eventRadio = document.querySelector('input[name="edit_timing_type"][value="event"]');
+
+      if (deadline.isWindow){
+        if (windowRadio) windowRadio.checked = true;
+        setEditTimingVisibility('window');
+        const zone = deadline.timezone || 'Europe/London';
+        const dueDate = deadline.dueBy ? dayjs(deadline.dueBy).tz(zone) : null;
+        const windowDate = document.getElementById('edit_dl_window_date');
+        const windowTime = document.getElementById('edit_dl_window_time');
+        if (dueDate?.isValid()){
+          if (windowDate) windowDate.value = dueDate.format('YYYY-MM-DD');
+          if (windowTime) windowTime.value = dueDate.format('HH:mm');
+        } else {
+          if (windowDate) windowDate.value = '';
+          if (windowTime) windowTime.value = '';
+        }
+      } else {
+        if (eventRadio) eventRadio.checked = true;
+        setEditTimingVisibility('event');
+        const zone = deadline.timezone || 'Europe/London';
+        const startAt = deadline.startAt ? dayjs(deadline.startAt).tz(zone) : null;
+        const endAt = deadline.endAt ? dayjs(deadline.endAt).tz(zone) : null;
+        const eventDate = document.getElementById('edit_dl_event_date');
+        const eventStart = document.getElementById('edit_dl_event_start_time');
+        const eventEnd = document.getElementById('edit_dl_event_end_time');
+        const timezoneField = document.getElementById('edit_dl_timezone');
+
+        if (startAt?.isValid()){
+          if (eventDate) eventDate.value = startAt.format('YYYY-MM-DD');
+          if (eventStart) eventStart.value = startAt.format('HH:mm');
+        } else {
+          if (eventDate) eventDate.value = '';
+          if (eventStart) eventStart.value = '';
+        }
+        if (endAt?.isValid()){
+          if (eventEnd) eventEnd.value = endAt.format('HH:mm');
+        } else if (eventEnd) {
+          eventEnd.value = '';
+        }
+        if (timezoneField) timezoneField.value = zone;
+      }
+
+      editDeadlineModal?.classList.add('show');
+      editDeadlineModal?.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeEditDeadlineModal(){
+      editDeadlineModal?.classList.remove('show');
+      editDeadlineModal?.setAttribute('aria-hidden', 'true');
+      if (editDeadlineForm) editDeadlineForm.reset();
+    }
+
+    async function deleteDeadline(deadlineId){
+      const deadline = dl_state.all.find(d => String(d.id) === String(deadlineId));
+      if (!deadline){
+        toast('Deadline not found');
+        return;
+      }
+
+      if (!confirm(`Are you sure you want to delete the deadline for ${deadline.company} - ${deadline.role}?`)){
+        return;
+      }
+
+      try {
+        const idNumber = Number(deadlineId);
+        const eqValue = Number.isFinite(idNumber) ? idNumber : deadlineId;
+        const { error } = await db
+          .from(DEADLINES_TABLE)
+          .delete()
+          .eq('id', eqValue);
+
+        if (error) throw error;
+
+        toast('Deadline deleted successfully');
+        await initDeadlinesPage();
+      } catch (error) {
+        console.error('Error deleting deadline:', error);
+        toast('Failed to delete deadline');
+      }
+    }
+
+    window.openEditDeadlineModal = openEditDeadlineModal;
+    window.closeEditDeadlineModal = closeEditDeadlineModal;
+    window.deleteDeadline = deleteDeadline;
+
+    if (addDeadlinePage?.classList.contains('active')){
+      initAddDeadlinePage();
+    }
+
+    /* ######################## END: ADD DEADLINE & EDIT FUNCTIONALITY (JS) ############### */
 
     /* ############################################################
        BEGIN: INIT (JS)
