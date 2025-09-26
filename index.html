@@ -791,7 +791,7 @@
             <div class="chart-header">
               <div>
                 <div class="chart-title">Applications Over Time</div>
-                <div class="chart-subtitle">Daily application count</div>
+                <div class="chart-subtitle">Cumulative total (line) + daily (bars)</div>
               </div>
             </div>
             <canvas id="chartAppsLine" class="chart-canvas"></canvas>
@@ -3767,53 +3767,130 @@ function renderAnalytics(){
   destroyChart(chartSectorBar);
   destroyChart(chartRoleTypeBar);
 
-  // Applications over time - enhanced line chart
+  // Applications over time - bars (per-day) + line (cumulative)
+  destroyChart(chartAppsLine);
+
+  // Build a complete date range (inclusive) so we show 0 bars on days with no apps
+  function buildDateRangeInclusive(startDate, endDate) {
+    const out = [];
+    const d = new Date(startDate);
+    d.setHours(0,0,0,0);
+    const last = new Date(endDate);
+    last.setHours(0,0,0,0);
+    while (d <= last) {
+      out.push(new Date(d));
+      d.setDate(d.getDate() + 1);
+    }
+    return out;
+  }
+
+  const dateList = buildDateRangeInclusive(start, end);
+  const labelISO = dateList.map(d => d.toISOString().slice(0,10));
+
+  // Daily counts (fill gaps with 0)
+  const dailyCounts = labelISO.map(k => dayCounts[k] || 0);
+
+  // Cumulative total
+  const cumulativeCounts = dailyCounts.reduce((acc, val, i) => {
+    const prev = i > 0 ? acc[i - 1] : 0;
+    acc.push(prev + (Number(val) || 0));
+    return acc;
+  }, []);
+
+  // Pretty x-axis labels
+  const xLabels = dateList.map(d =>
+    selectedRange === '7'
+      ? d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' })
+      : d.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })
+  );
+
+  // Make sure the subtitle is correct (if the HTML wasn’t changed)
+  (() => {
+    const appsSubtitleEl = document.querySelector('#chartAppsLine')
+      ?.closest('.chart-container')
+      ?.querySelector('.chart-subtitle');
+    if (appsSubtitleEl) {
+      appsSubtitleEl.textContent = 'Cumulative total (line) + daily (bars)';
+    }
+  })();
+
   chartAppsLine = new Chart(document.getElementById('chartAppsLine').getContext('2d'), {
-    type: 'line',
+    type: 'bar', // base type can be bar; we mix datasets below
     data: {
-      labels: lineLabels.map(date => {
-        const d = new Date(date);
-        return selectedRange === '7' ?
-          d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' }) :
-          d.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' });
-      }),
-      datasets: [{
-        label: 'Applications',
-        data: lineData,
-        tension: 0.4,
-        borderColor: '#667eea',
-        backgroundColor: 'rgba(102, 126, 234, 0.1)',
-        borderWidth: 3,
-        fill: true,
-        pointBackgroundColor: '#667eea',
-        pointBorderColor: 'white',
-        pointBorderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 8
-      }]
+      labels: xLabels,
+      datasets: [
+        // Bars: per-day applications
+        {
+          type: 'bar',
+          label: 'Applications per day',
+          data: dailyCounts,
+          backgroundColor: 'rgba(79, 172, 254, 0.35)', // #4facfe with transparency
+          borderColor: '#4facfe',
+          borderWidth: 1,
+          borderRadius: 6,
+          borderSkipped: false,
+          order: 1
+        },
+        // Line: cumulative total
+        {
+          type: 'line',
+          label: 'Cumulative total',
+          data: cumulativeCounts,
+          tension: 0.35,
+          borderColor: '#667eea',
+          backgroundColor: 'rgba(102, 126, 234, 0.15)',
+          borderWidth: 3,
+          pointBackgroundColor: '#667eea',
+          pointBorderColor: 'white',
+          pointBorderWidth: 2,
+          pointRadius: 3,
+          pointHoverRadius: 6,
+          fill: false,
+          order: 0,
+          yAxisID: 'y'
+        }
+      ]
     },
     options: {
       ...chartDefaults,
-      scales: {
-        y: { 
-          beginAtZero: true, 
-          grid: { color: 'rgba(0,0,0,0.05)' }, 
-          ticks: { 
-            font: { family: 'Inter', weight: '500' },
-            stepSize: 1
-          } 
-        },
-        x: { 
-          grid: { display: false }, 
-          ticks: { 
-            font: { family: 'Inter', weight: '500' },
-            maxTicksLimit: selectedRange === '7' ? 7 : 10
-          } 
-        }
-      },
+      // Show legend so users can distinguish bars vs line
       plugins: {
         ...chartDefaults.plugins,
-        legend: { display: false }
+        legend: {
+          position: 'bottom',
+          labels: {
+            usePointStyle: true,
+            padding: 16,
+            font: { family: 'Inter', size: 12, weight: '600' }
+          }
+        },
+        tooltip: {
+          ...chartDefaults.plugins.tooltip,
+          callbacks: {
+            // Keep default title; show nice labels per dataset
+            label: function(ctx) {
+              const val = ctx.parsed.y;
+              return `${ctx.dataset.label}: ${val}`;
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(0,0,0,0.05)' },
+          ticks: {
+            font: { family: 'Inter', weight: '500' },
+            stepSize: 1
+          }
+        },
+        x: {
+          grid: { display: false },
+          ticks: {
+            font: { family: 'Inter', weight: '500' },
+            maxTicksLimit: selectedRange === '7' ? 7 : 10
+          }
+        }
       }
     }
   });
