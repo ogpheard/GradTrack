@@ -791,6 +791,7 @@
               <input id="dl_search" class="dl-search-input" type="text" placeholder="Search deadlines…" aria-label="Search deadlines" />
             </div>
             <div class="dl-actions-right">
+              <button id="dl_refresh" class="dl-btn dl-btn-ghost" type="button">Reload</button>
               <button id="dl_filtersToggle" class="dl-filters-toggle" type="button">Filters</button>
               <div class="dl-view-switcher">
                 <button class="dl-view-button active" id="dl_viewAgenda" type="button">Agenda</button>
@@ -1906,6 +1907,7 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         if (typeof v === 'string') return v === 'true' || v === '1';
         return Boolean(v);
       };
+      const statusLower = String(row?.status || '').toLowerCase();
       const isWindowRaw = row?.isWindow ?? row?.is_window;
       const direct = {
         id: row.id || row.idempotency_key || row.application_id || (crypto.randomUUID?.() || String(Date.now())),
@@ -1926,7 +1928,7 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         createdAt: row.createdAt || row.created_at || new Date().toISOString(),
         updatedAt: row.updatedAt || row.updated_at || new Date().toISOString(),
         hasConflict: bool(row.hasConflict ?? row.has_conflict),
-        complete: bool(row.complete ?? false),
+        complete: bool(row.complete ?? false) || statusLower === 'completed',
         dateComplete: row.dateComplete || row.date_complete || null
       };
       if (!direct.isWindow && direct.startAt && !direct.endAt){
@@ -2188,7 +2190,7 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
 
       const actions = [];
       if (!d.complete){
-        actions.push(`<button class="dl-btn dl-btn-success" onclick="dl_markDone('${d.id}')">Mark done</button>`);
+        actions.push(`<button class="dl-btn dl-btn-success" onclick="dl_markDone(${Number(d.id)})">Mark done</button>`);
       }
 
       return `
@@ -2343,8 +2345,10 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
     }
 
     async function dl_markDone(id){
-      const it = dl_state.all.find(x=>x.id===id);
-      if (!it) return;
+      // Coerce the id to a number to match the bigint PK in Supabase
+      const rowId = Number(id);
+      const it = dl_state.all.find(x => Number(x.id) === rowId);
+      if (!it) { toast('Could not find that item'); return; }
 
       try {
         const now = new Date().toISOString();
@@ -2352,15 +2356,17 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
           .from(DEADLINES_TABLE)
           .update({
             complete: true,
+            status: 'completed',     // keep status + complete in sync
             date_complete: now,
             updated_at: now
           })
-          .eq('id', id);
+          .eq('id', rowId);          // ensure numeric match
 
         if (error) throw error;
 
-        // Update local state
+        // Local state update mirrors DB
         it.complete = true;
+        it.status = 'completed';
         it.dateComplete = now;
         it.updatedAt = now;
 
@@ -2442,6 +2448,20 @@ const RESPONDED_SET = new Set(['response','oa','hirevue','interview','offer','re
         if (conflictSelect){
           conflictSelect.value = dl_state.filters.conflict || '';
           conflictSelect.onchange = (e)=>{ dl_state.filters.conflict=e.target.value; dl_applyFilters(); dl_updateKPIs(); dl_render(); };
+        }
+        const refreshBtn = document.getElementById('dl_refresh');
+        if (refreshBtn){
+          refreshBtn.onclick = async ()=>{
+            const loading = document.getElementById('dl_loading');
+            if (loading) loading.style.display = 'block';
+            await dl_fetch();
+            dl_populateCompanies();
+            dl_applyFilters();
+            dl_updateKPIs();
+            dl_render();
+            if (loading) loading.style.display = 'none';
+            toast('Deadlines reloaded');
+          };
         }
         const clearBtn = document.getElementById('dl_clear');
         if (clearBtn){
