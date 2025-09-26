@@ -1712,6 +1712,10 @@
       return Number.isNaN(+dt) ? null : dt;
     }
 
+    function effectiveDate(r){
+      return r.applied_date || r.status_update_date || r.created_at || r.updated_at || null;
+    }
+
     function daysBetween(a, b){
       const ms = b - a;
       return ms / (1000 * 60 * 60 * 24);
@@ -3103,8 +3107,11 @@
 
         const statusSlug = normaliseStatus(fd.get('status') || 'saved');
 
+        const applicationId = fd.get('application_id') || '';
+        const existing = getRawRowById(applicationId) || {};
+
         const updates = {
-          application_id: fd.get('application_id') || '',
+          application_id: applicationId,
           title: fd.get('title') || '',
           company_name: fd.get('company_name') || '',
           status: apiOutgoingStatus(statusSlug),
@@ -3127,14 +3134,13 @@
           job_summary: fd.get('job_summary') || '',
           job_description: fd.get('job_description') || '',
 
-          applied_date: fd.get('applied_date') || (statusSlug==='applied' ? londonTodayISO() : null),
+          applied_date: fd.get('applied_date') || existing.applied_date || (statusSlug==='applied' ? londonTodayISO() : null),
           status_update_date: londonTodayISO()
         };
 
         if (!updates.application_id) throw new Error('Missing application_id');
 
         // Merge existing DB row to avoid clearing fields not present in the form
-        const existing = getRawRowById(updates.application_id) || {};
         const merged   = cleanRowForDB({ ...existing, ...updates });
 
         try{
@@ -3459,43 +3465,27 @@ function normalizeRoleType(roleType) {
     .join(' ');
 }
 
-// Enhanced analytics range selector
-function updateAnalyticsRangeSelector() {
-  analyticsRange.innerHTML = `
-    <option value="all">All time</option>
-    <option value="90">Last 90 days</option>
-    <option value="30">Last 30 days</option>
-    <option value="7">Last 7 days</option>
-  `;
-}
-
 // Main analytics rendering function
 function renderAnalytics(){
-  // Update range selector if needed
-  updateAnalyticsRangeSelector();
-  
-  const data = Array.isArray(appsLive.applied) ? appsLive.applied : [];
-  const allData = [...(appsLive.applied || []), ...(appsLive.saved || [])]; // Include saved for complete picture
+  const selectedRange = analyticsRange.value;
 
-  const appliedDates = data
-    .map(r => parseISO(r.applied_date))
+  // Use ALL rows from Supabase, not just "applied" + "saved"
+  const allData = Array.isArray(rowsAll) ? rowsAll : [];
+
+  // Build the date universe from an effective date (applied_date || status_update_date || created_at)
+  const allDates = allData
+    .map(effectiveDate)
+    .filter(Boolean)
+    .map(parseISO)
     .filter(Boolean);
 
-  const { start, end } = rangeDates(analyticsRange.value, appliedDates);
-  const rangeLabel = analyticsRange.value === 'all' ? 'all time' : 
-                    analyticsRange.value === '7' ? 'last 7 days' :
-                    `last ${analyticsRange.value} days`;
+  const { start, end } = rangeDates(selectedRange, allDates);
+  const rangeLabel = selectedRange === 'all' ? 'all time'
+                    : selectedRange === '7' ? 'last 7 days'
+                    : `last ${selectedRange} days`;
 
-  // Filter data by range - use all applications for complete analytics
-  const rowsInRange = allData.filter(r => {
-    // For applied applications, use applied_date
-    if (APPLIED_LIKE.has(normaliseStatus(r.status))) {
-      return inRange(r.applied_date, start, end);
-    }
-    // For saved applications, use created_at or status_update_date
-    const dateToCheck = r.status_update_date || r.created_at;
-    return inRange(dateToCheck, start, end);
-  });
+  // Everything in the selected timeframe
+  const rowsInRange = allData.filter(r => inRange(effectiveDate(r), start, end));
 
   // ---- Enhanced KPIs ----
   const totalApps = rowsInRange.filter(r => APPLIED_LIKE.has(normaliseStatus(r.status))).length;
@@ -3507,7 +3497,7 @@ function renderAnalytics(){
   const dayCounts = {};
   rowsInRange.forEach(r => {
     if (!APPLIED_LIKE.has(normaliseStatus(r.status))) return;
-    const d = parseISO(r.applied_date);
+    const d = parseISO(r.applied_date || effectiveDate(r));
     if (!d) return;
     const k = dateKey(d);
     dayCounts[k] = (dayCounts[k] || 0) + 1;
@@ -3517,13 +3507,7 @@ function renderAnalytics(){
   // Previous period for trends
   const prevEnd = new Date(start.getTime() - 86400000);
   const prevStart = new Date(prevEnd.getTime() - (daysSpan - 1) * 86400000);
-  const rowsPrev = allData.filter(r => {
-    if (APPLIED_LIKE.has(normaliseStatus(r.status))) {
-      return inRange(r.applied_date, prevStart, prevEnd);
-    }
-    const dateToCheck = r.status_update_date || r.created_at;
-    return inRange(dateToCheck, prevStart, prevEnd);
-  });
+  const rowsPrev = allData.filter(r => inRange(effectiveDate(r), prevStart, prevEnd));
   
   const prevTotalApps = rowsPrev.filter(r => APPLIED_LIKE.has(normaliseStatus(r.status))).length;
   const prevTotalResponses = rowsPrev.filter(r => RESPONDED_SET.has(normaliseStatus(r.status))).length;
@@ -3561,7 +3545,7 @@ function renderAnalytics(){
   const prevDayCounts = {};
   rowsPrev.forEach(r => {
     if (!APPLIED_LIKE.has(normaliseStatus(r.status))) return;
-    const d = parseISO(r.applied_date);
+    const d = parseISO(r.applied_date || effectiveDate(r));
     if (!d) return;
     const k = dateKey(d);
     prevDayCounts[k] = (prevDayCounts[k] || 0) + 1;
@@ -3698,7 +3682,7 @@ function renderAnalytics(){
     data: {
       labels: lineLabels.map(date => {
         const d = new Date(date);
-        return analyticsRange.value === '7' ? 
+        return selectedRange === '7' ?
           d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' }) :
           d.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' });
       }),
@@ -3732,7 +3716,7 @@ function renderAnalytics(){
           grid: { display: false }, 
           ticks: { 
             font: { family: 'Inter', weight: '500' },
-            maxTicksLimit: analyticsRange.value === '7' ? 7 : 10
+            maxTicksLimit: selectedRange === '7' ? 7 : 10
           } 
         }
       },
