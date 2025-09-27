@@ -3726,9 +3726,9 @@
       if (!d.complete){
         actions.push(`<button class="dl-btn dl-btn-success" onclick="dl_markDone(${Number(d.id)})">Mark done</button>`);
       }
-      const idForHandler = JSON.stringify(String(d.id));
+      const idForHandler = d.id;
       actions.push(`
-        <button class="dl-btn dl-btn-outline dl-btn-edit" onclick="openEditDeadlineModal(${idForHandler})">
+        <button class="dl-btn dl-btn-outline dl-btn-edit" onclick="openEditDeadlineModal('${idForHandler}')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
             <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -3737,7 +3737,7 @@
         </button>
       `);
       actions.push(`
-        <button class="dl-btn dl-btn-outline dl-btn-delete" onclick="deleteDeadline(${idForHandler})">
+        <button class="dl-btn dl-btn-outline dl-btn-delete" onclick="deleteDeadline('${idForHandler}')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="3,6 5,6 21,6"/>
             <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
@@ -7023,13 +7023,7 @@ function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonR
     }
 
     function openEditDeadlineModal(deadlineId){
-      const numericId = Number(deadlineId);
-      const deadline = dl_state.all.find(d => {
-        if (Number.isFinite(numericId)){
-          return Number(d.id) === numericId;
-        }
-        return String(d.id) === String(deadlineId);
-      });
+      const deadline = dl_state.all.find(d => String(d.id) === String(deadlineId));
 
       console.log('Looking for deadline ID:', deadlineId, typeof deadlineId);
       console.log('Available deadlines:', dl_state.all.map(d => ({ id: d.id, type: typeof d.id })));
