@@ -1360,6 +1360,415 @@
       font-weight: 600;
     }
 
+    /* ############################################################
+    # BEGIN: ENHANCED EDIT MODAL STYLES
+    ############################################################ */
+
+    /* Modern Edit Modal Container */
+    .edit-modal-enhanced {
+      background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(249,250,251,0.98));
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 28px;
+      box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.25),
+        0 0 0 1px rgba(255, 255, 255, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .edit-modal-enhanced::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: var(--gradient-primary);
+      border-radius: 28px 28px 0 0;
+    }
+
+    /* Enhanced Modal Header */
+    .edit-modal-header {
+      padding: 2rem 2.5rem 1.5rem;
+      border-bottom: 2px solid var(--gray-100);
+      background: linear-gradient(135deg, var(--primary-50), rgba(255,255,255,0.8));
+      position: relative;
+    }
+
+    .edit-modal-title {
+      font-size: 1.75rem;
+      font-weight: 900;
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 0;
+      line-height: 1.2;
+    }
+
+    .edit-modal-subtitle {
+      font-size: 1rem;
+      color: var(--gray-600);
+      margin-top: 0.5rem;
+      font-weight: 500;
+    }
+
+    /* Enhanced Form Layout */
+    .edit-form-enhanced {
+      padding: 2rem 2.5rem;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+
+    .edit-form-sections {
+      display: flex;
+      flex-direction: column;
+      gap: 2.5rem;
+    }
+
+    .edit-form-section {
+      background: rgba(255, 255, 255, 0.7);
+      border: 2px solid var(--gray-100);
+      border-radius: 20px;
+      padding: 2rem;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .edit-form-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--gradient-primary);
+      border-radius: 20px 20px 0 0;
+      transform: scaleX(0);
+      transition: transform 0.3s ease;
+    }
+
+    .edit-form-section:hover::before {
+      transform: scaleX(1);
+    }
+
+    .edit-form-section:hover {
+      border-color: var(--primary-200);
+      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.1);
+      transform: translateY(-2px);
+    }
+
+    /* Section Headers */
+    .edit-section-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--gray-200);
+    }
+
+    .edit-section-icon {
+      font-size: 1.5rem;
+      padding: 0.5rem;
+      background: var(--primary-50);
+      border-radius: 12px;
+      border: 1px solid var(--primary-200);
+    }
+
+    .edit-section-title {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: var(--gray-900);
+      margin: 0;
+    }
+
+    .edit-section-description {
+      font-size: 0.9rem;
+      color: var(--gray-600);
+      margin-top: 0.25rem;
+      line-height: 1.4;
+    }
+
+    /* Enhanced Form Grid */
+    .edit-form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    .edit-form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .edit-form-field.full-width {
+      grid-column: 1 / -1;
+    }
+
+    /* Enhanced Labels */
+    .edit-field-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--gray-700);
+      margin-bottom: 0.25rem;
+    }
+
+    .edit-field-label .field-icon {
+      font-size: 0.9rem;
+      color: var(--primary-600);
+      margin-right: 0.5rem;
+    }
+
+    .edit-field-help {
+      font-size: 0.8rem;
+      color: var(--gray-500);
+      line-height: 1.4;
+      font-style: italic;
+    }
+
+    /* Enhanced Form Inputs */
+    .edit-form-input, 
+    .edit-form-select, 
+    .edit-form-textarea {
+      padding: 1rem 1.25rem;
+      border: 2px solid var(--gray-200);
+      border-radius: 16px;
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--gray-800);
+      background: rgba(255, 255, 255, 0.9);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      font-family: inherit;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .edit-form-input:focus, 
+    .edit-form-select:focus, 
+    .edit-form-textarea:focus {
+      outline: none;
+      border-color: var(--primary-500);
+      box-shadow: 
+        0 0 0 4px rgba(59, 130, 246, 0.1),
+        0 4px 12px rgba(59, 130, 246, 0.15);
+      background: white;
+      transform: translateY(-2px);
+    }
+
+    .edit-form-textarea {
+      resize: vertical;
+      min-height: 100px;
+      line-height: 1.6;
+    }
+
+    .edit-form-textarea.large {
+      min-height: 140px;
+    }
+
+    /* Status Select Enhancement */
+    .edit-status-field {
+      position: relative;
+    }
+
+    .edit-status-field::after {
+      content: '';
+      position: absolute;
+      right: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--primary-500);
+      animation: pulse 2s infinite;
+    }
+
+    /* Multi-line Field Styling */
+    .edit-multi-input-field {
+      background: var(--gray-50);
+      border: 2px solid var(--gray-200);
+      border-radius: 12px;
+      padding: 0.75rem;
+      min-height: 50px;
+      transition: all 0.3s ease;
+    }
+
+    .edit-multi-input-field:focus-within {
+      border-color: var(--primary-500);
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+      background: rgba(255, 255, 255, 0.95);
+    }
+
+    /* Enhanced Action Buttons */
+    .edit-modal-actions {
+      padding: 2rem 2.5rem;
+      background: linear-gradient(135deg, var(--gray-50), rgba(255,255,255,0.9));
+      border-top: 2px solid var(--gray-100);
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .edit-btn-enhanced {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1rem 2rem;
+      border-radius: 16px;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border: none;
+      position: relative;
+      overflow: hidden;
+      min-width: 160px;
+      justify-content: center;
+    }
+
+    .edit-btn-enhanced::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.3), rgba(255,255,255,0.1));
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .edit-btn-enhanced:hover::before {
+      opacity: 1;
+    }
+
+    .edit-btn-primary {
+      background: linear-gradient(135deg, var(--primary-600), var(--primary-500));
+      color: white;
+      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+    }
+
+    .edit-btn-primary:hover {
+      transform: translateY(-3px) scale(1.02);
+      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.5);
+    }
+
+    .edit-btn-secondary {
+      background: rgba(255, 255, 255, 0.9);
+      color: var(--gray-700);
+      border: 2px solid var(--gray-300);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .edit-btn-secondary:hover {
+      border-color: var(--gray-400);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .edit-btn-icon {
+      font-size: 1.1rem;
+    }
+
+    /* Loading State */
+    .edit-btn-enhanced:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .edit-btn-enhanced:disabled:hover {
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .edit-modal-enhanced {
+        margin: 1rem;
+        border-radius: 20px;
+      }
+      
+      .edit-modal-header,
+      .edit-form-enhanced,
+      .edit-modal-actions {
+        padding: 1.5rem;
+      }
+      
+      .edit-form-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .edit-modal-actions {
+        flex-direction: column;
+      }
+      
+      .edit-btn-enhanced {
+        width: 100%;
+      }
+      
+      .edit-form-enhanced {
+        max-height: 60vh;
+      }
+    }
+
+    /* Success States */
+    .edit-form-field.success .edit-form-input,
+    .edit-form-field.success .edit-form-select,
+    .edit-form-field.success .edit-form-textarea {
+      border-color: var(--success-500);
+      background: var(--success-50);
+    }
+
+    /* Validation Indicators */
+    .edit-field-validation {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      margin-top: 0.25rem;
+    }
+
+    .edit-field-validation.success {
+      color: var(--success-600);
+    }
+
+    .edit-field-validation.error {
+      color: var(--danger-600);
+    }
+
+    .edit-field-validation .validation-icon {
+      font-size: 0.9rem;
+    }
+
+    /* Enhanced Scroll Styling */
+    .edit-form-enhanced::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .edit-form-enhanced::-webkit-scrollbar-track {
+      background: var(--gray-100);
+      border-radius: 3px;
+    }
+
+    .edit-form-enhanced::-webkit-scrollbar-thumb {
+      background: var(--primary-300);
+      border-radius: 3px;
+    }
+
+    .edit-form-enhanced::-webkit-scrollbar-thumb:hover {
+      background: var(--primary-500);
+    }
+
+    /* ############################################################
+    # END: ENHANCED EDIT MODAL STYLES
+    ############################################################ */
+
     /* Analytics */
     .analytics-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2.5rem;flex-wrap:wrap;gap:1rem}
     .analytics-title{font-size:2.25rem;font-weight:800;background:var(--gradient-blue);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:.75rem}
@@ -6330,154 +6739,350 @@
       const card = toCardShape(raw);
       const prevStatus = raw.status || (card.status==='applied' ? 'Applied' : 'Saved');
 
-      modalTitle.textContent = `Edit: ${raw.title || 'Untitled role'}`;
+      modalTitle.textContent = `Edit Application`;
       modalBody.innerHTML = `
-        <form id="editForm" class="form-grid">
-          <!-- identifiers (used to upsert) -->
-          <input type="hidden" name="application_id" value="${escapeHtml(raw.application_id || '')}"/>
-          <input type="hidden" name="canonical_job_url" value="${escapeHtml(raw.canonical_job_url || '')}"/>
-          <input type="hidden" name="source_url" value="${escapeHtml(raw.source_url || '')}"/>
-          <input type="hidden" name="__prev_status" value="${escapeHtml(prevStatus)}"/>
-
-          <div class="form-field"><label>Status</label>
-            <select name="status"></select>
+        <div class="edit-modal-enhanced">
+          <div class="edit-modal-header">
+            <h3 class="edit-modal-title">Edit Application</h3>
+            <p class="edit-modal-subtitle">Update your application details and tracking information</p>
           </div>
 
-          <div class="form-field"><label>Title</label>
-            <input name="title" value="${escapeHtml(raw.title||'')}"/>
-          </div>
-          <div class="form-field"><label>Company</label>
-            <input name="company_name" value="${escapeHtml(raw.company_name||'')}"/>
-          </div>
-          <div class="form-field"><label>Locations (comma)</label>
-            <input name="locations" value="${escapeHtml(listToComma(raw.locations))}"/>
-          </div>
+          <form id="editForm" class="edit-form-enhanced">
+            <!-- Hidden Fields -->
+            <input type="hidden" name="application_id" value="${escapeHtml(raw.application_id || '')}"/>
+            <input type="hidden" name="canonical_job_url" value="${escapeHtml(raw.canonical_job_url || '')}"/>
+            <input type="hidden" name="source_url" value="${escapeHtml(raw.source_url || '')}"/>
+            <input type="hidden" name="__prev_status" value="${escapeHtml(prevStatus)}"/>
 
-          <div class="form-field"><label>Applied date (YYYY-MM-DD)</label>
-            <input name="applied_date" value="${escapeHtml(raw.applied_date||'')}"/>
-            <div class="help">If status becomes “Applied” and this is blank, we’ll set today (London).</div>
-          </div>
+            <div class="edit-form-sections">
+              <!-- Basic Information Section -->
+              <div class="edit-form-section">
+                <div class="edit-section-header">
+                  <div class="edit-section-icon">💼</div>
+                  <div>
+                    <h4 class="edit-section-title">Basic Information</h4>
+                    <p class="edit-section-description">Core details about this opportunity</p>
+                  </div>
+                </div>
+                
+                <div class="edit-form-grid">
+                  <div class="edit-form-field">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">📋</span>Job Title</span>
+                    </label>
+                    <input name="title" class="edit-form-input" value="${escapeHtml(raw.title||'')}" placeholder="e.g. Senior Software Engineer"/>
+                  </div>
 
-          <div class="form-field"><label>Salary min</label>
-            <input name="salary_min" type="number" value="${escapeHtml(raw.salary_min||'')}"/>
-          </div>
-          <div class="form-field"><label>Salary max</label>
-            <input name="salary_max" type="number" value="${escapeHtml(raw.salary_max||'')}"/>
-          </div>
-          <div class="form-field"><label>Currency</label>
-            <input name="salary_currency" value="${escapeHtml(raw.salary_currency||'')}"/>
-          </div>
-          <div class="form-field"><label>Period</label>
-            <input name="salary_period" value="${escapeHtml(raw.salary_period||'')}"/>
-          </div>
+                  <div class="edit-form-field">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">🏢</span>Company</span>
+                    </label>
+                    <input name="company_name" class="edit-form-input" value="${escapeHtml(raw.company_name||'')}" placeholder="e.g. Google, Microsoft"/>
+                  </div>
 
-          <div class="form-field"><label>AI Fit %</label>
-            <input name="ai_fit_score" type="number" min="0" max="100" value="${escapeHtml(raw.ai_fit_score ?? 0)}"/>
-          </div>
-          <div class="form-field"><label>AI Alignment %</label>
-            <input name="ai_alignment_score" type="number" min="0" max="100" value="${escapeHtml(raw.ai_alignment_score ?? 0)}"/>
-          </div>
-          <div class="form-field"><label>Effort /10</label>
-            <input name="application_effort_rating" type="number" min="0" max="10" step="1" value="${escapeHtml(raw.application_effort_rating ?? '')}"/>
-          </div>
-          <div class="form-field"><label>Chance /10</label>
-            <input name="application_chance_rating" type="number" min="0" max="10" step="1" value="${escapeHtml(raw.application_chance_rating ?? '')}"/>
-          </div>
-          <div class="form-field"><label>CV Used</label>
-            <input name="CV_used" value="${escapeHtml(raw.CV_used||'')}" placeholder="Optional: CV version used"/>
-          </div>
+                  <div class="edit-form-field edit-status-field">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">📊</span>Status</span>
+                    </label>
+                    <select name="status" class="edit-form-select"></select>
+                  </div>
 
-          <div class="form-field" style="grid-column:1/-1"><label>Fits (semicolon)</label>
-            <input name="fits" value="${escapeHtml(listToSemicolon(raw.fits))}"/>
-          </div>
-          <div class="form-field" style="grid-column:1/-1"><label>Gaps (semicolon)</label>
-            <input name="gaps" value="${escapeHtml(listToSemicolon(raw.gaps))}"/>
-          </div>
-          <div class="form-field" style="grid-column:1/-1"><label>Keywords (comma)</label>
-            <input name="keywords" value="${escapeHtml(listToComma(raw.keywords))}"/>
-          </div>
+                  <div class="edit-form-field">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">📅</span>Applied Date</span>
+                    </label>
+                    <input name="applied_date" type="date" class="edit-form-input" value="${escapeHtml(raw.applied_date||'')}"/>
+                    <div class="edit-field-help">Leave blank for saved applications</div>
+                  </div>
+                </div>
+              </div>
 
-          <div class="form-field" style="grid-column:1/-1"><label>Summary</label>
-            <textarea name="job_summary" rows="3">${escapeHtml(raw.job_summary||'')}</textarea>
-          </div>
-          <div class="form-field" style="grid-column:1/-1"><label>Description</label>
-            <textarea name="job_description" rows="6">${escapeHtml(raw.job_description||'')}</textarea>
-          </div>
+              <!-- Location & Details Section -->
+              <div class="edit-form-section">
+                <div class="edit-section-header">
+                  <div class="edit-section-icon">📍</div>
+                  <div>
+                    <h4 class="edit-section-title">Location & Details</h4>
+                    <p class="edit-section-description">Geographic and workplace information</p>
+                  </div>
+                </div>
 
-          <div class="hr"></div>
-          <div style="display:flex;gap:.5rem;flex-wrap:wrap">
-            <button class="btn btn-primary" type="submit">Save changes</button>
-            <button class="btn btn-outline" type="button" id="cancelEdit">Cancel</button>
+                <div class="edit-form-grid">
+                  <div class="edit-form-field full-width">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">🌍</span>Locations</span>
+                    </label>
+                    <input name="locations" class="edit-form-input" value="${escapeHtml(listToComma(raw.locations))}" placeholder="e.g. London, Remote, New York"/>
+                    <div class="edit-field-help">Separate multiple locations with commas</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Compensation Section -->
+              <div class="edit-form-section">
+                <div class="edit-section-header">
+                  <div class="edit-section-icon">💰</div>
+                  <div>
+                    <h4 class="edit-section-title">Compensation</h4>
+                    <p class="edit-section-description">Salary and benefits information</p>
+                  </div>
+                </div>
+
+                <div class="edit-form-grid">
+                  <div class="edit-form-field">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">💵</span>Currency</span>
+                    </label>
+                    <select name="salary_currency" class="edit-form-select">
+                      <option value="">Select currency</option>
+                      <option value="£" ${raw.salary_currency === '£' ? 'selected' : ''}>£ GBP</option>
+                      <option value="$" ${raw.salary_currency === '$' ? 'selected' : ''}>$ USD</option>
+                      <option value="€" ${raw.salary_currency === '€' ? 'selected' : ''}>€ EUR</option>
+                    </select>
+                  </div>
+
+                  <div class="edit-form-field">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">📈</span>Minimum Salary</span>
+                    </label>
+                    <input name="salary_min" type="number" class="edit-form-input" value="${escapeHtml(raw.salary_min||'')}" step="1000" placeholder="50000"/>
+                  </div>
+
+                  <div class="edit-form-field">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">📊</span>Maximum Salary</span>
+                    </label>
+                    <input name="salary_max" type="number" class="edit-form-input" value="${escapeHtml(raw.salary_max||'')}" step="1000" placeholder="70000"/>
+                  </div>
+
+                  <div class="edit-form-field">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">📅</span>Period</span>
+                    </label>
+                    <select name="salary_period" class="edit-form-select">
+                      <option value="">Select period</option>
+                      <option value="per annum" ${raw.salary_period === 'per annum' ? 'selected' : ''}>Per Annum</option>
+                      <option value="per month" ${raw.salary_period === 'per month' ? 'selected' : ''}>Per Month</option>
+                      <option value="per hour" ${raw.salary_period === 'per hour' ? 'selected' : ''}>Per Hour</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- AI Analysis & Ratings Section -->
+              <div class="edit-form-section">
+                <div class="edit-section-header">
+                  <div class="edit-section-icon">🤖</div>
+                  <div>
+                    <h4 class="edit-section-title">AI Analysis & Personal Ratings</h4>
+                    <p class="edit-section-description">Automated insights and your personal assessments</p>
+                  </div>
+                </div>
+
+                <div class="edit-form-grid">
+                  <div class="edit-form-field">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">🎯</span>AI Fit Score</span>
+                    </label>
+                    <input name="ai_fit_score" type="number" class="edit-form-input" min="0" max="100" value="${escapeHtml(raw.ai_fit_score ?? 0)}" placeholder="85"/>
+                    <div class="edit-field-help">AI-calculated fit percentage (0-100)</div>
+                  </div>
+
+                  <div class="edit-form-field">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">🎨</span>AI Alignment Score</span>
+                    </label>
+                    <input name="ai_alignment_score" type="number" class="edit-form-input" min="0" max="100" value="${escapeHtml(raw.ai_alignment_score ?? 0)}" placeholder="75"/>
+                    <div class="edit-field-help">AI-calculated alignment percentage (0-100)</div>
+                  </div>
+
+                  <div class="edit-form-field">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">⚡</span>Application Effort</span>
+                    </label>
+                    <input name="application_effort_rating" type="number" class="edit-form-input" min="0" max="10" step="1" value="${escapeHtml(raw.application_effort_rating ?? '')}" placeholder="7"/>
+                    <div class="edit-field-help">Your effort level (1-10 scale)</div>
+                  </div>
+
+                  <div class="edit-form-field">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">🎲</span>Success Chance</span>
+                    </label>
+                    <input name="application_chance_rating" type="number" class="edit-form-input" min="0" max="10" step="1" value="${escapeHtml(raw.application_chance_rating ?? '')}" placeholder="6"/>
+                    <div class="edit-field-help">Your estimated success chance (1-10 scale)</div>
+                  </div>
+
+                  <div class="edit-form-field full-width">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">📄</span>CV Used</span>
+                    </label>
+                    <input name="CV_used" class="edit-form-input" value="${escapeHtml(raw.CV_used||'')}" placeholder="e.g. Tech_CV_v3.pdf, Software_Engineer_Resume.docx"/>
+                    <div class="edit-field-help">Optional: Record which CV version you used</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Analysis & Keywords Section -->
+              <div class="edit-form-section">
+                <div class="edit-section-header">
+                  <div class="edit-section-icon">🔍</div>
+                  <div>
+                    <h4 class="edit-section-title">Job Analysis</h4>
+                    <p class="edit-section-description">Skills, fit analysis, and keywords</p>
+                  </div>
+                </div>
+
+                <div class="edit-form-grid">
+                  <div class="edit-form-field full-width">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">✅</span>Perfect Fits</span>
+                    </label>
+                    <input name="fits" class="edit-form-input" value="${escapeHtml(listToSemicolon(raw.fits))}" placeholder="Strong Python skills; 5+ years experience; Team leadership"/>
+                    <div class="edit-field-help">Your strengths that match this role (separate with semicolons)</div>
+                  </div>
+
+                  <div class="edit-form-field full-width">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">⚠️</span>Areas to Address</span>
+                    </label>
+                    <input name="gaps" class="edit-form-input" value="${escapeHtml(listToSemicolon(raw.gaps))}" placeholder="Need AWS experience; Limited machine learning knowledge"/>
+                    <div class="edit-field-help">Skills or experience gaps to work on (separate with semicolons)</div>
+                  </div>
+
+                  <div class="edit-form-field full-width">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">🏷️</span>Keywords</span>
+                    </label>
+                    <input name="keywords" class="edit-form-input" value="${escapeHtml(listToComma(raw.keywords))}" placeholder="Python, React, Machine Learning, Agile"/>
+                    <div class="edit-field-help">Relevant job keywords and skills (separate with commas)</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Job Content Section -->
+              <div class="edit-form-section">
+                <div class="edit-section-header">
+                  <div class="edit-section-icon">📝</div>
+                  <div>
+                    <h4 class="edit-section-title">Job Content</h4>
+                    <p class="edit-section-description">Summary and full job description</p>
+                  </div>
+                </div>
+
+                <div class="edit-form-grid">
+                  <div class="edit-form-field full-width">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">📄</span>Job Summary</span>
+                    </label>
+                    <textarea name="job_summary" class="edit-form-textarea" rows="3" placeholder="Brief overview of the role and key responsibilities...">${escapeHtml(raw.job_summary||'')}</textarea>
+                    <div class="edit-field-help">Concise summary of what this job involves</div>
+                  </div>
+
+                  <div class="edit-form-field full-width">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">📋</span>Full Job Description</span>
+                    </label>
+                    <textarea name="job_description" class="edit-form-textarea large" rows="6" placeholder="Complete job posting including requirements, benefits, etc...">${escapeHtml(raw.job_description||'')}</textarea>
+                    <div class="edit-field-help">Complete job posting for future reference</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </form>
+
+          <div class="edit-modal-actions">
+            <button class="edit-btn-enhanced edit-btn-primary" type="submit" form="editForm">
+              <span class="edit-btn-icon">💾</span>
+              <span>Save Changes</span>
+            </button>
+            <button class="edit-btn-enhanced edit-btn-secondary" type="button" id="cancelEdit">
+              <span class="edit-btn-icon">✕</span>
+              <span>Cancel</span>
+            </button>
           </div>
-        </form>
+        </div>
       `;
+
+      // Populate status dropdown
       const statusEl = document.querySelector('#editForm select[name="status"]');
       renderStatusSelect(statusEl, normaliseStatus(prevStatus));
 
+      // Wire up event handlers
       document.getElementById('cancelEdit').onclick = closeModal;
 
+      // Enhanced form submission with loading states
       document.getElementById('editForm').onsubmit = async (e)=>{
         e.preventDefault();
-        const fd = new FormData(e.target);
+        const submitBtn = document.querySelector('.edit-btn-primary');
+        const originalText = submitBtn.innerHTML;
+        
+        try {
+          // Show loading state
+          submitBtn.innerHTML = '<span class="edit-btn-icon">⏳</span><span>Saving...</span>';
+          submitBtn.disabled = true;
 
-        const applicationId = fd.get('application_id') || '';
-        const existing = getRawRowById(applicationId) || {};
+          const fd = new FormData(e.target);
+          const applicationId = fd.get('application_id') || '';
+          const existing = getRawRowById(applicationId) || {};
 
-        const prevStatusRaw = fd.get('__prev_status') || '';
-        const prevSlug      = normaliseStatus(prevStatusRaw);
-        const statusSlug    = normaliseStatus(fd.get('status') || 'saved');
-        const statusChanged = prevSlug !== statusSlug;
+          const prevStatusRaw = fd.get('__prev_status') || '';
+          const prevSlug = normaliseStatus(prevStatusRaw);
+          const statusSlug = normaliseStatus(fd.get('status') || 'saved');
+          const statusChanged = prevSlug !== statusSlug;
 
-        const updates = {
-          application_id: applicationId,
-          title: fd.get('title') || '',
-          company_name: fd.get('company_name') || '',
+          const updates = {
+            application_id: applicationId,
+            title: fd.get('title') || '',
+            company_name: fd.get('company_name') || '',
+            status: apiOutgoingStatus(statusSlug),
+            locations: toArraySmart(fd.get('locations')),
+            fits: toArraySmart(fd.get('fits')),
+            gaps: toArraySmart(fd.get('gaps')),
+            keywords: toArraySmart(fd.get('keywords')),
+            salary_min: fd.get('salary_min'),
+            salary_max: fd.get('salary_max'),
+            salary_currency: fd.get('salary_currency') || null,
+            salary_period: fd.get('salary_period') || null,
+            ai_fit_score: fd.get('ai_fit_score'),
+            ai_alignment_score: fd.get('ai_alignment_score'),
+            application_effort_rating: fd.get('application_effort_rating'),
+            application_chance_rating: fd.get('application_chance_rating'),
+            CV_used: fd.get('CV_used') || existing.CV_used || null,
+            job_summary: fd.get('job_summary') || '',
+            job_description: fd.get('job_description') || '',
+            applied_date: fd.get('applied_date') || existing.applied_date || (statusSlug==='applied' ? londonTodayISO() : null)
+          };
 
-          status: apiOutgoingStatus(statusSlug),
+          if (statusChanged) {
+            updates.status_update_date = londonTodayISO();
+          }
 
-          locations: toArraySmart(fd.get('locations')),
-          fits:      toArraySmart(fd.get('fits')),
-          gaps:      toArraySmart(fd.get('gaps')),
-          keywords:  toArraySmart(fd.get('keywords')),
+          if (!updates.application_id) throw new Error('Missing application_id');
 
-          salary_min: fd.get('salary_min'),
-          salary_max: fd.get('salary_max'),
-          salary_currency: fd.get('salary_currency') || null,
-          salary_period: fd.get('salary_period') || null,
-
-          ai_fit_score: fd.get('ai_fit_score'),
-          ai_alignment_score: fd.get('ai_alignment_score'),
-          application_effort_rating: fd.get('application_effort_rating'),
-          application_chance_rating: fd.get('application_chance_rating'),
-          CV_used: fd.get('CV_used') || existing.CV_used || null,
-
-          job_summary: fd.get('job_summary') || '',
-          job_description: fd.get('job_description') || '',
-
-          applied_date: fd.get('applied_date') || existing.applied_date || (statusSlug==='applied' ? londonTodayISO() : null)
-        };
-
-        if (statusChanged) {
-          updates.status_update_date = londonTodayISO();
-        }
-
-        if (!updates.application_id) throw new Error('Missing application_id');
-
-        // Merge existing DB row to avoid clearing fields not present in the form
-        const merged = cleanRowForDB({ ...existing, ...updates });
-
-        try{
+          const merged = cleanRowForDB({ ...existing, ...updates });
           await sbUpsertOnId(merged);
-          toast('Saved changes ✓');
-          closeModal();
+          
+          // Success state
+          submitBtn.innerHTML = '<span class="edit-btn-icon">✅</span><span>Saved!</span>';
+          setTimeout(() => {
+            toast('Changes saved successfully!');
+            closeModal();
+          }, 800);
+          
           await refreshData(true);
-        }catch(err){
+        } catch(err) {
           console.error(err);
+          submitBtn.innerHTML = '<span class="edit-btn-icon">❌</span><span>Failed</span>';
+          setTimeout(() => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+          }, 2000);
           toast('Failed to save changes');
         }
       };
 
-      modal.classList.add('show'); modal.setAttribute('aria-hidden','false');
+      modal.classList.add('show');
+      modal.setAttribute('aria-hidden','false');
     }
     function closeModal(){ modal.classList.remove('show'); modal.setAttribute('aria-hidden','true'); }
     modalOverlay.onclick = closeModal; modalClose.onclick = closeModal; document.addEventListener('keydown',(e)=>{ if (e.key==='Escape' && modal.classList.contains('show')) closeModal(); });
