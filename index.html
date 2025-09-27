@@ -1294,6 +1294,72 @@
       font-weight:700;
     }
 
+    /* CV Used Field Styles */
+    .cv-used-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      padding: 1rem;
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(255, 255, 255, 0.95));
+      border: 2px solid var(--primary-200);
+      border-radius: 12px;
+    }
+
+    .cv-used-label {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--gray-700);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .cv-used-input {
+      padding: 0.75rem 1rem;
+      border: 2px solid var(--gray-200);
+      border-radius: 10px;
+      font-size: 0.95rem;
+      background: white;
+      transition: all 0.3s ease;
+    }
+
+    .cv-used-input:focus {
+      outline: none;
+      border-color: var(--primary-500);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .cv-used-hint {
+      font-size: 0.8rem;
+      color: var(--gray-500);
+      font-style: italic;
+    }
+
+    /* Modal CV Display */
+    .modal .cv-used-display {
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(255, 255, 255, 0.95));
+      border: 1px solid var(--primary-200);
+      border-radius: 12px;
+      padding: 1rem;
+      margin-top: 1rem;
+    }
+
+    .modal .cv-used-display .cv-label {
+      font-size: 0.85rem;
+      color: var(--gray-600);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+
+    .modal .cv-used-display .cv-value {
+      font-size: 1rem;
+      color: var(--primary-700);
+      font-weight: 600;
+    }
+
     /* Analytics */
     .analytics-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:2.5rem;flex-wrap:wrap;gap:1rem}
     .analytics-title{font-size:2.25rem;font-weight:800;background:var(--gradient-blue);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:.75rem}
@@ -2554,6 +2620,12 @@
                   </div>
                   <div class="enhanced-field-help">How likely do you think you are to get this job?</div>
                 </div>
+                <div class="enhanced-form-field enhanced-full-width">
+                  <label class="enhanced-field-label">CV Used</label>
+                  <input type="text" name="CV_used" class="enhanced-form-input"
+                         placeholder="e.g., Tech_CV_v3.pdf, Software_Engineer_Resume_2025.docx">
+                  <div class="enhanced-field-help">Optional: Record which CV version you used for this application</div>
+                </div>
               </div>
             </div>
 
@@ -2803,8 +2875,22 @@
             </div>
 
             <div id="ratingInputs" class="rating-inputs" aria-hidden="true">
-              <div class="rating-input"><label for="effort">Effort /10</label><input id="effort" type="number" min="0" max="10" step="1" value="7"/></div>
-              <div class="rating-input"><label for="chance">Chance /10</label><input id="chance" type="number" min="0" max="10" step="1" value="6"/></div>
+              <div class="rating-input">
+                <label for="effort">Effort /10</label>
+                <input id="effort" type="number" min="0" max="10" step="1" value="7"/>
+              </div>
+              <div class="rating-input">
+                <label for="chance">Chance /10</label>
+                <input id="chance" type="number" min="0" max="10" step="1" value="6"/>
+              </div>
+              <div class="cv-used-field">
+                <label class="cv-used-label" for="cvUsedAnalyse">
+                  📄 CV Used (optional)
+                </label>
+                <input id="cvUsedAnalyse" type="text" class="cv-used-input"
+                       placeholder="e.g., Tech_CV_v3.pdf, Software_Engineer_Resume_2025.docx"/>
+                <span class="cv-used-hint">Record which CV version you used for future reference</span>
+              </div>
               <button id="confirmApply" class="btn btn-success">Confirm</button>
             </div>
 
@@ -2905,23 +2991,34 @@
       <div class="modal-body">
         <p id="rateApplySummary" style="margin-bottom:1rem;color:var(--gray-700)"></p>
 
-        <!-- Reuse Analyse page styling -->
-        <div class="rating-inputs show" id="rateApplyInputs" aria-hidden="false" style="display:flex">
-          <div class="rating-input">
-            <label for="rateEffort">Effort /10</label>
-            <input id="rateEffort" type="number" min="0" max="10" step="1" value="7"/>
+        <div class="rating-inputs show" id="rateApplyInputs" aria-hidden="false" style="display:flex; flex-direction: column; gap: 1rem;">
+          <div style="display: flex; gap: 1rem;">
+            <div class="rating-input">
+              <label for="rateEffort">Effort /10</label>
+              <input id="rateEffort" type="number" min="0" max="10" step="1" value="7"/>
+            </div>
+            <div class="rating-input">
+              <label for="rateChance">Chance /10</label>
+              <input id="rateChance" type="number" min="0" max="10" step="1" value="6"/>
+            </div>
           </div>
-          <div class="rating-input">
-            <label for="rateChance">Chance /10</label>
-            <input id="rateChance" type="number" min="0" max="10" step="1" value="6"/>
+
+          <div class="cv-used-field">
+            <label class="cv-used-label" for="rateCvUsed">
+              📄 CV Used (optional)
+            </label>
+            <input id="rateCvUsed" type="text" class="cv-used-input"
+                   placeholder="e.g., Tech_CV_v3.pdf, Software_Engineer_Resume_2025.docx"/>
+            <span class="cv-used-hint">Record which CV version you used for future reference</span>
           </div>
-          <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-left:auto">
+
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;justify-content: center; margin-top: 1rem;">
             <button id="rateApplyConfirm" class="btn btn-success">Confirm & Apply</button>
             <button id="rateApplyCancel" class="btn btn-outline" type="button">Cancel</button>
           </div>
         </div>
 
-        <p class="help" style="margin-top:.5rem">Your ratings will be saved with this application.</p>
+        <p class="help" style="margin-top:.5rem">Your ratings and CV info will be saved with this application.</p>
       </div>
     </div>
   </div>
@@ -3430,6 +3527,8 @@
       const cha = toNum(raw.application_chance_rating);
       rateEffort.value = (eff ?? 7);
       rateChance.value = (cha ?? 6);
+      const rateCvUsedInput = document.getElementById('rateCvUsed');
+      if (rateCvUsedInput) rateCvUsedInput.value = raw.CV_used || '';
 
       rateApplyModal.classList.add('show');
       rateApplyModal.setAttribute('aria-hidden','false');
@@ -3456,6 +3555,7 @@
         const today = londonTodayISO();
         const eff = toNum(rateEffort.value);
         const cha = toNum(rateChance.value);
+        const cvUsed = document.getElementById('rateCvUsed')?.value || '';
 
         const { error } = await db
           .from(TABLE)
@@ -3464,7 +3564,8 @@
             applied_date: today,
             status_update_date: today,
             application_effort_rating: eff,
-            application_chance_rating: cha
+            application_chance_rating: cha,
+            CV_used: cvUsed
           })
           .eq('application_id', pendingApplyApp.application_id);
 
@@ -3543,6 +3644,8 @@
         // use lowercase first, fallback to legacy
         fitScore: toNum(r.ai_fit_score ?? r.AI_fit_score) ?? 0,
         alignmentScore: toNum(r.ai_alignment_score ?? r.AI_alignment_score) ?? 0,
+
+        cvUsed: r.CV_used || '',
 
         source: r.canonical_job_url ? new URL(r.canonical_job_url).hostname :
                 (r.source_url ? new URL(r.source_url).hostname : '—'),
@@ -5406,6 +5509,8 @@
 
       if ('status' in out) out.status = coerceStatus(out.status);
 
+      if ('CV_used' in out && out.CV_used === '') out.CV_used = null;
+
       if (!out.application_id) out.application_id = (crypto.randomUUID?.() || String(Date.now()));
       return out;
     }
@@ -5459,12 +5564,14 @@
       try{
         const effortRaw = effortInput.value;
         const chanceRaw = chanceInput.value;
+        const cvUsed = document.getElementById('cvUsedAnalyse')?.value || '';
         const payload = toApplicationsPayload(draft, {
           status:'Applied',
           effort: effortRaw,
           chance: chanceRaw,
           appliedDate: londonTodayISO()
         });
+        payload.CV_used = cvUsed;
         await sbUpsertOnUnique(cleanRowForDB(payload));
         toast('Marked as applied 🎉');
         ratingInputs.classList.remove('show'); ratingInputs.setAttribute('aria-hidden','true');
@@ -5484,7 +5591,9 @@
       // Reset effort and chance ratings to defaults
       if (effortInput) effortInput.value = '7';
       if (chanceInput) chanceInput.value = '6';
-      
+      const cvAnalyseInput = document.getElementById('cvUsedAnalyse');
+      if (cvAnalyseInput) cvAnalyseInput.value = '';
+
       // Hide the result card and reset state
       if (resultCard) resultCard.style.display = 'none';
       if (resultContent) resultContent.style.display = 'none';
@@ -5740,6 +5849,10 @@
             <div class="info-item">
               <div class="info-label">Chance Rating</div>
               <div class="info-value">${raw.application_chance_rating ? `${raw.application_chance_rating}/10` : '—'}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">CV Used</div>
+              <div class="info-value">${escapeHtml(raw.CV_used || '—')}</div>
             </div>
             <div class="info-item full-width">
               <div class="info-label">Source URL</div>
@@ -6270,6 +6383,9 @@
           <div class="form-field"><label>Chance /10</label>
             <input name="application_chance_rating" type="number" min="0" max="10" step="1" value="${escapeHtml(raw.application_chance_rating ?? '')}"/>
           </div>
+          <div class="form-field"><label>CV Used</label>
+            <input name="CV_used" value="${escapeHtml(raw.CV_used||'')}" placeholder="Optional: CV version used"/>
+          </div>
 
           <div class="form-field" style="grid-column:1/-1"><label>Fits (semicolon)</label>
             <input name="fits" value="${escapeHtml(listToSemicolon(raw.fits))}"/>
@@ -6333,6 +6449,7 @@
           ai_alignment_score: fd.get('ai_alignment_score'),
           application_effort_rating: fd.get('application_effort_rating'),
           application_chance_rating: fd.get('application_chance_rating'),
+          CV_used: fd.get('CV_used') || existing.CV_used || null,
 
           job_summary: fd.get('job_summary') || '',
           job_description: fd.get('job_description') || '',
@@ -7428,6 +7545,7 @@ function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonR
               applied_date: statusSlug === 'applied' ? (formData.get('applied_date') || londonTodayISO()) : null,
               application_effort_rating: formData.get('application_effort_rating'),
               application_chance_rating: formData.get('application_chance_rating'),
+              CV_used: formData.get('CV_used') || null,
               status_update_date: londonTodayISO(),
             });
 
