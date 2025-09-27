@@ -2157,10 +2157,6 @@
           </div>
         </div>
 
-        <div class="helper-text">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-          Test uses <code>/webhook-test/*</code>. Production uses <code>/webhook/*</code>.
-        </div>
 
         <div id="resultCard" class="result-card" aria-live="polite">
           <div id="loadingState" class="loading-container" style="display:none">
@@ -4393,9 +4389,7 @@
       };
       document.getElementById('confirmApply').onclick = onApply;
       document.getElementById('ignoreBtn').onclick = () => {
-        resultCard.style.display='none';
-        draft=null;
-        lastCover=null;
+        resetAnalyseForm();
         toast('Ignored. Nothing saved.');
       };
       document.getElementById('coverBtn').onclick = onCoverClick;
@@ -4923,6 +4917,7 @@
         await sbUpsertOnUnique(payload);
         toast('Saved for later ✅');
         await refreshData(true);
+        resetAnalyseForm();
       }catch(e){ console.error(e); toast('Save failed'); }
     }
 
@@ -4941,7 +4936,42 @@
         toast('Marked as applied 🎉');
         ratingInputs.classList.remove('show'); ratingInputs.setAttribute('aria-hidden','true');
         await refreshData(true);
+        resetAnalyseForm();
       }catch(e){ console.error(e); toast('Apply failed'); }
+    }
+
+    function resetAnalyseForm(){
+      // Clear the main form inputs
+      if (jobText) jobText.value = '';
+      if (jobSourceUrl) jobSourceUrl.value = '';
+      
+      // Reset character counter
+      if (jobCharCount) jobCharCount.textContent = '0 / 30000';
+      
+      // Reset effort and chance ratings to defaults
+      if (effortInput) effortInput.value = '7';
+      if (chanceInput) chanceInput.value = '6';
+      
+      // Hide the result card and reset state
+      if (resultCard) resultCard.style.display = 'none';
+      if (resultContent) resultContent.style.display = 'none';
+      if (loadingState) loadingState.style.display = 'none';
+      
+      // Reset draft and cover letter state
+      draft = null;
+      lastCover = null;
+      
+      // Hide rating inputs if they're showing
+      if (ratingInputs) {
+        ratingInputs.classList.remove('show');
+        ratingInputs.setAttribute('aria-hidden', 'true');
+      }
+      
+      // Hide cover section if it's showing
+      if (coverSection) {
+        coverSection.classList.remove('show');
+        coverSection.setAttribute('aria-hidden', 'true');
+      }
     }
 
     // ====== Cover letter & CV
