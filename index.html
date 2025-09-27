@@ -6925,6 +6925,8 @@ function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonR
 
       console.log('Form data:', Object.fromEntries(formData.entries()));
       console.log('Payload being sent to database:', payload);
+      console.log('Is edit mode:', isEdit);
+      console.log('Existing deadline:', existing);
 
       let submitBtn = form.querySelector('button[type="submit"]');
       const originalText = submitBtn ? submitBtn.innerHTML : '';
@@ -6937,10 +6939,12 @@ function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonR
 
         if (isEdit){
           const id = Number(formData.get('id'));
+          console.log('Edit mode - ID from form:', formData.get('id'), 'Converted to number:', id);
           if (!Number.isFinite(id)){
             throw new Error('Invalid deadline ID');
           }
           payload.updated_at = new Date().toISOString();
+          console.log('About to update deadline with ID:', id, 'Payload:', payload);
 
           const { error, data } = await db
             .from(DEADLINES_TABLE)
