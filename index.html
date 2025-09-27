@@ -5376,7 +5376,6 @@
         application_effort_rating: toNum(opts.effort ?? a.application_effort_rating),
         application_chance_rating: toNum(opts.chance ?? a.application_chance_rating),
         status_update_date: londonTodayISO(),
-        cover_letter_url: a.cover_letter_url ?? ''
       };
     }
 
@@ -7430,7 +7429,6 @@ function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonR
               application_effort_rating: formData.get('application_effort_rating'),
               application_chance_rating: formData.get('application_chance_rating'),
               status_update_date: londonTodayISO(),
-              cover_letter_url: ''
             });
 
             await sbUpsertOnUnique(payload);
