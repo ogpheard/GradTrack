@@ -6182,166 +6182,397 @@
       const statusBadgeColor = statusColor(slug);
 
       modalBody.innerHTML = `
-        <div class="enhanced-modal-container">
-          <!-- Header Section with Company & Status -->
-          <div class="modal-header-section">
-            <div class="company-info">
-              <h2 class="company-name">${escapeHtml(raw.company_name || 'Unknown Company')}</h2>
-              <div class="role-title">${escapeHtml(raw.title || 'Untitled Role')}</div>
-            </div>
-            <div class="status-container">
-              <div class="application-status ${statusClass}" style="background-color: ${statusBadgeColor}">${escapeHtml(statusLabelText)}</div>
+  <div class="edit-modal-enhanced">
+    <div class="edit-modal-header">
+      <h3 class="edit-modal-title">Edit Application</h3>
+      <p class="edit-modal-subtitle">Update your application details and tracking information</p>
+    </div>
+
+    <form id="editForm" class="edit-form-enhanced">
+      <!-- Hidden Fields -->
+      <input type="hidden" name="application_id" value="${escapeHtml(raw.application_id || '')}"/>
+      <input type="hidden" name="canonical_job_url" value="${escapeHtml(raw.canonical_job_url || '')}"/>
+      <input type="hidden" name="__prev_status" value="${escapeHtml(prevStatus)}"/>
+
+      <div class="edit-form-sections">
+        <!-- Basic Information Section -->
+        <div class="edit-form-section">
+          <div class="edit-section-header">
+            <div class="edit-section-icon">💼</div>
+            <div>
+              <h4 class="edit-section-title">Basic Information</h4>
+              <p class="edit-section-description">Core details about this opportunity</p>
             </div>
           </div>
+          
+          <div class="edit-form-grid">
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">📋</span>Job Title</span>
+              </label>
+              <input name="title" class="edit-form-input" value="${escapeHtml(raw.title||'')}" placeholder="e.g. Senior Software Engineer"/>
+            </div>
 
-          <!-- AI Scores Section -->
-          <div class="scores-showcase">
-            <div class="score-item">
-              <div class="score-label">AI Fit</div>
-              <div class="score-value">${fit}%</div>
-              <div class="score-bar">
-                <div class="score-fill" style="width: ${fit}%; background: linear-gradient(135deg, #667eea, #764ba2)"></div>
-              </div>
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">🏢</span>Company</span>
+              </label>
+              <input name="company_name" class="edit-form-input" value="${escapeHtml(raw.company_name||'')}" placeholder="e.g. Google, Microsoft"/>
             </div>
-            <div class="score-item">
-              <div class="score-label">Alignment</div>
-              <div class="score-value">${align}%</div>
-              <div class="score-bar">
-                <div class="score-fill" style="width: ${align}%; background: linear-gradient(135deg, #11998e, #38ef7d)"></div>
-              </div>
-            </div>
-          </div>
 
-          <!-- Key Information Grid -->
-          <div class="info-grid">
-            <div class="info-item">
-              <div class="info-label">Location</div>
-              <div class="info-value">${escapeHtml(listToComma(raw.locations) || '—')}</div>
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">🔗</span>Source URL</span>
+              </label>
+              <input name="source_url" type="url" class="edit-form-input" value="${escapeHtml(raw.source_url||'')}" placeholder="https://..."/>
+              <div class="edit-field-help">Original job posting URL</div>
             </div>
-            <div class="info-item">
-              <div class="info-label">Start Date</div>
-              <div class="info-value">${formatDate(raw.start_date)}</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">Application Deadline</div>
-              <div class="info-value">${formatDate(raw.date_deadline)}</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">Salary</div>
-              <div class="info-value">${(() => {
-                const parts = [
-                  raw.salary_currency || '',
-                  raw.salary_min ? raw.salary_min : '',
-                  raw.salary_max ? `- ${raw.salary_max}` : '',
-                  raw.salary_period || ''
-                ].filter(Boolean);
-                const combined = parts.length ? parts.join(' ') : (raw.salary_raw || '—');
-                return escapeHtml(String(combined));
-              })()}</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">Sector</div>
-              <div class="info-value">${escapeHtml(raw.sector || '—')}</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">Role Type</div>
-              <div class="info-value">${escapeHtml(raw.role_type || '—')}</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">Applied Date</div>
-              <div class="info-value">${formatDate(raw.applied_date)}</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">Effort Rating</div>
-              <div class="info-value">${raw.application_effort_rating ? `${raw.application_effort_rating}/10` : '—'}</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">Chance Rating</div>
-              <div class="info-value">${raw.application_chance_rating ? `${raw.application_chance_rating}/10` : '—'}</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">CV Used</div>
-              <div class="info-value">${escapeHtml(raw.CV_used || '—')}</div>
-            </div>
-            <div class="info-item full-width">
-              <div class="info-label">Source URL</div>
-              <div class="info-value">
-                ${raw.source_url ? `<a href="${escapeHtml(raw.source_url)}" target="_blank" rel="noopener" class="source-link">View Original Job Posting ↗</a>` : '—'}
-              </div>
-            </div>
-          </div>
 
-          <!-- Requirements & Analysis Section -->
-          <div class="analysis-section">
-            <div class="analysis-column">
-              <h3 class="analysis-title">📋 Key Requirements</h3>
-              <div class="analysis-content">${bullet(raw.key_requirements)}</div>
+            <div class="edit-form-field edit-status-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">📊</span>Status</span>
+              </label>
+              <select name="status" class="edit-form-select"></select>
             </div>
-            <div class="analysis-column">
-              <h3 class="analysis-title">📝 Other Requirements</h3>
-              <div class="analysis-content">${bullet(raw.other_requirements)}</div>
-            </div>
-          </div>
 
-          <!-- Fits & Gaps Section -->
-          <div class="analysis-section">
-            <div class="analysis-column">
-              <h3 class="analysis-title">✅ Perfect Fits</h3>
-              <div class="analysis-content fits-content">${bullet(raw.fits)}</div>
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">👔</span>Seniority</span>
+              </label>
+              <select name="seniority" class="edit-form-select">
+                <option value="">Select seniority...</option>
+                <option value="Entry Level" ${raw.seniority === 'Entry Level' ? 'selected' : ''}>Entry Level</option>
+                <option value="Junior" ${raw.seniority === 'Junior' ? 'selected' : ''}>Junior</option>
+                <option value="Mid-level" ${raw.seniority === 'Mid-level' ? 'selected' : ''}>Mid-level</option>
+                <option value="Senior" ${raw.seniority === 'Senior' ? 'selected' : ''}>Senior</option>
+                <option value="Lead" ${raw.seniority === 'Lead' ? 'selected' : ''}>Lead</option>
+                <option value="Principal" ${raw.seniority === 'Principal' ? 'selected' : ''}>Principal</option>
+                <option value="Director" ${raw.seniority === 'Director' ? 'selected' : ''}>Director</option>
+              </select>
             </div>
-            <div class="analysis-column">
-              <h3 class="analysis-title">⚠️ Areas to Address</h3>
-              <div class="analysis-content gaps-content">${bullet(raw.gaps)}</div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">🎯</span>Role Type</span>
+              </label>
+              <select name="role_type" class="edit-form-select">
+                <option value="">Select role type...</option>
+                <option value="Full-time" ${raw.role_type === 'Full-time' ? 'selected' : ''}>Full-time</option>
+                <option value="Part-time" ${raw.role_type === 'Part-time' ? 'selected' : ''}>Part-time</option>
+                <option value="Contract" ${raw.role_type === 'Contract' ? 'selected' : ''}>Contract</option>
+                <option value="Internship" ${raw.role_type === 'Internship' ? 'selected' : ''}>Internship</option>
+                <option value="Graduate" ${raw.role_type === 'Graduate' ? 'selected' : ''}>Graduate</option>
+                <option value="Consulting" ${raw.role_type === 'Consulting' ? 'selected' : ''}>Consulting</option>
+                <option value="Remote" ${raw.role_type === 'Remote' ? 'selected' : ''}>Remote</option>
+              </select>
             </div>
-          </div>
 
-          <!-- Job Summary -->
-          <div class="summary-section">
-            <h3 class="section-title">📄 Job Summary</h3>
-            <div class="summary-content">${escapeHtml(raw.job_summary || 'No summary provided')}</div>
-          </div>
-
-          <!-- Keywords -->
-          <div class="keywords-section">
-            <h3 class="section-title">🏷️ Keywords</h3>
-            <div class="keywords-container">
-              ${asArray(raw.keywords).map(k => `<span class="keyword-tag">${escapeHtml(k)}</span>`).join('') || '<span class="no-keywords">No keywords identified</span>'}
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">🏭</span>Sector</span>
+              </label>
+              <input name="sector" class="edit-form-input" value="${escapeHtml(raw.sector||'')}" placeholder="e.g. Technology, Finance, Healthcare"/>
             </div>
-          </div>
 
-          <!-- CV Recommendation -->
-          ${(raw.ai_cv_filename || raw.AI_cv_filename) ? `
-            <div class="cv-section">
-              <h3 class="section-title">📄 Recommended CV</h3>
-              <div class="cv-info">
-                <div class="cv-filename">${escapeHtml(raw.ai_cv_filename || raw.AI_cv_filename)}</div>
-                <div class="cv-reason">${escapeHtml(raw.ai_cv_reason || raw.AI_cv_reason || '')}</div>
-              </div>
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">📧</span>Contact Email</span>
+              </label>
+              <input name="contact_email" type="email" class="edit-form-input" value="${escapeHtml(raw.contact_email||'')}" placeholder="recruiter@company.com"/>
             </div>
-          ` : ''}
-
-          <!-- Job Description (Collapsible) -->
-          <div class="description-section">
-            <button class="description-toggle" onclick="toggleDescription(this)">
-              <h3 class="section-title">📋 Full Job Description</h3>
-              <span class="toggle-icon">▼</span>
-            </button>
-            <div class="description-content" style="display: none;">
-              ${sanitizeHtml(raw.job_description || 'No description provided').replace(/\n/g, '<br/>')}
-            </div>
-          </div>
-
-          <!-- Action Buttons -->
-          <div class="modal-actions">
-            <button class="btn btn-primary" id="editBtn">
-              <span>✏️ Edit Application</span>
-            </button>
-            ${raw.source_url ? `<button class="btn btn-outline" onclick="window.open('${escapeHtml(raw.source_url)}', '_blank')">
-              <span>🔗 View Original</span>
-            </button>` : ''}
           </div>
         </div>
-      `;
+
+        <!-- Dates & Timeline Section -->
+        <div class="edit-form-section">
+          <div class="edit-section-header">
+            <div class="edit-section-icon">📅</div>
+            <div>
+              <h4 class="edit-section-title">Timeline & Dates</h4>
+              <p class="edit-section-description">Important dates and deadlines</p>
+            </div>
+          </div>
+
+          <div class="edit-form-grid">
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">📅</span>Applied Date</span>
+              </label>
+              <input name="applied_date" type="date" class="edit-form-input" value="${escapeHtml(raw.applied_date||'')}"/>
+              <div class="edit-field-help">Leave blank for saved applications</div>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">📝</span>Date Posted</span>
+              </label>
+              <input name="date_posted" type="date" class="edit-form-input" value="${escapeHtml(raw.date_posted||'')}"/>
+              <div class="edit-field-help">When the job was originally posted</div>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">⏰</span>Application Deadline</span>
+              </label>
+              <input name="date_deadline" type="date" class="edit-form-input" value="${escapeHtml(raw.date_deadline||'')}"/>
+              <div class="edit-field-help">Last day to apply</div>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">🚀</span>Start Date</span>
+              </label>
+              <input name="start_date" type="date" class="edit-form-input" value="${escapeHtml(raw.start_date||'')}"/>
+              <div class="edit-field-help">Expected role start date</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Location Section -->
+        <div class="edit-form-section">
+          <div class="edit-section-header">
+            <div class="edit-section-icon">📍</div>
+            <div>
+              <h4 class="edit-section-title">Location Details</h4>
+              <p class="edit-section-description">Geographic and workplace information</p>
+            </div>
+          </div>
+
+          <div class="edit-form-grid">
+            <div class="edit-form-field full-width">
+              <label class="edit-field-label">
+                <span><span class="field-icon">🌍</span>Locations</span>
+              </label>
+              <input name="locations" class="edit-form-input" value="${escapeHtml(listToComma(raw.locations))}" placeholder="e.g. London, Remote, New York"/>
+              <div class="edit-field-help">Separate multiple locations with commas</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Compensation Section -->
+        <div class="edit-form-section">
+          <div class="edit-section-header">
+            <div class="edit-section-icon">💰</div>
+            <div>
+              <h4 class="edit-section-title">Compensation</h4>
+              <p class="edit-section-description">Salary and benefits information</p>
+            </div>
+          </div>
+
+          <div class="edit-form-grid">
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">💵</span>Currency</span>
+              </label>
+              <select name="salary_currency" class="edit-form-select">
+                <option value="">Select currency</option>
+                <option value="£" ${raw.salary_currency === '£' ? 'selected' : ''}>£ GBP</option>
+                <option value="$" ${raw.salary_currency === '$' ? 'selected' : ''}>$ USD</option>
+                <option value="€" ${raw.salary_currency === '€' ? 'selected' : ''}>€ EUR</option>
+              </select>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">📈</span>Minimum Salary</span>
+              </label>
+              <input name="salary_min" type="number" class="edit-form-input" value="${escapeHtml(raw.salary_min||'')}" step="1000" placeholder="50000"/>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">📊</span>Maximum Salary</span>
+              </label>
+              <input name="salary_max" type="number" class="edit-form-input" value="${escapeHtml(raw.salary_max||'')}" step="1000" placeholder="70000"/>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">📅</span>Period</span>
+              </label>
+              <select name="salary_period" class="edit-form-select">
+                <option value="">Select period</option>
+                <option value="per annum" ${raw.salary_period === 'per annum' ? 'selected' : ''}>Per Annum</option>
+                <option value="per month" ${raw.salary_period === 'per month' ? 'selected' : ''}>Per Month</option>
+                <option value="per hour" ${raw.salary_period === 'per hour' ? 'selected' : ''}>Per Hour</option>
+              </select>
+            </div>
+
+            <div class="edit-form-field full-width">
+              <label class="edit-field-label">
+                <span><span class="field-icon">💰</span>Raw Salary Text</span>
+              </label>
+              <input name="salary_raw" class="edit-form-input" value="${escapeHtml(raw.salary_raw||'')}" placeholder="e.g. £50,000 - £70,000 per annum + benefits"/>
+              <div class="edit-field-help">Original salary text as posted (overrides structured salary fields)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI Analysis & Ratings Section -->
+        <div class="edit-form-section">
+          <div class="edit-section-header">
+            <div class="edit-section-icon">🤖</div>
+            <div>
+              <h4 class="edit-section-title">AI Analysis & Personal Ratings</h4>
+              <p class="edit-section-description">Automated insights and your personal assessments</p>
+            </div>
+          </div>
+
+          <div class="edit-form-grid">
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">🎯</span>AI Fit Score</span>
+              </label>
+              <input name="ai_fit_score" type="number" class="edit-form-input" min="0" max="100" value="${escapeHtml(raw.ai_fit_score ?? '')}" placeholder="85"/>
+              <div class="edit-field-help">AI-calculated fit percentage (0-100)</div>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">🎨</span>AI Alignment Score</span>
+              </label>
+              <input name="ai_alignment_score" type="number" class="edit-form-input" min="0" max="100" value="${escapeHtml(raw.ai_alignment_score ?? '')}" placeholder="75"/>
+              <div class="edit-field-help">AI-calculated alignment percentage (0-100)</div>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">📄</span>AI Recommended CV</span>
+              </label>
+              <input name="ai_cv_filename" class="edit-form-input" value="${escapeHtml(raw.ai_cv_filename||'')}" placeholder="Tech_Resume_v3.pdf"/>
+              <div class="edit-field-help">AI-suggested CV file name</div>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">💭</span>CV Recommendation Reason</span>
+              </label>
+              <textarea name="ai_cv_reason" class="edit-form-textarea" rows="2" placeholder="Why this CV is recommended for this role...">${escapeHtml(raw.ai_cv_reason||'')}</textarea>
+              <div class="edit-field-help">AI explanation for CV choice</div>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">⚡</span>Application Effort</span>
+              </label>
+              <input name="application_effort_rating" type="number" class="edit-form-input" min="0" max="10" step="1" value="${escapeHtml(raw.application_effort_rating ?? '')}" placeholder="7"/>
+              <div class="edit-field-help">Your effort level (1-10 scale)</div>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">🎲</span>Success Chance</span>
+              </label>
+              <input name="application_chance_rating" type="number" class="edit-form-input" min="0" max="10" step="1" value="${escapeHtml(raw.application_chance_rating ?? '')}" placeholder="6"/>
+              <div class="edit-field-help">Your estimated success chance (1-10 scale)</div>
+            </div>
+
+            <div class="edit-form-field full-width">
+              <label class="edit-field-label">
+                <span><span class="field-icon">📄</span>CV Used</span>
+              </label>
+              <input name="CV_used" class="edit-form-input" value="${escapeHtml(raw.CV_used||'')}" placeholder="e.g. Tech_CV_v3.pdf, Software_Engineer_Resume.docx"/>
+              <div class="edit-field-help">Record which CV version you actually used</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Requirements & Analysis Section -->
+        <div class="edit-form-section">
+          <div class="edit-section-header">
+            <div class="edit-section-icon">📋</div>
+            <div>
+              <h4 class="edit-section-title">Requirements & Analysis</h4>
+              <p class="edit-section-description">Job requirements and fit analysis</p>
+            </div>
+          </div>
+
+          <div class="edit-form-grid">
+            <div class="edit-form-field full-width">
+              <label class="edit-field-label">
+                <span><span class="field-icon">⭐</span>Key Requirements</span>
+              </label>
+              <textarea name="key_requirements" class="edit-form-textarea" rows="3" placeholder="Essential requirements (one per line or separated by semicolons)">${escapeHtml(listToSemicolon(raw.key_requirements))}</textarea>
+              <div class="edit-field-help">Must-have requirements from the job posting</div>
+            </div>
+
+            <div class="edit-form-field full-width">
+              <label class="edit-field-label">
+                <span><span class="field-icon">📝</span>Other Requirements</span>
+              </label>
+              <textarea name="other_requirements" class="edit-form-textarea" rows="3" placeholder="Nice-to-have requirements (one per line or separated by semicolons)">${escapeHtml(listToSemicolon(raw.other_requirements))}</textarea>
+              <div class="edit-field-help">Preferred qualifications and nice-to-haves</div>
+            </div>
+
+            <div class="edit-form-field full-width">
+              <label class="edit-field-label">
+                <span><span class="field-icon">✅</span>Perfect Fits</span>
+              </label>
+              <textarea name="fits" class="edit-form-textarea" rows="2" placeholder="Your strengths that match this role (separated by semicolons)">${escapeHtml(listToSemicolon(raw.fits))}</textarea>
+              <div class="edit-field-help">Your strengths that align with this role</div>
+            </div>
+
+            <div class="edit-form-field full-width">
+              <label class="edit-field-label">
+                <span><span class="field-icon">⚠️</span>Areas to Address</span>
+              </label>
+              <textarea name="gaps" class="edit-form-textarea" rows="2" placeholder="Skills or experience gaps to work on (separated by semicolons)">${escapeHtml(listToSemicolon(raw.gaps))}</textarea>
+              <div class="edit-field-help">Skills or experience you need to develop</div>
+            </div>
+
+            <div class="edit-form-field full-width">
+              <label class="edit-field-label">
+                <span><span class="field-icon">🏷️</span>Keywords</span>
+              </label>
+              <input name="keywords" class="edit-form-input" value="${escapeHtml(listToComma(raw.keywords))}" placeholder="Python, React, Machine Learning, Agile"/>
+              <div class="edit-field-help">Relevant job keywords and skills (separate with commas)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Job Content Section -->
+        <div class="edit-form-section">
+          <div class="edit-section-header">
+            <div class="edit-section-icon">📝</div>
+            <div>
+              <h4 class="edit-section-title">Job Content</h4>
+              <p class="edit-section-description">Summary and full job description</p>
+            </div>
+          </div>
+
+          <div class="edit-form-grid">
+            <div class="edit-form-field full-width">
+              <label class="edit-field-label">
+                <span><span class="field-icon">📄</span>Job Summary</span>
+              </label>
+              <textarea name="job_summary" class="edit-form-textarea" rows="3" placeholder="Brief overview of the role and key responsibilities...">${escapeHtml(raw.job_summary||'')}</textarea>
+              <div class="edit-field-help">Concise summary of what this job involves</div>
+            </div>
+
+            <div class="edit-form-field full-width">
+              <label class="edit-field-label">
+                <span><span class="field-icon">📋</span>Full Job Description</span>
+              </label>
+              <textarea name="job_description" class="edit-form-textarea large" rows="6" placeholder="Complete job posting including requirements, benefits, etc...">${escapeHtml(raw.job_description||'')}</textarea>
+              <div class="edit-field-help">Complete job posting for future reference</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+
+    <div class="edit-modal-actions">
+      <button class="edit-btn-enhanced edit-btn-primary" type="submit" form="editForm">
+        <span class="edit-btn-icon">💾</span>
+        <span>Save Changes</span>
+      </button>
+      <button class="edit-btn-enhanced edit-btn-secondary" type="button" id="cancelEdit">
+        <span class="edit-btn-icon">✕</span>
+        <span>Cancel</span>
+      </button>
+    </div>
+  </div>
+`;
 
       // Add the toggle function for job description
       window.toggleDescription = function(button) {
@@ -7032,25 +7263,52 @@
 
           const updates = {
             application_id: applicationId,
+            
+            // Basic Information
             title: fd.get('title') || '',
             company_name: fd.get('company_name') || '',
+            source_url: fd.get('source_url') || '',
             status: apiOutgoingStatus(statusSlug),
+            seniority: fd.get('seniority') || null,
+            role_type: fd.get('role_type') || null,
+            sector: fd.get('sector') || null,
+            contact_email: fd.get('contact_email') || null,
+            
+            // Dates
+            applied_date: fd.get('applied_date') || existing.applied_date || (statusSlug==='applied' ? londonTodayISO() : null),
+            date_posted: fd.get('date_posted') || null,
+            date_deadline: fd.get('date_deadline') || null,
+            start_date: fd.get('start_date') || null,
+            
+            // Location
             locations: toArraySmart(fd.get('locations')),
+            
+            // Compensation
+            salary_min: fd.get('salary_min') || null,
+            salary_max: fd.get('salary_max') || null,
+            salary_currency: fd.get('salary_currency') || null,
+            salary_period: fd.get('salary_period') || null,
+            salary_raw: fd.get('salary_raw') || null,
+            
+            // AI Analysis
+            ai_fit_score: fd.get('ai_fit_score') || null,
+            ai_alignment_score: fd.get('ai_alignment_score') || null,
+            ai_cv_filename: fd.get('ai_cv_filename') || null,
+            ai_cv_reason: fd.get('ai_cv_reason') || null,
+            application_effort_rating: fd.get('application_effort_rating') || null,
+            application_chance_rating: fd.get('application_chance_rating') || null,
+            CV_used: fd.get('CV_used') || null,
+            
+            // Requirements & Analysis
+            key_requirements: toArraySmart(fd.get('key_requirements')),
+            other_requirements: toArraySmart(fd.get('other_requirements')),
             fits: toArraySmart(fd.get('fits')),
             gaps: toArraySmart(fd.get('gaps')),
             keywords: toArraySmart(fd.get('keywords')),
-            salary_min: fd.get('salary_min'),
-            salary_max: fd.get('salary_max'),
-            salary_currency: fd.get('salary_currency') || null,
-            salary_period: fd.get('salary_period') || null,
-            ai_fit_score: fd.get('ai_fit_score'),
-            ai_alignment_score: fd.get('ai_alignment_score'),
-            application_effort_rating: fd.get('application_effort_rating'),
-            application_chance_rating: fd.get('application_chance_rating'),
-            CV_used: fd.get('CV_used') || existing.CV_used || null,
+            
+            // Job Content
             job_summary: fd.get('job_summary') || '',
-            job_description: fd.get('job_description') || '',
-            applied_date: fd.get('applied_date') || existing.applied_date || (statusSlug==='applied' ? londonTodayISO() : null)
+            job_description: fd.get('job_description') || ''
           };
 
           if (statusChanged) {
@@ -7080,6 +7338,7 @@
           toast('Failed to save changes');
         }
       };
+
 
       modal.classList.add('show');
       modal.setAttribute('aria-hidden','false');
