@@ -7023,10 +7023,11 @@ function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonR
     }
 
     function openEditDeadlineModal(deadlineId){
-      const deadline = dl_state.all.find(d => String(d.id) === String(deadlineId));
-
       console.log('Looking for deadline ID:', deadlineId, typeof deadlineId);
       console.log('Available deadlines:', dl_state.all.map(d => ({ id: d.id, type: typeof d.id })));
+      
+      const deadline = dl_state.all.find(d => String(d.id) === String(deadlineId));
+      
       console.log('Found deadline:', deadline);
 
       if (!deadline){
