@@ -2550,7 +2550,7 @@
       return `
         <div class="application-card ${isHighlighted ? 'search-highlight' : ''}"
              style="--status-color:${accent}"
-             onclick="console.log('🔴 Card clicked! ID:', '${app.id}'); openApplicationModal('${app.id}')">
+             onclick="openApplicationModal('${app.id}')">
 
           <div class="application-status ${cls}">${escapeHtml(lab)}</div>
 
@@ -2575,17 +2575,132 @@
     }
 
     window.openApplicationModal = function(id){
-      console.log('🔵 openApplicationModal called with id:', id);
-      console.log('🔵 typeof openEditModal:', typeof openEditModal);
-      console.log('🔵 modal element exists:', !!modal);
-
-      // Simply delegate to openEditModal since clicking a card should open it for editing/viewing
-      try {
-        openEditModal(id);
-      } catch (error) {
-        console.error('❌ Error in openApplicationModal:', error);
-        toast('Error opening application: ' + error.message);
+      const raw = getRawRowById(id);
+      if (!raw) {
+        toast('Could not load application');
+        return;
       }
+
+      const card = toCardShape(raw);
+      const slug = normaliseStatus(card.status);
+      const statusClass = STATUS_STYLE[slug] || STATUS_STYLE.default;
+      const statusLabelText = statusLabel(slug);
+      const statusBadgeColor = statusColor(slug);
+
+      const aiFitRaw = toNum(raw.ai_fit_score ?? raw.AI_fit_score);
+      const aiAlignRaw = toNum(raw.ai_alignment_score ?? raw.AI_alignment_score);
+      const fit = Math.max(0, Math.min(100, Number(aiFitRaw ?? 0)));
+      const align = Math.max(0, Math.min(100, Number(aiAlignRaw ?? 0)));
+
+      const bullet = arr => asArray(arr).map(x=>`• ${escapeHtml(x)}`).join('<br/>') || '—';
+
+      modalTitle.textContent = card.title;
+
+      modalBody.innerHTML = `
+        <div class="view-modal-container">
+          <div class="view-modal-header">
+            <div class="view-company-info">
+              <h2 class="view-company-name">${escapeHtml(card.company)}</h2>
+              <div class="view-role-title">${escapeHtml(card.title)}</div>
+            </div>
+            <div class="view-status-badge ${statusClass}" style="background: ${statusBadgeColor}">
+              ${escapeHtml(statusLabelText)}
+            </div>
+          </div>
+
+          ${(fit > 0 || align > 0) ? `
+          <div class="view-scores-section">
+            <div class="view-score-card">
+              <div class="view-score-label">AI Fit Score</div>
+              <div class="view-score-value">${fit}%</div>
+              <div class="view-score-bar">
+                <div class="view-score-fill" style="width: ${fit}%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
+              </div>
+            </div>
+            <div class="view-score-card">
+              <div class="view-score-label">Alignment Score</div>
+              <div class="view-score-value">${align}%</div>
+              <div class="view-score-bar">
+                <div class="view-score-fill" style="width: ${align}%; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);"></div>
+              </div>
+            </div>
+          </div>
+          ` : ''}
+
+          <div class="view-info-grid">
+            ${card.location ? `<div class="view-info-item"><span class="view-info-icon">📍</span><strong>Location:</strong> ${escapeHtml(card.location)}</div>` : ''}
+            ${card.salary ? `<div class="view-info-item"><span class="view-info-icon">💰</span><strong>Salary:</strong> ${escapeHtml(card.salary)}</div>` : ''}
+            ${card.roleType ? `<div class="view-info-item"><span class="view-info-icon">💼</span><strong>Role Type:</strong> ${escapeHtml(card.roleType)}</div>` : ''}
+            ${card.sector ? `<div class="view-info-item"><span class="view-info-icon">🏭</span><strong>Sector:</strong> ${escapeHtml(card.sector)}</div>` : ''}
+            ${card.startDate ? `<div class="view-info-item"><span class="view-info-icon">🚀</span><strong>Start Date:</strong> ${formatDate(card.startDate)}</div>` : ''}
+            ${card.appliedDate ? `<div class="view-info-item"><span class="view-info-icon">📅</span><strong>Applied:</strong> ${formatDate(card.appliedDate)}</div>` : ''}
+            ${card.source ? `<div class="view-info-item"><span class="view-info-icon">🔗</span><strong>Source:</strong> ${escapeHtml(card.source)}</div>` : ''}
+            ${card.cvUsed ? `<div class="view-info-item"><span class="view-info-icon">📄</span><strong>CV Used:</strong> ${escapeHtml(card.cvUsed)}</div>` : ''}
+          </div>
+
+          ${(card.fits && card.fits.length > 0) || (card.gaps && card.gaps.length > 0) ? `
+          <div class="view-analysis-section">
+            ${card.fits && card.fits.length > 0 ? `
+            <div class="view-analysis-card view-fits">
+              <h3 class="view-section-title">✅ Perfect Fits</h3>
+              <div class="view-section-content">${bullet(card.fits)}</div>
+            </div>
+            ` : ''}
+            ${card.gaps && card.gaps.length > 0 ? `
+            <div class="view-analysis-card view-gaps">
+              <h3 class="view-section-title">⚠️ Areas to Address</h3>
+              <div class="view-section-content">${bullet(card.gaps)}</div>
+            </div>
+            ` : ''}
+          </div>
+          ` : ''}
+
+          ${card.requirements && card.requirements.length > 0 ? `
+          <div class="view-section">
+            <h3 class="view-section-title">📋 Key Requirements</h3>
+            <div class="view-section-content">${bullet(card.requirements)}</div>
+          </div>
+          ` : ''}
+
+          ${card.description ? `
+          <div class="view-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+              <h3 class="view-section-title">📝 Job Description</h3>
+              <button type="button" class="btn btn-sm btn-primary" onclick="copyJobDescriptionView()" style="padding: 0.4rem 1rem;">
+                📋 Copy JD
+              </button>
+            </div>
+            <div class="view-description-box">${escapeHtml(card.description).replace(/\n/g, '<br/>')}</div>
+          </div>
+          ` : ''}
+
+          <div class="view-modal-actions">
+            <button class="btn btn-primary" onclick="openEditModal('${card.id}'); closeModal();">
+              <span>✏️ Edit Application</span>
+            </button>
+            <button class="btn btn-outline" onclick="closeModal()">
+              <span>Close</span>
+            </button>
+          </div>
+        </div>
+      `;
+
+      // Copy job description function for view modal
+      window.copyJobDescriptionView = function() {
+        if (!card.description) {
+          toast('No job description to copy');
+          return;
+        }
+        navigator.clipboard.writeText(card.description).then(() => {
+          toast('Job description copied to clipboard! ✓');
+        }).catch(err => {
+          console.error('Failed to copy:', err);
+          toast('Failed to copy');
+        });
+      };
+
+      modal.classList.add('show');
+      modal.setAttribute('aria-hidden', 'false');
     };
     // Add the enhanced CSS styles - add this to your existing CSS
     const enhancedModalStyles = `
