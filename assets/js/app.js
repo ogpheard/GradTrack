@@ -2584,7 +2584,7 @@
       const bullet = arr => asArray(arr).map(x=>`• ${escapeHtml(x)}`).join('<br/>') || '—';
       const aiFitRaw = toNum(raw.ai_fit_score ?? raw.AI_fit_score);
       const aiAlignRaw = toNum(raw.ai_alignment_score ?? raw.AI_alignment_score);
-      
+
       const fit = Math.max(0, Math.min(100, Number(aiFitRaw ?? 0)));
       const align = Math.max(0, Math.min(100, Number(aiAlignRaw ?? 0)));
 
@@ -2592,6 +2592,9 @@
       const statusClass = STATUS_STYLE[slug] || STATUS_STYLE.default;
       const statusLabelText = statusLabel(slug);
       const statusBadgeColor = statusColor(slug);
+
+      // Define prevStatus for the hidden field
+      const prevStatus = raw.status || (card.status==='applied' ? 'Applied' : 'Saved');
 
       modalBody.innerHTML = `
   <div class="edit-modal-enhanced">
@@ -2962,10 +2965,15 @@
             </div>
 
             <div class="edit-form-field full-width">
-              <label class="edit-field-label">
-                <span><span class="field-icon">📋</span>Full Job Description</span>
-              </label>
-              <textarea name="job_description" class="edit-form-textarea large" rows="6" placeholder="Complete job posting including requirements, benefits, etc...">${escapeHtml(raw.job_description||'')}</textarea>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <label class="edit-field-label" style="margin-bottom: 0;">
+                  <span><span class="field-icon">📋</span>Full Job Description</span>
+                </label>
+                <button type="button" class="btn btn-sm btn-primary" onclick="copyJobDescription()" style="padding: 0.25rem 0.75rem; font-size: 0.875rem;">
+                  📋 Copy JD
+                </button>
+              </div>
+              <textarea id="jobDescriptionTextarea" name="job_description" class="edit-form-textarea large" rows="6" placeholder="Complete job posting including requirements, benefits, etc...">${escapeHtml(raw.job_description||'')}</textarea>
               <div class="edit-field-help">Complete job posting for future reference</div>
             </div>
           </div>
@@ -2991,12 +2999,40 @@
         const content = button.nextElementSibling;
         const icon = button.querySelector('.toggle-icon');
         const isVisible = content.style.display !== 'none';
-        
+
         content.style.display = isVisible ? 'none' : 'block';
         icon.textContent = isVisible ? '▼' : '▲';
       };
 
-      document.getElementById('editBtn').onclick = () => openEditModal(id);
+      // Add the copy job description function
+      window.copyJobDescription = function() {
+        const textarea = document.getElementById('jobDescriptionTextarea');
+        if (!textarea || !textarea.value) {
+          toast('No job description to copy');
+          return;
+        }
+
+        // Copy to clipboard
+        navigator.clipboard.writeText(textarea.value).then(() => {
+          toast('Job description copied to clipboard! ✓');
+        }).catch(err => {
+          console.error('Failed to copy:', err);
+          // Fallback: select text
+          textarea.select();
+          try {
+            document.execCommand('copy');
+            toast('Job description copied! ✓');
+          } catch (e) {
+            toast('Failed to copy');
+          }
+        });
+      };
+
+      // Populate the status dropdown
+      const statusSelect = document.querySelector('select[name="status"]');
+      if (statusSelect) renderStatusSelect(statusSelect, slug);
+
+      // Show the modal
       modal.classList.add('show');
       modal.setAttribute('aria-hidden', 'false');
     };
