@@ -1,0 +1,36 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Backups
+*.backup
+*.bak
+
+# Editor files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.swp
+*.swo
+*~
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Logs
+logs
+*.log
+
+# Dependency directories
+node_modules/
+
+# Vercel
+.vercel
+
+# Build outputs
+dist/
+build/

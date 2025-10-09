@@ -1,0 +1,5315 @@
+    /* ############################################################
+       BEGIN: CONFIG & ENDPOINTS (JS)
+    ############################################################ */
+    // ========= ENDPOINTS =========
+    const URLS = {
+      test: {
+        analyse: 'https://n8n.graduateapplication.online/webhook-test/analysis',
+        cover:   'https://n8n.graduateapplication.online/webhook-test/cover'
+      },
+      prod: {
+        analyse: 'https://n8n.graduateapplication.online/webhook/analysis',
+        cover:   'https://n8n.graduateapplication.online/webhook/cover'
+      }
+    };
+    const DB = {
+      test: { url: 'https://bmudgeqzuhdjowcibwyx.supabase.co', key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJtdWRnZXF6dWhkam93Y2lid3l4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0MzExODUsImV4cCI6MjA3MzAwNzE4NX0.sGQ0YfX_TBKHVtrMSE77kifuXnRBdRjhaIcGZQpDLLc' },
+      prod: { url: 'https://bmudgeqzuhdjowcibwyx.supabase.co', key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJtdWRnZXF6dWhkam93Y2lid3l4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0MzExODUsImV4cCI6MjA3MzAwNzE4NX0.sGQ0YfX_TBKHVtrMSE77kifuXnRBdRjhaIcGZQpDLLc' }
+    };
+    const TABLE = 'graduate_job_helper';
+    const CV_FOLDER_ID = '';
+    const GUIDE_DOC_ID = '';
+    /* ######################## END: CONFIG & ENDPOINTS (JS) ############### */
+
+    /* ############################################################
+       BEGIN: STATUS CATALOGS (JS)
+    ############################################################ */
+    // ===== Status catalogs
+    const STATUS_STARTER = [
+      { value: 'saved',       label: 'Saved' },          // UI-only
+      { value: 'applied',     label: 'Applied' },
+      { value: 'oa',          label: 'OA' },
+      { value: 'hirevue',     label: 'HireVue' },
+      { value: 'interview',   label: 'Interview' },
+      { value: 'offer',       label: 'Offer' },
+      { value: 'rejected',    label: 'Rejected' },
+      { value: 'withdrew',    label: 'Withdrew' },
+      { value: 'on-hold',     label: 'On-hold' },
+      { value: 'role-closed', label: 'Role-closed' },
+      { value: 'ghosted',     label: 'Ghosted' }
+    ];
+    const STATUS_ADVANCED = [];
+    const STATUS_OPTIONS = [...STATUS_STARTER];
+
+    // Canonical values we want to WRITE to DB / accept from backend
+    const ALLOWED_STATUSES = ["Applied","OA","HireVue","Interview","Offer","Rejected","Withdrew","On-hold","Role-closed","Ghosted"];
+
+    // Map UI slug -> canonical (DB/back-end) string
+    const STATUS_TO_ALLOWED = {
+      saved:        "Saved",       // UI-only
+      applied:      "Applied",
+      oa:           "OA",
+      hirevue:      "HireVue",
+      interview:    "Interview",
+      offer:        "Offer",
+      rejected:     "Rejected",
+      withdrew:     "Withdrew",
+      "on-hold":    "On-hold",
+      "role-closed":"Role-closed",
+      ghosted:      "Ghosted",
+      // legacy/local aliases (kept for safety)
+      response:     "Applied"
+    };
+
+    // Normalise any incoming free-text/legacy status to our UI slug
+    function toStatusSlug(s) {
+      const raw = String(s || '').trim();
+      if (!raw) return '';
+      const lc = raw.toLowerCase();
+      const alias = {
+        'online assessment': 'oa',
+        'online-assessment': 'oa',
+        'video interview (hirevue)': 'hirevue',
+        'video-interview-(hirevue)': 'hirevue',
+        'hire vue': 'hirevue',
+        'on hold': 'on-hold',
+        'role closed': 'role-closed',
+        'got response': 'response'
+      };
+      if (alias[lc]) return alias[lc];
+      // If the backend already sends canonical (e.g., OA, HireVue, On-hold, Role-closed)
+      if (ALLOWED_STATUSES.includes(raw)) {
+        return raw.toLowerCase().replace(/\s+/g, '-');
+      }
+      // Generic fallback
+      return lc.replace(/\s+/g, '-');
+    }
+
+    // Style class per slug
+    const STATUS_STYLE = {
+      saved: 'status-saved',
+      applied: 'status-applied',
+      response: 'status-response',
+      oa: 'status-oa',
+      hirevue: 'status-hirevue',
+      interview: 'status-interview',
+      offer: 'status-offer',
+      rejected: 'status-rejected',
+      ghosted: 'status-ghosted',
+      withdrew: 'status-withdrew',
+      'on-hold': 'status-onhold',
+      'role-closed': 'status-roleclosed',
+      default: 'status-default'
+    };
+
+    // Normalise to slug
+    function normaliseStatus(s){
+      return toStatusSlug(s);
+    }
+    // Find display label for a slug (fallback: Title Case)
+    function statusLabel(slug){
+      const found = STATUS_OPTIONS.find(o => o.value === slug);
+      if (found) return found.label;
+      return slug.replace(/(^|-)\w/g, m => m.toUpperCase()).replaceAll('-', ' ');
+    }
+
+    // Outgoing status string (human-friendly) for payloads
+    function apiOutgoingStatus(slug){
+      return STATUS_TO_ALLOWED[slug] || (slug ? slug.charAt(0).toUpperCase() + slug.slice(1) : 'Saved');
+    }
+
+    function renderStatusSelect(selectEl, current='saved'){
+      selectEl.innerHTML = STATUS_OPTIONS
+        .map(o => `<option value="${o.value}" ${o.value===current?'selected':''}>${o.label}</option>`)
+        .join('');
+    }
+
+    // Enhanced status colors that match analytics pie chart
+    const STATUS_COLORS_ENHANCED = {
+      applied:      '#667eea',  // Blue - in progress
+      oa:           '#4facfe',  // Light blue - assessment
+      hirevue:      '#9c27b0',  // Purple - video interview
+      interview:    '#00bcd4',  // Cyan - interview stage
+      offer:        '#4caf50',  // Green - success
+      rejected:     '#f44336',  // Red - rejection
+      ghosted:      '#9e9e9e',  // Grey - no response
+      withdrew:     '#607d8b',  // Blue-grey - withdrew
+      'on-hold':    '#ff9800',  // Orange - waiting
+      'role-closed':'#795548',  // Brown - closed
+      saved:        '#2196f3',  // Blue - saved for later
+      default:      '#9ca3af'   // Default grey
+    };
+
+    // Helper to get a status color (slug in, hex out)
+    function statusColor(slug) {
+      return STATUS_COLORS_ENHANCED[slug] || STATUS_COLORS_ENHANCED.default;
+    }
+    /* ######################## END: STATUS CATALOGS (JS) ############### */
+
+    /* ############################################################
+       BEGIN: ELEMENT LOOKUPS (JS)
+    ############################################################ */
+    // ====== Elements
+    const envSelect = document.getElementById('envSelect');
+
+    // Tabs
+    const analyseTab = document.getElementById('analyseTab');
+    const applicationsTab = document.getElementById('applicationsTab');
+    const savedTab = document.getElementById('savedTab');
+    const analyticsTab = document.getElementById('analyticsTab');
+    const addTab = document.getElementById('addTab');
+    // Deadlines tab
+    const deadlinesTab = document.getElementById('deadlinesTab');
+    const addDeadlineTab = document.getElementById('addDeadlineTab');
+
+    // Pages
+    const analysePage = document.getElementById('analysePage');
+    const applicationsPage = document.getElementById('applicationsPage');
+    const savedPage = document.getElementById('savedPage');
+    const analyticsPage = document.getElementById('analyticsPage');
+    const addPage = document.getElementById('addPage');
+    const deadlinesPage = document.getElementById('deadlinesPage');
+    const addDeadlinePage = document.getElementById('addDeadlinePage');
+
+    // Analyse page refs
+    const jobText = document.getElementById('jobText');
+    const jobSourceUrl = document.getElementById('jobSourceUrl');
+    const analyseBtn = document.getElementById('analyseBtn');
+    const resultCard = document.getElementById('resultCard');
+    const loadingState = document.getElementById('loadingState');
+    const resultContent = document.getElementById('resultContent');
+    const toastEl = document.getElementById('toast');
+    const jobCharCount = document.getElementById('jobCharCount');
+    const loadingSteps = Array.from(document.querySelectorAll('#loadingState .step-item'));
+    const envLabel = document.getElementById('envLabel');
+    const envIndicator = document.querySelector('.env-indicator');
+
+    const jobTitleEl = document.getElementById('jobTitle');
+    const jobCompanyEl = document.getElementById('jobCompany');
+    const jobDetailsEl = document.getElementById('jobDetails');
+    const fitScoreEl = document.getElementById('fitScore');
+    const alignScoreEl = document.getElementById('alignScore');
+    const fitFillEl = document.getElementById('fitFill');
+    const alignFillEl = document.getElementById('alignFill');
+    const keywordsEl = document.getElementById('keywords');
+    const fitsEl = document.getElementById('fits');
+    const gapsEl = document.getElementById('gaps');
+    const summaryEl = document.getElementById('summary');
+    const fullDescriptionEl = document.getElementById('fullDescription');
+
+    const ratingInputs = document.getElementById('ratingInputs');
+    const effortInput = document.getElementById('effort');
+    const chanceInput = document.getElementById('chance');
+
+    const coverSection = document.getElementById('coverSection');
+    const coverStatus = document.getElementById('coverStatus');
+    const coverContent = document.getElementById('coverContent');
+    const cvNameEl = document.getElementById('cvName');
+    const cvWhyEl = document.getElementById('cvWhy');
+    const coverDocLinkEl = document.getElementById('coverDocLink');
+    const cvTweaksEl = document.getElementById('cvTweaks');
+    const coverPreviewEl = document.getElementById('coverPreview');
+    const copyCoverBtn = document.getElementById('copyCover');
+    const openDocBtn = document.getElementById('openDoc');
+
+    const toggleDetailsBtn = document.getElementById('toggleDetails');
+    const detailsContent = document.getElementById('detailsContent');
+
+    // Applications & Saved
+    const applicationsGrid = document.getElementById('applicationsGrid');
+    const statusFilter = document.getElementById('statusFilter');
+    const sortFilter = document.getElementById('sortFilter');
+    const savedGrid = document.getElementById('savedGrid');
+    const savedSort = document.getElementById('savedSort');
+
+    function renderStatusFilter(){
+      const opts = ['all', ...STATUS_OPTIONS.map(o => o.value)];
+      statusFilter.innerHTML = opts.map(v => {
+        const label = v==='all' ? 'All statuses' : statusLabel(v);
+        return `<option value="${v}">${label}</option>`;
+      }).join('');
+    }
+    renderStatusFilter();
+
+    // Analytics
+    const analyticsRange = document.getElementById('analyticsRange');
+    const kpiTotalApps = document.getElementById('kpiTotalApps');
+    const kpiTotalResponses = document.getElementById('kpiTotalResponses');
+    const kpiAvgPerDay = document.getElementById('kpiAvgPerDay');
+    const kpiAvgRespTime = document.getElementById('kpiAvgRespTime');
+    const kpiTrendApps = document.getElementById('kpiTrendApps');
+    const kpiTrendResponses = document.getElementById('kpiTrendResponses');
+    const kpiTrendAvgPerDay = document.getElementById('kpiTrendAvgPerDay');
+    const kpiTrendRespTime = document.getElementById('kpiTrendRespTime');
+    const kpiResponsesSubtitle = document.getElementById('kpiResponsesSubtitle');
+    const kpiAvgPerDaySubtitle = document.getElementById('kpiAvgPerDaySubtitle');
+
+    let chartAppsLine, chartStatusPie, chartSectorBar, chartRoleTypeBar;
+
+    const chartDefaults = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            usePointStyle: true,
+            padding: 20,
+            font: { family: 'Inter', size: 12, weight: '600' }
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0,0,0,0.8)',
+          titleColor: 'white',
+          bodyColor: 'white',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          cornerRadius: 8,
+          displayColors: false
+        }
+      },
+      animation: { duration: 1000, easing: 'easeInOutCubic' }
+    };
+
+    // Add application
+
+    // Modal
+    const modal = document.getElementById('applicationModal');
+    const modalOverlay = document.getElementById('modalOverlay');
+    const modalClose = document.getElementById('modalClose');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalBody = document.getElementById('modalBody');
+
+    // ====== Delete modal refs
+    const confirmDeleteModal = document.getElementById('confirmDeleteModal');
+    const confirmDeleteOverlay = document.getElementById('confirmDeleteOverlay');
+    const confirmDeleteClose = document.getElementById('confirmDeleteClose');
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+    const confirmDeleteSummary = document.getElementById('confirmDeleteSummary');
+
+    // ====== Rate & Apply modal refs
+    const rateApplyModal   = document.getElementById('rateApplyModal');
+    const rateApplyOverlay = document.getElementById('rateApplyOverlay');
+    const rateApplyClose   = document.getElementById('rateApplyClose');
+    const rateApplyTitle   = document.getElementById('rateApplyTitle');
+    const rateApplySummary = document.getElementById('rateApplySummary');
+    const rateEffort       = document.getElementById('rateEffort');
+    const rateChance       = document.getElementById('rateChance');
+    const rateApplyConfirm = document.getElementById('rateApplyConfirm');
+    const rateApplyCancel  = document.getElementById('rateApplyCancel');
+    /* ######################## END: ELEMENT LOOKUPS (JS) ############### */
+
+    /* ############################################################
+       BEGIN: STATE (JS)
+    ############################################################ */
+    // Holds the pending delete payload
+    let pendingDelete = null;
+    let loadingStepTimers = [];
+
+    // Modal open/close
+    function openDeleteConfirm(app){
+      confirmDeleteSummary.innerHTML = `
+        <strong>${escapeHtml(app.title || 'Untitled')}</strong><br/>
+        ${escapeHtml(app.company || '—')}
+      `;
+      pendingDelete = { application_id: app.id, canonical_job_url: app.canonical_job_url };
+      confirmDeleteModal.classList.add('show');
+      confirmDeleteModal.setAttribute('aria-hidden','false');
+    }
+    function closeDeleteConfirm(){
+      confirmDeleteModal.classList.remove('show');
+      confirmDeleteModal.setAttribute('aria-hidden','true');
+      pendingDelete = null;
+    }
+    confirmDeleteOverlay.onclick = closeDeleteConfirm;
+    confirmDeleteClose.onclick = closeDeleteConfirm;
+    cancelDeleteBtn.onclick = closeDeleteConfirm;
+    document.addEventListener('keydown',(e)=>{ if (e.key==='Escape' && confirmDeleteModal.classList.contains('show')) closeDeleteConfirm(); });
+
+    // Rate & Apply modal state
+    let pendingApplyApp = null;
+
+    function openRateApplyModal(id){
+      const raw = getRawRowById(id);
+      if (!raw) { toast('Could not find that job'); return; }
+
+      pendingApplyApp = raw;
+
+      // Header + summary
+      rateApplyTitle.textContent = 'Mark as applied';
+      rateApplySummary.innerHTML = `
+        <strong>${escapeHtml(raw.title || 'Untitled')}</strong><br/>
+        ${escapeHtml(raw.company_name || '—')}
+      `;
+
+      // Prefill defaults (use existing ratings if present, else Analyse defaults 7/6)
+      const eff = toNum(raw.application_effort_rating);
+      const cha = toNum(raw.application_chance_rating);
+      rateEffort.value = (eff ?? 7);
+      rateChance.value = (cha ?? 6);
+      const rateCvUsedInput = document.getElementById('rateCvUsed');
+      if (rateCvUsedInput) rateCvUsedInput.value = raw.CV_used || '';
+
+      rateApplyModal.classList.add('show');
+      rateApplyModal.setAttribute('aria-hidden','false');
+    }
+
+    function closeRateApplyModal(){
+      rateApplyModal.classList.remove('show');
+      rateApplyModal.setAttribute('aria-hidden','true');
+      pendingApplyApp = null;
+    }
+
+    // Wire modal controls
+    if (rateApplyOverlay) rateApplyOverlay.onclick = closeRateApplyModal;
+    if (rateApplyClose)   rateApplyClose.onclick   = closeRateApplyModal;
+    if (rateApplyCancel)  rateApplyCancel.onclick  = closeRateApplyModal;
+    document.addEventListener('keydown', (e)=>{
+      if (e.key==='Escape' && rateApplyModal?.classList.contains('show')) closeRateApplyModal();
+    });
+
+    // Confirm & Apply
+    if (rateApplyConfirm) rateApplyConfirm.onclick = async ()=>{
+      if (!pendingApplyApp) return;
+      try{
+        const today = londonTodayISO();
+        const eff = toNum(rateEffort.value);
+        const cha = toNum(rateChance.value);
+        const cvUsed = document.getElementById('rateCvUsed')?.value || '';
+
+        const { error } = await db
+          .from(TABLE)
+          .update({
+            status: 'Applied',
+            applied_date: today,
+            status_update_date: today,
+            application_effort_rating: eff,
+            application_chance_rating: cha,
+            CV_used: cvUsed
+          })
+          .eq('application_id', pendingApplyApp.application_id);
+
+        if (error) throw error;
+
+        toast('Marked as applied 🎉');
+        closeRateApplyModal();
+        await refreshData(true);
+      }catch(e){
+        console.error(e);
+        toast('Failed to update');
+      }
+    };
+
+    // Perform deletion
+    confirmDeleteBtn.onclick = async ()=>{
+      if (!pendingDelete) return;
+      const prev = confirmDeleteBtn.textContent;
+      confirmDeleteBtn.textContent = 'Deleting…';
+      confirmDeleteBtn.disabled = true; cancelDeleteBtn.disabled = true;
+      try{
+        if (pendingDelete.application_id){
+          const { error } = await db.from(TABLE).delete().eq('application_id', pendingDelete.application_id);
+          if (error) throw error;
+        } else if (pendingDelete.canonical_job_url){
+          const { data, error } = await db.from(TABLE).select('application_id').eq('canonical_job_url', pendingDelete.canonical_job_url).limit(1).single();
+          if (error) throw error;
+          const { error: delErr } = await db.from(TABLE).delete().eq('application_id', data.application_id);
+          if (delErr) throw delErr;
+        }
+        closeDeleteConfirm();
+        toast('Deleted ✓');
+        await refreshData(true);
+      }catch(e){
+        console.error(e);
+        toast(`Delete failed: ${e.message || e}`);
+      }finally{
+        confirmDeleteBtn.textContent = prev;
+        confirmDeleteBtn.disabled = false; cancelDeleteBtn.disabled = false;
+      }
+    };
+
+    // ====== State
+    const initialEnv = (new URLSearchParams(location.search).get('env') || 'prod').toLowerCase();
+    envSelect.value = (initialEnv === 'test' ? 'test' : 'prod');
+    let currentEnv = envSelect.value;
+    let db = supabase.createClient(DB[currentEnv].url, DB[currentEnv].key,
+      { auth:{ persistSession:false, autoRefreshToken:false, detectSessionInUrl:false } });
+    updateEnvironmentBadge();
+
+    let draft = null;     // last analysis JSON
+    let lastCover = null; // last cover JSON
+
+    let appsLive = { applied: [], saved: [] }; // server truth from Workflow 4
+    // Holds all rows from Supabase (any status)
+    let rowsAll = [];
+    let applicationsList = [];                  // flattened view for “My Applications”
+
+    function toCardShape(r){
+      return {
+        id: r.application_id,
+        canonical_job_url: r.canonical_job_url || '',
+        title: r.title || 'Untitled role',
+        company: r.company_name || '',
+        status: toStatusSlug(r.status) || 'saved',
+        sector: r.sector || '',
+        roleType: r.role_type || '',
+        startDate: r.start_date || null,
+        statusUpdateDate: r.status_update_date || null,
+        appliedDate: r.applied_date || null,
+        location: normalizeListField(r.locations).join(' • '),
+
+        salary: r.salary_raw ||
+                (`${r.salary_currency||''} ${r.salary_min||''}${r.salary_max?`–${r.salary_max}`:''} ${r.salary_period||''}`).trim(),
+
+        // use lowercase first, fallback to legacy
+        fitScore: toNum(r.ai_fit_score ?? r.AI_fit_score) ?? 0,
+        alignmentScore: toNum(r.ai_alignment_score ?? r.AI_alignment_score) ?? 0,
+
+        cvUsed: r.CV_used || '',
+
+        source: r.canonical_job_url ? new URL(r.canonical_job_url).hostname :
+                (r.source_url ? new URL(r.source_url).hostname : '—'),
+
+        description: r.job_description || '',
+        requirements: normalizeListField(r.key_requirements),
+        fits: normalizeListField(r.fits),
+        gaps: normalizeListField(r.gaps),
+      };
+    }
+
+    function getRawRowById(id){
+      return rowsAll.find(r =>
+        (r.application_id && r.application_id === id) ||
+        (toCardShape(r).id === id)
+      ) || null;
+    }
+
+    async function refreshData(silent=false){
+      try{
+        const { data, error } = await db
+          .from(TABLE)
+          .select('*')
+          .order('created_at', { ascending:false })
+          .limit(1000);
+        if (error) throw error;
+
+        const norm = (r) => {
+          const fixed = fixAIKeys(r);
+          const aiFit = toNum(fixed.ai_fit_score);
+          const aiAlign = toNum(fixed.ai_alignment_score);
+          return {
+            ...fixed,
+            // arrays
+            locations:          normalizeListField(fixed.locations),
+            key_requirements:   normalizeListField(fixed.key_requirements),
+            other_requirements: normalizeListField(fixed.other_requirements),
+            fits:               normalizeListField(fixed.fits),
+            gaps:               normalizeListField(fixed.gaps),
+            keywords:           normalizeListField(fixed.keywords),
+
+            // numbers
+            ai_fit_score:              aiFit,
+            ai_alignment_score:        aiAlign,
+            salary_min:                toNum(fixed.salary_min),
+            salary_max:                toNum(fixed.salary_max),
+            application_effort_rating: toNum(fixed.application_effort_rating),
+            application_chance_rating: toNum(fixed.application_chance_rating),
+
+            // dates
+            applied_date:       fixed.applied_date ? toISODateOrNull(fixed.applied_date) : null,
+            status_update_date: fixed.status_update_date ? toISODateOrNull(fixed.status_update_date) : null,
+
+            // strings
+            status: coerceStatus(fixed.status),
+          };
+        };
+
+        const dataNorm = (data || []).map(norm);
+        rowsAll = dataNorm;
+        appsLive = {
+          applied: (dataNorm).filter(r => (r.status||'').toLowerCase()==='applied'),
+          saved:   (dataNorm).filter(r => (r.status||'').toLowerCase()==='saved')
+        };
+
+        const flat = (dataNorm).map(toCardShape);
+        applicationsList = flat.filter(a => a.status !== 'saved');
+
+        if (!silent) toast('Data refreshed');
+        if (applicationsPage.classList.contains('active')) renderApplications();
+        if (savedPage.classList.contains('active'))        renderSaved();
+        if (analyticsPage.classList.contains('active'))    renderAnalytics();
+      }catch(e){
+        console.error(e);
+        if (!silent) toast('Failed to load from Supabase');
+      }
+    }
+
+    let pollTimer = null;
+    function startPolling(){
+      stopPolling();
+      pollTimer = setInterval(()=> refreshData(true), 45000); // 45s
+    }
+    function stopPolling(){
+      if (pollTimer){ clearInterval(pollTimer); pollTimer = null; }
+    }
+    document.addEventListener('visibilitychange', ()=>{
+      if (document.hidden) stopPolling();
+      else { refreshData(true); startPolling(); }
+    });
+
+    /* ######################## END: STATE (JS) ############### */
+
+    /* ############################################################
+       BEGIN: HELPERS (JS)
+    ############################################################ */
+    // ====== Helpers
+    // ---- Type coercion & normalisation helpers ----
+    function deepUnwrapJsonString(v, max=4){
+      // tries JSON.parse repeatedly if input is a JSON string that contains JSON, up to `max` times
+      let x = v;
+      for (let i=0; i<max; i++){
+        if (typeof x !== 'string') break;
+        const s = x.trim();
+        if (!s) return s;
+        try {
+          x = JSON.parse(s);
+        } catch {
+          break;
+        }
+      }
+      return x;
+    }
+
+    function normalizeListField(v){
+      // Accept array, JSON string, nested JSON string, or delimited text
+      if (v == null) return [];
+      let x = deepUnwrapJsonString(v);
+      if (Array.isArray(x)) {
+        return x.flat(Infinity)
+          .map(e => String(e).trim())
+          .filter(Boolean);
+      }
+      if (typeof x === 'string') {
+        return x.split(/[;\n•,]+/).map(s => s.trim()).filter(Boolean);
+      }
+      return [];
+    }
+
+    function listToSemicolon(arr){ return normalizeListField(arr).join('; '); }
+    function listToComma(arr){ return normalizeListField(arr).join(', '); }
+    function toArraySmart(input){ return normalizeListField(input); }
+
+    function toNum(v){
+      if (v === '' || v == null) return null;
+      const n = Number(String(v).replace(/[, ]+/g,''));
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function toISODateOrNull(v){
+      // Accepts YYYY-MM-DD or Date-like; returns YYYY-MM-DD or null
+      if (!v) return null;
+      const d = new Date(v);
+      if (Number.isNaN(+d)) return null;
+      return d.toISOString().slice(0,10);
+    }
+
+    function coerceStatus(s){
+      return String(s || '').trim();
+    }
+
+    function toast(msg){ toastEl.textContent = msg; toastEl.classList.add('show'); setTimeout(()=>toastEl.classList.remove('show'), 2400); }
+    function asArray(v){ return normalizeListField(v); }
+    function bullets(arr){ return normalizeListField(arr).map(x=>`• ${String(x)}`).join('\n'); }
+    function londonTodayISO(){
+      const fmt = new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+      const y=fmt.find(p=>p.type==='year').value, m=fmt.find(p=>p.type==='month').value, d=fmt.find(p=>p.type==='day').value;
+      return `${y}-${m}-${d}`;
+    }
+    function salaryText(a){
+      const s = (a && typeof a.salary === 'object' && !Array.isArray(a.salary)) ? a.salary : (typeof a?.salary === 'string' ? { salary_raw: a.salary } : {});
+      const raw = typeof (s?.salary_raw ?? a?.salary_raw) === 'string' ? (s.salary_raw ?? a.salary_raw).trim() : '';
+      const min = toNum(s?.min ?? a?.salary_min);
+      const max = toNum(s?.max ?? a?.salary_max);
+      const currency = (s?.currency ?? a?.salary_currency ?? '').toString().trim();
+      const period = (s?.period ?? a?.salary_period ?? '').toString().trim();
+
+      if (raw) return raw;
+      if (min != null || max != null){
+        const range = (min != null && max != null) ? `${min}–${max}` : (min != null ? `${min}` : `${max}`);
+        return `${currency ? currency + ' ' : ''}${range}${period ? ' ' + period : ''}`.trim();
+      }
+      // nothing meaningful – return dash
+      return '—';
+    }
+    function canonicalize(u){
+      try{
+        const url=new URL(String(u)); url.protocol='https:'; url.hostname=url.hostname.replace(/^www\./i,'').toLowerCase(); url.hash='';
+        const keep=new Set(['gh_jid','jobId','vacancyId','rid','id','lever-origin']);
+        const q=new URLSearchParams(url.search);
+        [...q.keys()].forEach(k=>{const kl=k.toLowerCase(); if(!keep.has(k)||/^utm_/.test(kl)||/(gclid|fbclid|ref|source|src|campaign|medium)$/i.test(kl)) q.delete(k);});
+        const sorted=new URLSearchParams(); [...q.keys()].sort().forEach(k=>sorted.append(k,q.get(k)));
+        url.search=sorted.toString()?`?${sorted.toString()}`:''; if(url.pathname.length>1) url.pathname=url.pathname.replace(/\/+$/,'');
+        return url.toString();
+      }catch{return u;}
+    }
+    async function postForm(url, fd){
+      const res = await fetch(url, { method:'POST', body: fd });
+      if (!res.ok){ const t=await res.text().catch(()=> ''); console.error('POST',url,res.status,t); throw new Error(`HTTP ${res.status}`); }
+      try{ return await res.json(); }catch{ return {}; }
+    }
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function sanitizeHtml(html){
+      const div = document.createElement('div');
+      div.innerHTML = html;
+      div.querySelectorAll('script,style').forEach(e=>e.remove());
+      return div.innerHTML;
+    }
+    function formatDate(d){ return d ? new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—'; }
+
+    function splitBySearchMatch(items, searchResults) {
+      if (!searchResults || !searchResults.hasQuery) {
+        return { matches: null, others: items };
+      }
+      const idSet = new Set(searchResults.results.map(r => r.id));
+      const matches = searchResults.results;
+      const others  = items.filter(it => !idSet.has(it.id));
+      return { matches, others };
+    }
+
+    function scrollGridToTop(el){
+      if (!el) return;
+      el.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ---- Analytics helpers ----
+    function parseISO(d){
+      // Accept YYYY-MM-DD or ISO; return Date or null
+      if (!d) return null;
+      const dt = new Date(d);
+      return Number.isNaN(+dt) ? null : dt;
+    }
+
+    function effectiveDate(r){
+      return r.applied_date || r.status_update_date || r.created_at || r.updated_at || null;
+    }
+
+    function daysBetween(a, b){
+      const ms = b - a;
+      return ms / (1000 * 60 * 60 * 24);
+    }
+
+    function dateKey(d){  // YYYY-MM-DD
+      return d.toISOString().slice(0,10);
+    }
+
+    function inRange(dateStr, start, end){
+      const d = parseISO(dateStr);
+      if (!d) return false;
+      const x = new Date(d); x.setHours(0,0,0,0);
+      return x >= start && x <= end;
+    }
+
+    /* ######################## END: HELPERS (JS) ############### */
+
+    /* ############################################################
+       BEGIN: FUZZY SEARCH IMPLEMENTATION
+    ############################################################ */
+
+    // Fuzzy search utility with advanced scoring
+    class FuzzySearch {
+      constructor() {
+        this.cache = new Map();
+      }
+
+      // Calculate Levenshtein distance with optimizations
+      levenshteinDistance(str1, str2) {
+        const key = `${str1}|${str2}`;
+        if (this.cache.has(key)) return this.cache.get(key);
+
+        const matrix = Array(str2.length + 1).fill().map(() => Array(str1.length + 1).fill(0));
+
+        for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
+        for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
+
+        for (let j = 1; j <= str2.length; j++) {
+          for (let i = 1; i <= str1.length; i++) {
+            const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+            matrix[j][i] = Math.min(
+              matrix[j - 1][i] + 1,     // deletion
+              matrix[j][i - 1] + 1,     // insertion
+              matrix[j - 1][i - 1] + cost // substitution
+            );
+          }
+        }
+
+        const result = matrix[str2.length][str1.length];
+        this.cache.set(key, result);
+        return result;
+      }
+
+      // Enhanced similarity scoring
+      similarity(str1, str2) {
+        if (!str1 || !str2) return 0;
+
+        const s1 = str1.toLowerCase().trim();
+        const s2 = str2.toLowerCase().trim();
+
+        if (s1 === s2) return 1;
+        if (s1.includes(s2) || s2.includes(s1)) return 0.9;
+
+        const maxLen = Math.max(s1.length, s2.length);
+        if (maxLen === 0) return 1;
+
+        const distance = this.levenshteinDistance(s1, s2);
+        return 1 - distance / maxLen;
+      }
+
+      // Comprehensive search scoring
+      searchScore(item, query) {
+        if (!query.trim()) return 0;
+
+        const q = query.toLowerCase().trim();
+        const words = q.split(/\s+/);
+
+        // Searchable fields with weights
+        const fields = [
+          { text: item.title, weight: 3.0, field: 'title' },
+          { text: item.company, weight: 2.5, field: 'company' },
+          { text: item.sector, weight: 1.5, field: 'sector' },
+          { text: item.roleType, weight: 1.5, field: 'roleType' },
+          { text: item.location, weight: 1.0, field: 'location' },
+          { text: (item.requirements || []).join(' '), weight: 1.2, field: 'requirements' },
+          { text: (item.fits || []).join(' '), weight: 1.0, field: 'fits' },
+          { text: (item.gaps || []).join(' '), weight: 0.8, field: 'gaps' }
+        ];
+
+        let totalScore = 0;
+        let matches = [];
+
+        fields.forEach(({ text, weight, field }) => {
+          if (!text) return;
+
+          const fieldText = String(text).toLowerCase();
+          let fieldScore = 0;
+          let bestMatch = '';
+
+          // Exact phrase match (highest score)
+          if (fieldText.includes(q)) {
+            fieldScore = 1.0;
+            bestMatch = q;
+          } else {
+            // Word-by-word matching
+            let wordScore = 0;
+            words.forEach(word => {
+              if (word.length < 2) return;
+
+              // Check for exact word match
+              if (fieldText.includes(word)) {
+                wordScore += 0.8;
+                bestMatch = bestMatch || word;
+              } else {
+                // Fuzzy match individual words
+                const fieldWords = fieldText.split(/\s+/);
+                fieldWords.forEach(fieldWord => {
+                  const sim = this.similarity(word, fieldWord);
+                  if (sim > 0.7) {
+                    wordScore += sim * 0.6;
+                    if (sim > 0.8 && !bestMatch) bestMatch = fieldWord;
+                  }
+                });
+              }
+            });
+            fieldScore = Math.min(wordScore / words.length, 1.0);
+          }
+
+          if (fieldScore > 0.1) {
+            totalScore += fieldScore * weight;
+            if (bestMatch) {
+              matches.push({ field, match: bestMatch, score: fieldScore });
+            }
+          }
+        });
+
+        return {
+          score: totalScore,
+          matches: matches,
+          hasMatch: totalScore > 0.2
+        };
+      }
+
+      // Main search function
+      search(items, query) {
+        if (!query.trim()) return { results: items, hasQuery: false };
+
+        const scored = items.map(item => ({
+          ...item,
+          searchMeta: this.searchScore(item, query)
+        })).filter(item => item.searchMeta.hasMatch);
+
+        const results = scored.sort((a, b) => b.searchMeta.score - a.searchMeta.score);
+
+        return {
+          results,
+          hasQuery: true,
+          totalFound: results.length,
+          originalCount: items.length
+        };
+      }
+    }
+
+    // Global search instances
+    const applicationsSearcher = new FuzzySearch();
+    const savedSearcher = new FuzzySearch();
+
+    // Search state
+    let searchState = {
+      applications: { query: '', results: null },
+      saved: { query: '', results: null }
+    };
+
+    /* ######################## END: FUZZY SEARCH IMPLEMENTATION ############### */
+
+    /* ############################################################
+       BEGIN: DEADLINES MODULE (JS)
+    ############################################################ */
+    dayjs.extend(dayjs_plugin_utc);
+    dayjs.extend(dayjs_plugin_timezone);
+    dayjs.extend(dayjs_plugin_isBetween);
+
+    const DEADLINES_TABLE = 'web_deadlines';
+
+    let dl_state = {
+      all: [],
+      filtered: [],
+      view: 'agenda',
+      showCompleted: false,
+      weekStart: dayjs().tz('Europe/London').startOf('week'),
+      filters: { search:'', company:'', type:'', status:'', conflict:'' }
+    };
+
+    function dl_toItemShape(row){
+      const bool = v => {
+        if (typeof v === 'string') return v === 'true' || v === '1';
+        return Boolean(v);
+      };
+      const statusLower = String(row?.status || '').toLowerCase();
+      const isWindowRaw = row?.isWindow ?? row?.is_window;
+      const direct = {
+        id: row.id || row.idempotency_key || row.application_id || (crypto.randomUUID?.() || String(Date.now())),
+        company: row.company || row.company_name || '',
+        role: row.role || row.title || '',
+        type: row.type || '',
+        isWindow: bool(isWindowRaw),
+        dueBy: row.dueBy || row.due_by || null,
+        startAt: row.startAt || row.start_at || null,
+        endAt: row.endAt || row.end_at || null,
+        timezone: row.timezone || row.time_zone || 'Europe/London',
+        status: row.status || 'open',
+        priority: row.priority ?? 2,
+        sourceEmailSubject: row.sourceEmailSubject || row.source_email_subject || '',
+        notes: row.notes || '',
+        location: row.location || row.location_text || null,
+        meetingUrl: row.meetingUrl || row.meeting_url || null,
+        createdAt: row.createdAt || row.created_at || new Date().toISOString(),
+        updatedAt: row.updatedAt || row.updated_at || new Date().toISOString(),
+        hasConflict: bool(row.hasConflict ?? row.has_conflict),
+        complete: bool(row.complete ?? false) || statusLower === 'completed',
+        dateComplete: row.dateComplete || row.date_complete || null
+      };
+      if (!direct.isWindow && direct.startAt && !direct.endAt){
+        direct.endAt = dayjs(direct.startAt).add(60,'minute').toISOString();
+      }
+      if (direct.isWindow && !direct.dueBy && direct.endAt){
+        direct.dueBy = direct.endAt;
+      }
+      return direct;
+    }
+
+    async function dl_fetch(){
+      const { data, error } = await db
+        .from(DEADLINES_TABLE)
+        .select('*')
+        .order('updated_at', { ascending:false })
+        .limit(1000);
+      if (error) throw error;
+      console.log('Raw data from database:', data);
+
+      dl_state.all = (data||[])
+        .map(dl_toItemShape)
+        .filter(d => d.company && d.role && d.type && (d.isWindow ? (d.dueBy || d.startAt) : (d.startAt && d.endAt)));
+      console.log('Processed deadlines:', dl_state.all);
+      dl_detectConflicts();
+    }
+
+    function dl_detectConflicts(){
+      dl_state.all.forEach(d => { d.hasConflict = d.status === 'completed' ? false : Boolean(d.hasConflict); });
+      const events = dl_state.all
+        .filter(d => !d.isWindow && d.startAt && d.endAt && d.status !== 'completed')
+        .sort((a,b)=> dayjs(a.startAt).valueOf() - dayjs(b.startAt).valueOf());
+
+      for (let i=0; i<events.length; i++){
+        const eventA = events[i];
+        const startA = dayjs(eventA.startAt);
+        const endA = dayjs(eventA.endAt);
+        for (let j=i+1; j<events.length; j++){
+          const eventB = events[j];
+          const startB = dayjs(eventB.startAt);
+          const endB = dayjs(eventB.endAt);
+          if (startB.valueOf() >= endA.valueOf()) break;
+          if (startA.valueOf() < endB.valueOf() && endA.valueOf() > startB.valueOf()){
+            eventA.hasConflict = true;
+            eventB.hasConflict = true;
+          }
+        }
+      }
+    }
+
+    function dl_applyFilters(){
+      const f = dl_state.filters;
+      const search = (f.search||'').toLowerCase();
+      dl_state.filtered = dl_state.all.filter(d=>{
+        // Hide completed items unless explicitly showing them
+        if (d.complete && !dl_state.showCompleted) return false;
+
+        if (f.company && d.company !== f.company) return false;
+        if (f.type && d.type !== f.type) return false;
+        if (f.status && d.status !== f.status) return false;
+        if (f.conflict){
+          const want = f.conflict === 'true';
+          if (Boolean(d.hasConflict) !== want) return false;
+        }
+        if (search){
+          const blob = `${d.company} ${d.role} ${d.type} ${d.notes||''}`.toLowerCase();
+          if (!blob.includes(search)) return false;
+        }
+        return true;
+      });
+    }
+
+    function dl_updateKPIs(){
+      const now = dayjs().tz('Europe/London');
+      const today = now.startOf('day');
+      const weekEnd = now.endOf('week');
+      let dueToday=0, dueThisWeek=0, overdue=0;
+
+      dl_state.all.forEach(d=>{
+        if (d.complete || d.status === 'completed') return;
+        const when = d.isWindow ? dayjs(d.dueBy).tz('Europe/London') : dayjs(d.startAt).tz('Europe/London');
+        if (when.isBefore(now)) overdue++;
+        else if (when.isSame(today,'day')) dueToday++;
+        else if (when.isBefore(weekEnd)) dueThisWeek++;
+      });
+
+      const kpis = document.getElementById('dl_kpis');
+      if (kpis){
+        kpis.innerHTML = `
+    <span class="kpi-chip today">Due today: ${dueToday}</span>
+    <span class="kpi-chip week">Due this week: ${dueThisWeek}</span>
+    <span class="kpi-chip overdue">Overdue: ${overdue}</span>
+  `;
+      }
+    }
+
+    function dl_updateBanners(){
+      const container = document.getElementById('dl_banners');
+      if (!container) return;
+        const now = dayjs().tz('Europe/London');
+        let overdue = 0;
+        let conflicts = 0;
+        dl_state.filtered.forEach(d => {
+          if (d.complete || d.status === 'completed') return;
+          const when = d.isWindow ? dayjs(d.dueBy).tz('Europe/London') : dayjs(d.startAt).tz('Europe/London');
+          if (when.isBefore(now)) overdue++;
+          if (d.hasConflict) conflicts++;
+        });
+
+      const banners = [];
+      if (overdue > 0){
+        banners.push(`
+          <div class="dl-banner dl-banner-danger">
+            <div><strong>${overdue} overdue deadline${overdue > 1 ? 's' : ''}</strong></div>
+            <button type="button" onclick="dl_jumpToEarliest()">Jump to earliest</button>
+          </div>
+        `);
+      }
+      if (conflicts > 0){
+        banners.push(`
+          <div class="dl-banner dl-banner-warning">
+            <div><strong>${conflicts} conflict${conflicts > 1 ? 's' : ''} detected</strong></div>
+            <button type="button" onclick="dl_filterConflicts()">View conflicts</button>
+          </div>
+        `);
+      }
+      container.innerHTML = banners.join('');
+    }
+
+    function dl_render(){
+      const agenda = document.getElementById('dl_agenda');
+      const calendar = document.getElementById('dl_calendar');
+      const calendarGrid = document.getElementById('dl_calendarGrid');
+      const calendarTitle = document.getElementById('dl_calendarTitle');
+      const empty = document.getElementById('dl_empty');
+      const agendaBtn = document.getElementById('dl_viewAgenda');
+      const calendarBtn = document.getElementById('dl_viewCalendar');
+
+      if (agendaBtn && calendarBtn){
+        agendaBtn.classList.toggle('active', dl_state.view === 'agenda');
+        calendarBtn.classList.toggle('active', dl_state.view === 'calendar');
+      }
+
+      if (agenda){
+        agenda.style.display = dl_state.view === 'agenda' ? 'block' : 'none';
+      }
+      if (calendar){
+        if (dl_state.view === 'calendar'){
+          calendar.style.display = 'block';
+          calendar.classList.add('active');
+        }else{
+          calendar.style.display = 'none';
+          calendar.classList.remove('active');
+        }
+      }
+
+      const hasItems = dl_state.filtered.length > 0;
+      if (!hasItems){
+        if (dl_state.view === 'calendar'){ dl_renderCalendar(); }
+        else {
+          if (agenda) agenda.innerHTML = '';
+          if (calendarGrid) calendarGrid.innerHTML = '';
+        }
+        if (calendarTitle) calendarTitle.textContent = `Week of ${dl_state.weekStart.format('MMM D, YYYY')}`;
+        if (empty) empty.style.display = 'block';
+        dl_updateBanners();
+        return;
+      }
+
+      if (empty) empty.style.display = 'none';
+      if (dl_state.view === 'agenda') dl_renderAgenda();
+      else dl_renderCalendar();
+      dl_updateBanners();
+    }
+
+    function dl_renderAgenda(){
+      const container = document.getElementById('dl_agenda');
+      const empty = document.getElementById('dl_empty');
+      if (!container) return;
+
+      const items = dl_state.filtered;
+      if (!items.length){
+        container.innerHTML = '';
+        if (empty) empty.style.display = 'block';
+        return;
+      }
+      if (empty) empty.style.display = 'none';
+
+      const now = dayjs().tz('Europe/London');
+      const groups = new Map();
+      for (const d of items){
+        const due = d.isWindow ? dayjs(d.dueBy).tz('Europe/London') : dayjs(d.startAt).tz('Europe/London');
+        let key = due.format('ddd D MMM');
+        if (due.isBefore(now,'day')) key = 'Overdue';
+        else if (due.isSame(now,'day')) key = 'Today';
+        else if (due.isSame(now.add(1,'day'),'day')) key = 'Tomorrow';
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(d);
+      }
+
+      const order = (a,b)=>{
+        const rank = { 'Overdue': -3, 'Today': -2, 'Tomorrow': -1 };
+        const ia = rank[a] ?? 0;
+        const ib = rank[b] ?? 0;
+        if (ia !== ib) return ia - ib;
+        const da = dayjs(a,'ddd D MMM');
+        const db = dayjs(b,'ddd D MMM');
+        return da.valueOf() - db.valueOf();
+      };
+      const keys = [...groups.keys()].sort(order);
+
+      const html = keys.map(key => {
+        const arr = groups.get(key).sort((a,b)=>{
+          const at = a.isWindow ? dayjs(a.dueBy) : dayjs(a.startAt);
+          const bt = b.isWindow ? dayjs(b.dueBy) : dayjs(b.startAt);
+          return at.valueOf() - bt.valueOf();
+        });
+        return `
+      <div class="agenda-section">
+        <h3 class="agenda-date">${key}</h3>
+        ${arr.map(dl_cardHTML).join('')}
+      </div>`;
+      }).join('');
+
+      container.innerHTML = html;
+    }
+
+    function dl_statusLabel(status){
+      if (!status) return 'Open';
+      return status.charAt(0).toUpperCase() + status.slice(1);
+    }
+
+    function dl_cardHTML(d){
+      const start = d.isWindow ? null : dayjs(d.startAt).tz('Europe/London');
+      const end = d.isWindow ? null : dayjs(d.endAt).tz('Europe/London');
+      const due = d.isWindow ? dayjs(d.dueBy).tz('Europe/London') : start;
+      const timingInfo = d.isWindow ? dl_timeUntil(d.dueBy) : null;
+      const duration = (!d.isWindow && start && end) ? end.diff(start, 'minute') : null;
+      const timingText = d.isWindow
+        ? (timingInfo?.isOverdue ? timingInfo.text : `Window closes in ${timingInfo.text}`)
+        : (start && end ? `${start.format('HH:mm')} - ${end.format('HH:mm')} (${duration}m)` : (start ? start.format('HH:mm') : ''));
+      const timingClass = d.isWindow
+        ? `card-timing ${timingInfo?.isOverdue ? 'overdue' : 'countdown'}`
+        : 'card-timing';
+
+      const cardClasses = ['deadline-card'];
+      if (d.complete) cardClasses.push('completed');
+      if ((timingInfo && timingInfo.isOverdue) || d.status === 'overdue') cardClasses.push('overdue');
+
+      const statusSlug = (d.status || 'open').toLowerCase().replace(/[^a-z0-9-]/g,'');
+      const notesHtml = d.notes ? `<div class="card-notes">${escapeHtml(d.notes).replace(/\n/g,'<br/>')}</div>` : '';
+
+      // Format due date prominently
+      const dueDateFormatted = due ? due.format('DD dddd, MMMM YYYY') : '';
+
+      const linksHtml = d.meetingUrl ? `
+        <div class="card-links">
+          <a href="${escapeHtml(d.meetingUrl)}" target="_blank" rel="noopener">Link</a>
+        </div>
+      ` : '';
+
+      const actions = [];
+      if (!d.complete){
+        actions.push(`<button class="dl-btn dl-btn-success" onclick="dl_markDone(${Number(d.id)})">Mark done</button>`);
+      }
+      const idForHandler = d.id;
+      actions.push(`
+        <button class="dl-btn dl-btn-outline dl-btn-edit" onclick="openEditDeadlineModal('${idForHandler}')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+          Edit
+        </button>
+      `);
+      actions.push(`
+        <button class="dl-btn dl-btn-outline dl-btn-delete" onclick="deleteDeadline('${idForHandler}')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3,6 5,6 21,6"/>
+            <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
+            <line x1="10" y1="11" x2="10" y2="17"/>
+            <line x1="14" y1="11" x2="14" y2="17"/>
+          </svg>
+          Delete
+        </button>
+      `);
+
+      return `
+    <div class="${cardClasses.join(' ')}" id="dl_card_${d.id}">
+      <div class="card-header">
+        <div>
+          <div class="card-title">${escapeHtml(d.company)} • ${escapeHtml(d.role)}</div>
+          <div class="card-subtitle">${escapeHtml(d.type || '—')}${d.priority != null ? ` • Priority ${escapeHtml(d.priority)}` : ''}</div>
+          <div class="${timingClass}">${timingText}</div>
+          <div class="card-badges">
+            <span class="badge status-${statusSlug}">${d.complete ? 'Completed' : escapeHtml(dl_statusLabel(d.status))}</span>
+            ${d.hasConflict ? '<span class="badge conflict">⚠️ Conflict</span>' : ''}
+          </div>
+        </div>
+        <div class="card-meta">
+          ${dueDateFormatted ? `<div class="due-date-prominent">${dueDateFormatted}</div>` : ''}
+          ${d.isWindow ? (due ? `<span>Due by ${due.format('HH:mm')}</span>` : '') : (start && end ? `<span>${start.format('HH:mm')} - ${end.format('HH:mm')}</span>` : '')}
+          ${d.timezone ? `<span>${escapeHtml(d.timezone)}</span>` : ''}
+          ${d.sourceEmailSubject ? `<span>"${escapeHtml(d.sourceEmailSubject)}"</span>` : ''}
+          ${d.complete && d.dateComplete ? `<span>Completed: ${dayjs(d.dateComplete).format('DD MMM YYYY')}</span>` : ''}
+        </div>
+      </div>
+      ${notesHtml}
+      ${linksHtml}
+      ${actions.length ? `<div class="card-actions">${actions.join('')}</div>` : ''}
+    </div>`;
+    }
+
+
+    function dl_timeUntil(iso){
+      const now = dayjs().tz('Europe/London');
+      const tgt = dayjs(iso).tz('Europe/London');
+      const diff = tgt.diff(now);
+      if (diff < 0){
+        const totalHours = Math.floor(Math.abs(diff)/36e5);
+        const days = Math.floor(totalHours / 24);
+        const hours = totalHours % 24;
+        const minutes = Math.floor((Math.abs(diff) % 36e5) / 6e4);
+
+        let timeText;
+        if (days > 0) {
+          timeText = `${days}d ${hours}h`;
+        } else {
+          timeText = `${hours}h ${minutes}m`;
+        }
+
+        return { text: `Overdue by ${timeText}`, isOverdue: true };
+      }
+      const d = Math.floor(diff/86400000);
+      const h = Math.floor((diff%86400000)/36e5);
+      const m = Math.floor((diff%36e5)/6e4);
+      return { text: d>0?`${d}d ${h}h`: h>0?`${h}h ${m}m`:`${m}m`, isOverdue:false };
+    }
+
+    function dl_renderCalendar(){
+      const title = document.getElementById('dl_calendarTitle');
+      const grid = document.getElementById('dl_calendarGrid');
+      if (!grid) return;
+
+      if (title){
+        title.textContent = `Week of ${dl_state.weekStart.format('MMM D, YYYY')}`;
+      }
+
+      const days = [...Array(7)].map((_,i)=> dl_state.weekStart.add(i,'day'));
+      const weekStart = dl_state.weekStart.startOf('day');
+      const weekEnd = dl_state.weekStart.add(6,'day').endOf('day');
+      const inWeek = dl_state.filtered.filter(d=>{
+        const due = d.isWindow ? dayjs(d.dueBy).tz('Europe/London') : dayjs(d.startAt).tz('Europe/London');
+        return due.isBetween(weekStart, weekEnd, null, '[]');
+      });
+
+      grid.innerHTML = days.map(day => {
+        const dayItems = inWeek.filter(d => {
+          const due = d.isWindow ? dayjs(d.dueBy).tz('Europe/London') : dayjs(d.startAt).tz('Europe/London');
+          return due.isSame(day, 'day');
+        });
+        const pills = dayItems.map(d => {
+          const isWindow = d.isWindow;
+          const start = isWindow ? dayjs(d.dueBy).tz('Europe/London') : dayjs(d.startAt).tz('Europe/London');
+          const end = !isWindow && d.endAt ? dayjs(d.endAt).tz('Europe/London') : null;
+          const pillClass = `dl-calendar-pill ${isWindow ? 'due' : 'event'}`;
+          const timeLabel = isWindow
+            ? `Due ${start.format('HH:mm')}`
+            : `${start.format('HH:mm')}${end ? ` - ${end.format('HH:mm')}` : ''}`;
+          return `
+            <div class="${pillClass}" onclick="dl_jumpToCard('${d.id}')" title="${escapeHtml(d.company)}">
+              <div class="dl-pill-company">${escapeHtml(d.company)}</div>
+              <div class="dl-pill-time">${escapeHtml(timeLabel)}</div>
+              ${d.hasConflict ? '<span style="font-size:.75rem;align-self:flex-end;">⚠️</span>' : ''}
+            </div>
+          `;
+        }).join('');
+        return `
+          <div class="dl-calendar-day">
+            <div class="dl-calendar-day-header">${day.format('ddd D')}</div>
+            ${pills}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function dl_focusCard(id){
+      requestAnimationFrame(() => {
+        const el = document.getElementById(`dl_card_${id}`);
+        if (!el) return;
+        el.scrollIntoView({ behavior:'smooth', block:'center' });
+        el.classList.add('dl-card-focus');
+        setTimeout(()=> el.classList.remove('dl-card-focus'), 1600);
+      });
+    }
+
+    function dl_jumpToCard(id){
+      dl_state.view = 'agenda';
+      dl_render();
+      dl_focusCard(id);
+    }
+
+    function dl_jumpToEarliest(){
+      dl_state.view = 'agenda';
+      const now = dayjs().tz('Europe/London');
+      const overdue = dl_state.filtered
+        .filter(d => d.status !== 'completed')
+        .filter(d => {
+          const when = d.isWindow ? dayjs(d.dueBy).tz('Europe/London') : dayjs(d.startAt).tz('Europe/London');
+          return when.isBefore(now);
+        })
+        .sort((a,b)=>{
+          const aTime = a.isWindow ? dayjs(a.dueBy) : dayjs(a.startAt);
+          const bTime = b.isWindow ? dayjs(b.dueBy) : dayjs(b.startAt);
+          return aTime.valueOf() - bTime.valueOf();
+        });
+      dl_render();
+      if (!overdue.length){
+        toast('No overdue deadlines in current view');
+        return;
+      }
+      dl_focusCard(overdue[0].id);
+    }
+
+    function dl_filterConflicts(){
+      dl_state.filters.conflict = 'true';
+      const conflictSelect = document.getElementById('dl_conflict');
+      if (conflictSelect) conflictSelect.value = 'true';
+      const filtersPanel = document.getElementById('dl_filtersPanel');
+      if (filtersPanel){
+        filtersPanel.classList.add('open');
+        filtersPanel.setAttribute('aria-hidden','false');
+      }
+      dl_applyFilters();
+      dl_updateKPIs();
+      dl_render();
+    }
+
+    async function dl_markDone(id){
+      // Coerce the id to a number to match the bigint PK in Supabase
+      const rowId = Number(id);
+      const it = dl_state.all.find(x => Number(x.id) === rowId);
+      if (!it) { toast('Could not find that item'); return; }
+
+      try {
+        const now = new Date().toISOString();
+        const { error } = await db
+          .from(DEADLINES_TABLE)
+          .update({
+            complete: true,
+            status: 'completed',     // keep status + complete in sync
+            date_complete: now,
+            updated_at: now
+          })
+          .eq('id', rowId);          // ensure numeric match
+
+        if (error) throw error;
+
+        // Local state update mirrors DB
+        it.complete = true;
+        it.status = 'completed';
+        it.dateComplete = now;
+        it.updatedAt = now;
+
+        dl_detectConflicts();
+        dl_applyFilters();
+        dl_updateKPIs();
+        dl_render();
+        toast('Deadline marked as completed');
+      } catch (e) {
+        console.error(e);
+        toast('Failed to mark as completed');
+      }
+    }
+
+    function dl_populateCompanies(){
+      const sel = document.getElementById('dl_company');
+      if (!sel) return;
+      const companies = [...new Set(dl_state.all.map(d=>d.company))].sort();
+      sel.innerHTML = '<option value="">All companies</option>' + companies.map(c=>`<option>${escapeHtml(c)}</option>`).join('');
+      sel.value = dl_state.filters.company || '';
+    }
+
+    async function initDeadlinesPage(){
+      if (!initDeadlinesPage._wired){
+        const agendaBtn = document.getElementById('dl_viewAgenda');
+        if (agendaBtn) agendaBtn.onclick = ()=>{ dl_state.view='agenda'; dl_render(); };
+        const calendarBtn = document.getElementById('dl_viewCalendar');
+        if (calendarBtn) calendarBtn.onclick = ()=>{ dl_state.view='calendar'; dl_render(); };
+
+        const filtersPanel = document.getElementById('dl_filtersPanel');
+        const filtersToggle = document.getElementById('dl_filtersToggle');
+        if (filtersPanel){ filtersPanel.setAttribute('aria-hidden', filtersPanel.classList.contains('open') ? 'false' : 'true'); }
+        if (filtersToggle && filtersPanel){
+          filtersToggle.onclick = ()=>{
+            const open = !filtersPanel.classList.contains('open');
+            filtersPanel.classList.toggle('open', open);
+            filtersPanel.setAttribute('aria-hidden', open ? 'false' : 'true');
+          };
+        }
+
+        const showCompletedBtn = document.getElementById('dl_showCompleted');
+        const completedToggleText = document.getElementById('dl_completedToggleText');
+        if (showCompletedBtn && completedToggleText) {
+          showCompletedBtn.onclick = () => {
+            dl_state.showCompleted = !dl_state.showCompleted;
+            completedToggleText.textContent = dl_state.showCompleted ? 'Hide completed' : 'Show completed';
+            showCompletedBtn.classList.toggle('active', dl_state.showCompleted);
+            dl_applyFilters();
+            dl_updateKPIs();
+            dl_render();
+          };
+        }
+
+        const prevWeek = document.getElementById('dl_prevWeek');
+        if (prevWeek) prevWeek.onclick = ()=>{ dl_state.weekStart = dl_state.weekStart.subtract(1,'week'); dl_renderCalendar(); };
+        const nextWeek = document.getElementById('dl_nextWeek');
+        if (nextWeek) nextWeek.onclick = ()=>{ dl_state.weekStart = dl_state.weekStart.add(1,'week'); dl_renderCalendar(); };
+
+        const searchInput = document.getElementById('dl_search');
+        if (searchInput){
+          searchInput.value = dl_state.filters.search || '';
+          searchInput.oninput = (e)=>{ dl_state.filters.search=e.target.value; dl_applyFilters(); dl_updateKPIs(); dl_render(); };
+        }
+        const companySelect = document.getElementById('dl_company');
+        if (companySelect){
+          companySelect.onchange = (e)=>{ dl_state.filters.company=e.target.value; dl_applyFilters(); dl_updateKPIs(); dl_render(); };
+        }
+        const typeSelect = document.getElementById('dl_type');
+        if (typeSelect){
+          typeSelect.value = dl_state.filters.type || '';
+          typeSelect.onchange = (e)=>{ dl_state.filters.type=e.target.value; dl_applyFilters(); dl_updateKPIs(); dl_render(); };
+        }
+        const statusSelect = document.getElementById('dl_status');
+        if (statusSelect){
+          statusSelect.value = dl_state.filters.status || '';
+          statusSelect.onchange = (e)=>{ dl_state.filters.status=e.target.value; dl_applyFilters(); dl_updateKPIs(); dl_render(); };
+        }
+        const conflictSelect = document.getElementById('dl_conflict');
+        if (conflictSelect){
+          conflictSelect.value = dl_state.filters.conflict || '';
+          conflictSelect.onchange = (e)=>{ dl_state.filters.conflict=e.target.value; dl_applyFilters(); dl_updateKPIs(); dl_render(); };
+        }
+        const refreshBtn = document.getElementById('dl_refresh');
+        if (refreshBtn){
+          refreshBtn.onclick = async ()=>{
+            const loading = document.getElementById('dl_loading');
+            if (loading) loading.style.display = 'block';
+            await dl_fetch();
+            dl_populateCompanies();
+            dl_applyFilters();
+            dl_updateKPIs();
+            dl_render();
+            if (loading) loading.style.display = 'none';
+            toast('Deadlines reloaded');
+          };
+        }
+        const clearBtn = document.getElementById('dl_clear');
+        if (clearBtn){
+          clearBtn.onclick = ()=>{
+            dl_state.filters = { search:'', company:'', type:'', status:'', conflict:'' };
+            if (searchInput) searchInput.value='';
+            if (companySelect) companySelect.value='';
+            if (typeSelect) typeSelect.value='';
+            if (statusSelect) statusSelect.value='';
+            if (conflictSelect) conflictSelect.value='';
+            dl_applyFilters(); dl_updateKPIs(); dl_render();
+          };
+        }
+        initDeadlinesPage._wired = true;
+      }
+
+      try{
+        const loading = document.getElementById('dl_loading');
+        if (loading) loading.style.display = 'block';
+        const emptyState = document.getElementById('dl_empty');
+        if (emptyState) emptyState.innerHTML = '<h3>No deadlines found</h3><p>Adjust your filters or search terms.</p>';
+        await dl_fetch();
+        dl_populateCompanies();
+        const typeSelect = document.getElementById('dl_type'); if (typeSelect) typeSelect.value = dl_state.filters.type || '';
+        const statusSelect = document.getElementById('dl_status'); if (statusSelect) statusSelect.value = dl_state.filters.status || '';
+        const conflictSelect = document.getElementById('dl_conflict'); if (conflictSelect) conflictSelect.value = dl_state.filters.conflict || '';
+        const searchInput = document.getElementById('dl_search'); if (searchInput) searchInput.value = dl_state.filters.search || '';
+        dl_applyFilters();
+        dl_updateKPIs();
+        dl_render();
+        if (loading) loading.style.display = 'none';
+      }catch(e){
+        console.error(e);
+        const loading = document.getElementById('dl_loading');
+        if (loading) loading.style.display = 'none';
+        dl_state.all = [];
+        dl_state.filtered = [];
+        dl_updateKPIs();
+        dl_updateBanners();
+        const agenda = document.getElementById('dl_agenda');
+        if (agenda) agenda.innerHTML = '';
+        const calendarGrid = document.getElementById('dl_calendarGrid');
+        if (calendarGrid) calendarGrid.innerHTML = '';
+        const empty = document.getElementById('dl_empty');
+        if (empty){
+          empty.style.display = 'block';
+          empty.innerHTML = '<h3>Failed to load deadlines</h3><p>Please check your Supabase connection.</p>';
+        }
+      }
+    }
+    /* ######################## END: DEADLINES MODULE (JS) ############### */
+
+    /* ############################################################
+       BEGIN: TABS/ROUTER (JS)
+    ############################################################ */
+    // ====== Tabs
+    function switchTab(name){
+      document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+      document.querySelectorAll('.page-content').forEach(p=>p.classList.remove('active'));
+      const tabEl = document.getElementById(name+'Tab');
+      const pageEl = document.getElementById(name+'Page');
+      if (tabEl) tabEl.classList.add('active');
+      if (pageEl) pageEl.classList.add('active');
+
+      if (name==='applications') renderApplications();
+      if (name==='saved') renderSaved();
+      if (name==='analytics') renderAnalytics();
+      if (name==='deadlines') initDeadlinesPage();
+      if (name==='addDeadline') initAddDeadlinePage();
+      history.replaceState(null,'',`#${name}`);
+    }
+    analyseTab.onclick = () => switchTab('analyse');
+    applicationsTab.onclick = () => switchTab('applications');
+    savedTab.onclick = () => switchTab('saved');
+    analyticsTab.onclick = () => switchTab('analytics');
+    addTab.onclick = () => switchTab('add');
+    deadlinesTab.onclick = () => switchTab('deadlines');
+    if (addDeadlineTab) addDeadlineTab.onclick = () => switchTab('addDeadline');
+    if (location.hash==='#analyse' || location.hash==='#analyze') switchTab('analyse');
+    if (location.hash==='#applications') switchTab('applications');
+    if (location.hash==='#saved') switchTab('saved');
+    if (location.hash==='#analytics') switchTab('analytics');
+    if (location.hash==='#add') switchTab('add');
+    if (location.hash==='#deadlines') switchTab('deadlines');
+    if (location.hash==='#addDeadline') switchTab('addDeadline');
+    if (!location.hash || location.hash==='#analyze') history.replaceState(null,'','#analyse');
+
+    /* ######################## END: TABS/ROUTER (JS) ############### */
+
+    /* ############################################################
+       BEGIN: ENV SWITCH (JS)
+    ############################################################ */
+    function updateEnvironmentBadge(){
+      if (envLabel) {
+        envLabel.textContent = currentEnv === 'prod' ? 'Production environment' : 'Test environment';
+      }
+      if (envIndicator) {
+        envIndicator.style.background = currentEnv === 'prod' ? 'var(--success-500)' : 'var(--warning-500)';
+      }
+    }
+    envSelect.onchange = ()=>{
+      currentEnv = envSelect.value;
+      db = supabase.createClient(DB[currentEnv].url, DB[currentEnv].key,
+        { auth:{ persistSession:false, autoRefreshToken:false, detectSessionInUrl:false } });
+      toast(`Switched to ${currentEnv.toUpperCase()}`);
+      refreshData(true);
+      if (deadlinesPage.classList.contains('active')) initDeadlinesPage();
+      updateEnvironmentBadge();
+    };
+    /* ######################## END: ENV SWITCH (JS) ############### */
+
+    /* ############################################################
+       BEGIN: ANALYSE FLOW (JS)
+    ############################################################ */
+    // ====== Analyse flow
+    function startLoadingAnimation(){
+      if (!loadingSteps.length) return;
+      loadingStepTimers.forEach(clearTimeout);
+      loadingStepTimers = [];
+      loadingSteps.forEach(step => step.classList.remove('active'));
+      loadingSteps.forEach((step, index) => {
+        const timer = setTimeout(() => {
+          step.classList.add('active');
+        }, index * 800);
+        loadingStepTimers.push(timer);
+      });
+    }
+
+    function stopLoadingAnimation(){
+      loadingStepTimers.forEach(clearTimeout);
+      loadingStepTimers = [];
+      loadingSteps.forEach(step => step.classList.remove('active'));
+    }
+
+    analyseBtn.onclick = analyseUrl;
+    // (No Enter-on-URL listener anymore; we use Cmd/Ctrl+Enter in textarea)
+
+    const MAX_CHARS = 30000;
+    jobText.addEventListener('input', () => {
+      let v = jobText.value || '';
+      if (v.length > MAX_CHARS) {
+        jobText.value = v.slice(0, MAX_CHARS);
+        toast('Text truncated to 30,000 characters');
+      }
+      jobCharCount.textContent = `${jobText.value.length} / ${MAX_CHARS}`;
+    });
+
+    // Cmd/Ctrl + Enter to analyse
+    jobText.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') analyseUrl();
+    });
+
+    async function analyseUrl(){
+      const text = (jobText.value || '').trim();
+      const src = (jobSourceUrl.value || '').trim();
+      if (!text) { toast('Please paste the job description'); return; }
+
+      resultCard.style.display='block';
+      loadingState.style.display='block';
+      resultContent.style.display='none';
+      analyseBtn.disabled = true;
+      startLoadingAnimation();
+
+      try{
+        const fd = new FormData();
+        fd.append('job_text', text);
+        if (src) fd.append('source_url', src);
+
+        const data = await postForm(URLS[currentEnv].analyse, fd);
+        const out = Array.isArray(data) ? data[0] : data;
+        if (!out) throw new Error('No analysis result');
+        draft = out; lastCover = null;
+        renderAnalysis(out);
+      }catch(e){
+        console.error(e);
+        stopLoadingAnimation();
+        resultCard.style.display='none';
+        toast(`Analysis failed (${currentEnv}). Check n8n & CORS.`);
+      }finally{
+        stopLoadingAnimation();
+        analyseBtn.disabled = false;
+      }
+    }
+
+    function renderAnalysis(a){
+      stopLoadingAnimation();
+      loadingState.style.display='none';
+      resultContent.style.display='block';
+
+      const title = a.title || a.job?.title || 'Untitled role';
+      const company = a.company_name || a.job?.company_name || '';
+      const locs = normalizeListField(a.locations || a.job?.locations).join(' • ');
+      const salTxt = salaryText(a);
+      const recCVName = (a.ai_cv_filename ?? a.AI_cv_filename ?? a.AI_cv_recommendation?.filename ?? '').toString().trim();
+      const recCVWhy  = (a.ai_cv_reason   ?? a.AI_cv_reason   ?? a.AI_cv_recommendation?.reason   ?? '').toString().trim();
+      const deadline = a.date_deadline || a.job?.date_deadline || '';
+      const start = a.start_date || a.job?.start_date || '';
+      const url = a.source_url || a.job?.source_url || '';
+
+      const urlDisplay = url ? (() => {
+        try {
+          const urlObj = new URL(url);
+          return urlObj.hostname.replace('www.', '');
+        } catch {
+          return url.length > 40 ? url.substring(0, 40) + '...' : url;
+        }
+      })() : '—';
+
+      jobTitleEl.textContent = title;
+      jobCompanyEl.textContent = company;
+      jobDetailsEl.innerHTML = `
+        <div class="enhanced-details-grid">
+          <div class="detail-card">
+            <div class="detail-icon">📍</div>
+            <div class="detail-content">
+              <div class="detail-label">Locations</div>
+              <div class="detail-value">${escapeHtml(locs || '—')}</div>
+            </div>
+          </div>
+
+          <div class="detail-card">
+            <div class="detail-icon">💰</div>
+            <div class="detail-content">
+              <div class="detail-label">Salary</div>
+              <div class="detail-value">${escapeHtml(salTxt || '—')}</div>
+            </div>
+          </div>
+
+          <div class="detail-card">
+            <div class="detail-icon">📅</div>
+            <div class="detail-content">
+              <div class="detail-label">Key Dates</div>
+              <div class="detail-value">
+                ${[start ? `Start: ${start}` : '', deadline ? `Deadline: ${deadline}` : ''].filter(Boolean).join(' • ') || '—'}
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-card">
+            <div class="detail-icon">🔗</div>
+            <div class="detail-content">
+              <div class="detail-label">Source</div>
+              <div class="detail-value">
+                ${url ? `<a href="${url}" target="_blank" rel="noopener" class="source-link">${escapeHtml(urlDisplay)} ↗</a>` : '—'}
+              </div>
+            </div>
+          </div>
+
+          <!-- NEW: Recommended CV -->
+          <div class="detail-card">
+            <div class="detail-icon">📄</div>
+            <div class="detail-content">
+              <div class="detail-label">Recommended CV</div>
+              <div class="detail-value">
+                <div class="cv-filename">${escapeHtml(recCVName || '—')}</div>
+                ${recCVWhy ? `<div class="cv-reason">${escapeHtml(recCVWhy)}</div>` : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const fit = Math.max(0, Math.min(100, toNum(a.ai_fit_score ?? a.AI_fit_score) ?? 0));
+      const align = Math.max(0, Math.min(100, toNum(a.ai_alignment_score ?? a.AI_alignment_score) ?? 0));
+      fitScoreEl.textContent = `${fit}%`;
+      fitFillEl.style.width = `${fit}%`;
+      alignScoreEl.textContent = `${align}%`;
+      alignFillEl.style.width = `${align}%`;
+
+      const kw = normalizeListField(a.keywords || a.job?.keywords);
+      keywordsEl.innerHTML = kw.length ?
+        kw.map(k => `<span class="enhanced-keyword">${escapeHtml(k)}</span>`).join('') :
+        '<span class="no-keywords">No keywords identified</span>';
+
+      fitsEl.textContent = bullets(normalizeListField(a.fits));
+      gapsEl.textContent = bullets(normalizeListField(a.gaps));
+      summaryEl.textContent = a.job_summary || a.summary || 'No summary provided';
+
+      // Move the collapsible "View more" block directly under the Job summary
+      const detailsSectionEl = document.querySelector('.details-section');
+      const summarySectionEl = summaryEl.closest('.section');
+      if (detailsSectionEl && summarySectionEl){
+        summarySectionEl.insertAdjacentElement('afterend', detailsSectionEl);
+      }
+
+      const keywordsSection = document.querySelector('#keywords').closest('.section');
+      let requirementsSection = document.querySelector('.requirements-section');
+
+      if (!requirementsSection) {
+        requirementsSection = document.createElement('div');
+        requirementsSection.className = 'requirements-section section';
+        keywordsSection.parentNode.insertBefore(requirementsSection, keywordsSection.nextSibling);
+      }
+
+      const keyReqs = normalizeListField(a.key_requirements || a.job?.key_requirements);
+      const otherReqs = normalizeListField(a.other_requirements || a.job?.other_requirements);
+
+      const formatRequirements = (items) => {
+        const text = bullets(items);
+        return text ? escapeHtml(text).replace(/\n/g,'<br/>') : '';
+      };
+
+      requirementsSection.innerHTML = `
+        <h3 class="section-title">
+          <span class="section-icon">📋</span>
+          Requirements
+        </h3>
+        <div class="requirements-grid">
+          <div class="requirements-column">
+            <h4 class="requirements-subtitle">Essential Requirements</h4>
+            <div class="requirements-content">
+              ${keyReqs.length ? formatRequirements(keyReqs) : 'No essential requirements specified'}
+            </div>
+          </div>
+          <div class="requirements-column">
+            <h4 class="requirements-subtitle">Preferred Qualifications</h4>
+            <div class="requirements-content">
+              ${otherReqs.length ? formatRequirements(otherReqs) : 'No preferred qualifications specified'}
+            </div>
+          </div>
+        </div>
+      `;
+
+      fullDescriptionEl.innerHTML = sanitizeHtml(a.job_description || '').replace(/\n/g,'<br/>');
+      detailsContent.classList.remove('show');
+      toggleDetailsBtn.textContent = 'View more';
+      toggleDetailsBtn.onclick = () => {
+        const open = detailsContent.classList.contains('show');
+        detailsContent.classList.toggle('show', !open);
+        toggleDetailsBtn.textContent = open ? 'View more' : 'Hide details';
+      };
+
+      const actionsContainer = document.querySelector('.actions');
+      actionsContainer.innerHTML = `
+        <div class="enhanced-actions">
+          <button id="saveBtn" class="action-btn action-btn-save">
+            <div class="btn-icon">💾</div>
+            <div class="btn-content">
+              <div class="btn-title">Save for Later</div>
+              <div class="btn-subtitle">Add to saved jobs</div>
+            </div>
+          </button>
+          
+          <button id="applyBtn" class="action-btn action-btn-apply">
+            <div class="btn-icon">✅</div>
+            <div class="btn-content">
+              <div class="btn-title">I Applied!</div>
+              <div class="btn-subtitle">Mark as applied</div>
+            </div>
+          </button>
+          
+          <button id="coverBtn" class="action-btn action-btn-cover">
+            <div class="btn-icon">📝</div>
+            <div class="btn-content">
+              <div class="btn-title">Cover Letter & CV</div>
+              <div class="btn-subtitle">Get AI assistance</div>
+            </div>
+          </button>
+          
+          <button id="ignoreBtn" class="action-btn action-btn-ignore">
+            <div class="btn-icon">❌</div>
+            <div class="btn-content">
+              <div class="btn-title">Not Interested</div>
+              <div class="btn-subtitle">Dismiss this job</div>
+            </div>
+          </button>
+        </div>
+      `;
+
+      document.getElementById('saveBtn').onclick = onSave;
+      document.getElementById('applyBtn').onclick = () => {
+        ratingInputs.classList.add('show');
+        ratingInputs.setAttribute('aria-hidden','false');
+      };
+      document.getElementById('confirmApply').onclick = onApply;
+      document.getElementById('ignoreBtn').onclick = () => {
+        resetAnalyseForm();
+        toast('Ignored. Nothing saved.');
+      };
+      document.getElementById('coverBtn').onclick = onCoverClick;
+    }
+
+    const enhancedAnalysisStyles = `
+<style>
+/* Enhanced Details Grid */
+.enhanced-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.detail-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--gray-200);
+  border-radius: 16px;
+  padding: 1.25rem;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.detail-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--gradient-primary);
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
+.detail-card:hover::before {
+  transform: scaleX(1);
+}
+
+.detail-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary-200);
+}
+
+.detail-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.detail-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.detail-card .detail-label {
+  font-size: 0.75rem;
+  color: var(--gray-500);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.detail-card .detail-value {
+  font-size: 1rem;
+  color: var(--gray-900);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.source-link {
+  color: var(--primary-600);
+  text-decoration: none;
+  font-weight: 700;
+  transition: color 0.2s ease;
+}
+
+.source-link:hover {
+  color: var(--primary-700);
+  text-decoration: underline;
+}
+
+/* Enhanced Keywords */
+.enhanced-keyword {
+  display: inline-flex;
+  align-items: center;
+  background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 25px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin: 0.25rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+.enhanced-keyword:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.no-keywords {
+  color: var(--gray-500);
+  font-style: italic;
+  background: var(--gray-100);
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  display: inline-block;
+}
+
+/* Requirements Section */
+.requirements-section {
+  margin: 2rem 0;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--gray-900);
+  margin-bottom: 1rem;
+}
+
+.section-icon {
+  font-size: 1.25rem;
+}
+
+.requirements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.requirements-column {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid var(--gray-200);
+  border-radius: 16px;
+  padding: 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.requirements-column::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--gradient-primary);
+}
+
+.requirements-subtitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--gray-800);
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.requirements-content {
+  color: var(--gray-700);
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+/* Enhanced Action Buttons */
+.enhanced-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px solid transparent;
+  border-radius: 16px;
+  padding: 1.25rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: inherit;
+  position: relative;
+  overflow: hidden;
+}
+
+.action-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--gradient-primary);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.action-btn:hover::before {
+  opacity: 0.1;
+}
+
+.action-btn:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  border-color: var(--primary-200);
+}
+
+.action-btn:active {
+  transform: translateY(-2px);
+}
+
+.btn-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.btn-content {
+  flex: 1;
+  text-align: left;
+}
+
+.btn-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin-bottom: 0.25rem;
+}
+
+.btn-subtitle {
+  font-size: 0.875rem;
+  color: var(--gray-600);
+  line-height: 1.3;
+}
+
+.action-btn-save:hover {
+  border-color: var(--primary-300);
+}
+
+.action-btn-save .btn-icon {
+  color: var(--primary-600);
+}
+
+.action-btn-apply:hover {
+  border-color: var(--success-300);
+}
+
+.action-btn-apply .btn-icon {
+  color: var(--success-600);
+}
+
+.action-btn-cover:hover {
+  border-color: var(--warning-300);
+}
+
+.action-btn-cover .btn-icon {
+  color: var(--warning-600);
+}
+
+.action-btn-ignore:hover {
+  border-color: var(--danger-300);
+}
+
+.action-btn-ignore .btn-icon {
+  color: var(--danger-600);
+}
+
+.rating-inputs.show {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.05), rgba(255, 255, 255, 0.95));
+  border: 2px solid var(--success-200);
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.1);
+}
+
+.rating-inputs .rating-input {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.rating-inputs .rating-input label {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--gray-700);
+}
+
+.rating-inputs .rating-input input {
+  padding: 0.75rem;
+  border: 2px solid var(--gray-200);
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: border-color 0.2s ease;
+}
+
+.rating-inputs .rating-input input:focus {
+  border-color: var(--success-500);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+}
+
+.rating-inputs #confirmApply {
+  background: var(--gradient-success);
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.rating-inputs #confirmApply:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+}
+
+.scores-section .score-card {
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px solid var(--gray-200);
+  transition: all 0.3s ease;
+}
+
+.scores-section .score-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--primary-300);
+  box-shadow: var(--shadow-lg);
+}
+
+@media (max-width: 768px) {
+  .enhanced-details-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .requirements-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .enhanced-actions {
+    grid-template-columns: 1fr;
+  }
+  
+  .action-btn {
+    justify-content: center;
+    text-align: center;
+  }
+  
+  .btn-content {
+    text-align: center;
+  }
+}
+
+  /* ==== ACTION BAR OVERRIDES (horizontal layout) ==== */
+  .enhanced-actions{
+    display:flex !important;
+    flex-wrap:wrap;
+    gap:1rem;
+    margin-top:1.25rem;
+  }
+  .enhanced-actions .action-btn{
+    flex:1 1 calc(25% - 1rem);
+    min-width:220px;
+  }
+  @media (max-width: 1024px){
+    .enhanced-actions .action-btn{ flex:1 1 calc(50% - 1rem); }
+  }
+  @media (max-width: 520px){
+    .enhanced-actions .action-btn{ flex:1 1 100%; }
+  }
+
+  /* Small polish for CV detail in header cards */
+  .detail-value .cv-filename{ font-weight:800; }
+  .detail-value .cv-reason{ color:var(--gray-600); font-size:.9rem; margin-top:.25rem; line-height:1.4; }
+
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+.result-card {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+</style>
+`;
+
+    if (!document.getElementById('enhanced-analysis-styles')) {
+      const styleSheet = document.createElement('style');
+      styleSheet.id = 'enhanced-analysis-styles';
+      styleSheet.textContent = enhancedAnalysisStyles.replace(/<\/?style>/g, '');
+      document.head.appendChild(styleSheet);
+    }
+
+    // ====== Applications send
+    function toApplicationsPayload(a, opts){
+      const salary = a.salary || {};
+      return {
+        source_url: a.source_url || '',
+        canonical_job_url: a.canonical_job_url || a.canonical_url || canonicalize(a.source_url || ''),
+        title: a.title || '',
+        company_name: a.company_name || '',
+        seniority: a.seniority || '',
+        role_type: a.role_type || '',
+        sector: a.sector || '',
+        contact_email: a.contact_email || '',
+        date_posted: a.date_posted || null,
+        date_deadline: a.date_deadline || null,
+        start_date: a.start_date || null,
+
+        salary_min: toNum(salary.min ?? a.salary_min),
+        salary_max: toNum(salary.max ?? a.salary_max),
+        salary_currency: salary.currency ?? a.salary_currency ?? null,
+        salary_period: salary.period ?? a.salary_period ?? null,
+        salary_raw: salary.salary_raw || a.salary_raw || '',
+
+        locations: normalizeListField(a.locations),
+
+        // LOWERCASE schema keys (accept legacy sources)
+        ai_fit_score:       toNum(a.ai_fit_score ?? a.AI_fit_score),
+        ai_alignment_score: toNum(a.ai_alignment_score ?? a.AI_alignment_score),
+        ai_cv_filename:     a.ai_cv_filename ?? a.AI_cv_filename ?? a.AI_cv_recommendation?.filename ?? '',
+        ai_cv_reason:       a.ai_cv_reason   ?? a.AI_cv_reason   ?? a.AI_cv_recommendation?.reason   ?? '',
+
+        key_requirements:   normalizeListField(a.key_requirements),
+        other_requirements: normalizeListField(a.other_requirements),
+        fits:               normalizeListField(a.fits),
+        gaps:               normalizeListField(a.gaps),
+        job_summary:        a.job_summary || '',
+        keywords:           normalizeListField(a.keywords),
+        job_description:    a.job_description || '',
+
+        status: opts.status,
+        applied_date: opts.status === 'Applied' ? (opts.appliedDate || londonTodayISO()) : null,
+        application_effort_rating: toNum(opts.effort ?? a.application_effort_rating),
+        application_chance_rating: toNum(opts.chance ?? a.application_chance_rating),
+        status_update_date: londonTodayISO(),
+      };
+    }
+
+    function fixAIKeys(row){
+      const out = { ...row };
+      if (out.AI_fit_score != null && out.ai_fit_score == null) out.ai_fit_score = toNum(out.AI_fit_score);
+      if (out.AI_alignment_score != null && out.ai_alignment_score == null) out.ai_alignment_score = toNum(out.AI_alignment_score);
+      if (out.AI_cv_filename != null && out.ai_cv_filename == null) out.ai_cv_filename = String(out.AI_cv_filename);
+      if (out.AI_cv_reason != null && out.ai_cv_reason == null) out.ai_cv_reason = String(out.AI_cv_reason);
+      delete out.AI_fit_score;
+      delete out.AI_alignment_score;
+      delete out.AI_cv_filename;
+      delete out.AI_cv_reason;
+      return out;
+    }
+
+    function cleanRowForDB(row){
+      // Only coerce keys that are actually present on the incoming object.
+      const out = fixAIKeys({ ...row });
+
+      const listKeys = ['locations','key_requirements','other_requirements','fits','gaps','keywords'];
+      listKeys.forEach(k => { if (k in out) out[k] = normalizeListField(out[k]); });
+
+      const numKeys = ['ai_fit_score','ai_alignment_score','salary_min','salary_max','application_effort_rating','application_chance_rating'];
+      numKeys.forEach(k => { if (k in out) out[k] = toNum(out[k]); });
+
+      ['applied_date','status_update_date'].forEach(k => { if (k in out) out[k] = toISODateOrNull(out[k]); });
+
+      if ('status' in out) out.status = coerceStatus(out.status);
+
+      if ('CV_used' in out && out.CV_used === '') out.CV_used = null;
+
+      if (!out.application_id) out.application_id = (crypto.randomUUID?.() || String(Date.now()));
+      return out;
+    }
+    async function sbInsert(row){
+      const cleaned = cleanRowForDB(row);
+      if (cleaned.status) cleaned.status_update_date = cleaned.status_update_date || londonTodayISO();
+      console.log('DB WRITE payload', cleaned);
+      const res = await db.from(TABLE).insert(cleaned).select('*').single();
+      console.log('DB RESPONSE', { status: res.status, error: res.error, data: res.data });
+      if (res.error) throw res.error;
+      return res.data;
+    }
+
+    async function sbUpsertOnId(row){
+      const cleaned = cleanRowForDB(row);
+      // status_update_date is now controlled by the caller (only set when status changes)
+      console.log('DB WRITE payload', cleaned);
+      const res = await db.from(TABLE).upsert(cleaned, { onConflict:'application_id' }).select('*').single();
+      console.log('DB RESPONSE', { status: res.status, error: res.error, data: res.data });
+      if (res.error) throw res.error;
+      return res.data;
+    }
+
+    async function sbUpsertOnUnique(row){
+      const cleaned = cleanRowForDB(row);
+      // no automatic status_update_date here
+      console.log('DB WRITE payload', cleaned);
+      const res = await db
+        .from(TABLE)
+        .upsert(cleaned, { onConflict: 'canonical_job_url,company_name,title' })
+        .select('*')
+        .single();
+      console.log('DB RESPONSE', { status: res.status, error: res.error, data: res.data });
+      if (res.error) throw res.error;
+      return res.data;
+    }
+
+    async function onSave(){
+      if (!draft) return;
+      try{
+        const payload = cleanRowForDB(toApplicationsPayload(draft, { status:'Saved' }));
+        await sbUpsertOnUnique(payload);
+        toast('Saved for later ✅');
+        await refreshData(true);
+        resetAnalyseForm();
+      }catch(e){ console.error(e); toast('Save failed'); }
+    }
+
+    async function onApply(){
+      if (!draft) return;
+      try{
+        const effortRaw = effortInput.value;
+        const chanceRaw = chanceInput.value;
+        const cvUsed = document.getElementById('cvUsedAnalyse')?.value || '';
+        const payload = toApplicationsPayload(draft, {
+          status:'Applied',
+          effort: effortRaw,
+          chance: chanceRaw,
+          appliedDate: londonTodayISO()
+        });
+        payload.CV_used = cvUsed;
+        await sbUpsertOnUnique(cleanRowForDB(payload));
+        toast('Marked as applied 🎉');
+        ratingInputs.classList.remove('show'); ratingInputs.setAttribute('aria-hidden','true');
+        await refreshData(true);
+        resetAnalyseForm();
+      }catch(e){ console.error(e); toast('Apply failed'); }
+    }
+
+    function resetAnalyseForm(){
+      // Clear the main form inputs
+      if (jobText) jobText.value = '';
+      if (jobSourceUrl) jobSourceUrl.value = '';
+      
+      // Reset character counter
+      if (jobCharCount) jobCharCount.textContent = '0 / 30000';
+      
+      // Reset effort and chance ratings to defaults
+      if (effortInput) effortInput.value = '7';
+      if (chanceInput) chanceInput.value = '6';
+      const cvAnalyseInput = document.getElementById('cvUsedAnalyse');
+      if (cvAnalyseInput) cvAnalyseInput.value = '';
+
+      // Hide the result card and reset state
+      if (resultCard) resultCard.style.display = 'none';
+      if (resultContent) resultContent.style.display = 'none';
+      if (loadingState) loadingState.style.display = 'none';
+      
+      // Reset draft and cover letter state
+      draft = null;
+      lastCover = null;
+      
+      // Hide rating inputs if they're showing
+      if (ratingInputs) {
+        ratingInputs.classList.remove('show');
+        ratingInputs.setAttribute('aria-hidden', 'true');
+      }
+      
+      // Hide cover section if it's showing
+      if (coverSection) {
+        coverSection.classList.remove('show');
+        coverSection.setAttribute('aria-hidden', 'true');
+      }
+    }
+
+    // ====== Cover letter & CV
+    async function onCoverClick(){
+      if (!draft) return toast('Analyse a job first');
+      coverSection.classList.add('show');
+      coverContent.classList.remove('show');
+      coverStatus.innerHTML = '<span class="spinner"></span> Preparing cover letter & CV tips…';
+      try{
+        const fd = new FormData();
+        fd.append('job_json', JSON.stringify(draft));
+        if (CV_FOLDER_ID) fd.append('cv_folder_id', CV_FOLDER_ID);
+        if (GUIDE_DOC_ID) fd.append('guide_doc_id', GUIDE_DOC_ID);
+        const data = await postForm(URLS[currentEnv].cover, fd);
+        lastCover = Array.isArray(data) ? data[0] : data || {};
+        const cv = lastCover.selected_cv || {};
+        const tweaks = Array.isArray(lastCover.cv_tweaks) ? lastCover.cv_tweaks : [];
+        const letter = lastCover.cover_letter || {};
+
+        cvNameEl.textContent = cv.filename || '—';
+        cvWhyEl.textContent = cv.reason || '—';
+        const link = letter.doc_url || cv.doc_url;
+        coverDocLinkEl.innerHTML = link ? `<a href="${link}" target="_blank" rel="noopener">${escapeHtml(link)}</a>` : '—';
+        cvTweaksEl.textContent = tweaks.length ? bullets(tweaks) : 'No tweaks suggested.';
+        coverPreviewEl.textContent = letter.plain_text || (letter.html ? letter.html : 'No preview provided.');
+        if (link){ openDocBtn.style.display='inline-flex'; openDocBtn.onclick = ()=>window.open(link,'_blank','noopener'); }
+        else openDocBtn.style.display='none';
+        copyCoverBtn.onclick = async ()=>{ try{ await navigator.clipboard.writeText(letter.plain_text || letter.html || ''); toast('Cover letter copied'); }catch{ toast('Copy failed'); } };
+
+        coverStatus.textContent = 'Generated ✓';
+        coverContent.classList.add('show');
+      }catch(e){ console.error(e); coverStatus.textContent = 'Generation failed. Check n8n logs / CORS.'; }
+    }
+
+    /* ######################## END: ANALYSE FLOW (JS) ############### */
+
+    /* ############################################################
+       BEGIN: APPLICATIONS RENDER (JS)
+    ############################################################ */
+    // ====== Applications page
+    statusFilter.onchange = renderApplications;
+    sortFilter.onchange = renderApplications;
+
+    function renderApplications(){
+      let arr = [...applicationsList];
+
+      const s = statusFilter.value;
+      if (s !== 'all') arr = arr.filter(a => normaliseStatus(a.status) === s);
+
+      const sr = searchState.applications.results;
+      if (sr && sr.hasQuery) {
+        const { matches, others } = splitBySearchMatch(arr, sr);
+        const allowedIds = new Set(arr.map(item => item.id));
+        const rankedMatches = (matches || []).filter(item => allowedIds.has(item.id));
+        rankedMatches.forEach((m, i) => {
+          if (!m.searchMeta) m.searchMeta = { hasMatch: true };
+          m.searchMeta.rank = i;
+        });
+
+        const sort = sortFilter.value;
+        let othersSorted = [...(others || [])];
+        if (sort === 'date-desc') {
+          othersSorted.sort((a,b)=> new Date(b.appliedDate||'2000-01-01') - new Date(a.appliedDate||'2000-01-01'));
+        } else if (sort === 'date-asc') {
+          othersSorted.sort((a,b)=> new Date(a.appliedDate||'2000-01-01') - new Date(b.appliedDate||'2000-01-01'));
+        } else if (sort === 'fit-desc') {
+          othersSorted.sort((a,b)=> (b.fitScore||0) - (a.fitScore||0));
+        } else if (sort === 'company') {
+          othersSorted.sort((a,b)=> (a.company||'').localeCompare(b.company||''));
+        }
+
+        arr = [...rankedMatches, ...othersSorted];
+
+        updateSearchInfo('applications', sr.totalFound, sr.originalCount);
+        scrollGridToTop(applicationsGrid);
+      } else {
+        hideSearchInfo('applications');
+        const sort = sortFilter.value;
+        if (sort==='date-desc') {
+          arr.sort((a,b)=> new Date(b.appliedDate||'2000-01-01') - new Date(a.appliedDate||'2000-01-01'));
+        } else if (sort==='date-asc') {
+          arr.sort((a,b)=> new Date(a.appliedDate||'2000-01-01') - new Date(b.appliedDate||'2000-01-01'));
+        } else if (sort==='fit-desc') {
+          arr.sort((a,b)=> (b.fitScore||0) - (a.fitScore||0));
+        } else if (sort==='company') {
+          arr.sort((a,b)=> (a.company||'').localeCompare(b.company||''));
+        } else if (sort==='relevance') {
+          // nothing to do without a query
+        }
+      }
+
+      const noResults = document.getElementById('applicationsNoResults');
+      if (arr.length === 0) {
+        applicationsGrid.innerHTML = '';
+        if (noResults) noResults.style.display = 'block';
+      } else {
+        if (noResults) noResults.style.display = 'none';
+        applicationsGrid.innerHTML = arr.map(app => {
+          const html = cardHTML(app, false);
+          return app.searchMeta?.hasMatch ? html.replace('class="application-card', 'class="application-card lift-once') : html;
+        }).join('');
+      }
+    }
+
+    function cardHTML(app, isSaved=false){
+      const matches = app.searchMeta?.matches || [];
+      const isHighlighted = matches.length > 0;
+      const slug = normaliseStatus(app.status);
+      const cls  = STATUS_STYLE[slug] || STATUS_STYLE.default;
+      const lab  = statusLabel(slug);
+      const accent = statusColor(slug);
+
+      return `
+        <div class="application-card ${isHighlighted ? 'search-highlight' : ''}"
+             style="--status-color:${accent}"
+             onclick="openApplicationModal('${app.id}')">
+
+          <div class="application-status ${cls}">${escapeHtml(lab)}</div>
+
+          <div class="application-title">${highlightMatches(app.title, matches, 'title')}</div>
+          <div class="application-company">${highlightMatches(app.company, matches, 'company')}</div>
+
+          <div class="application-detail">Sector: ${highlightMatches(app.sector || '—', matches, 'sector')}</div>
+          <div class="application-detail">Role Type: ${highlightMatches(app.roleType || '—', matches, 'roleType')}</div>
+          <div class="application-detail">Start Date: ${formatDate(app.startDate)}</div>
+          <div class="application-detail">Status Updated: ${formatDate(app.statusUpdateDate)}</div>
+
+          <div style="margin-top:.6rem; display:flex; gap:.5rem; flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm"
+              onclick="event.stopPropagation(); openEditModal('${app.id}')">✏️ Edit</button>
+            ${isSaved ? `<button class="btn btn-success btn-sm"
+              onclick="event.stopPropagation(); markSavedApplied('${app.id}')">Mark applied</button>` : ''}
+            <button class="btn btn-danger btn-sm"
+              onclick="event.stopPropagation(); requestDelete('${app.id}', '${isSaved ? 'saved' : 'applied'}')">🗑️ Delete</button>
+          </div>
+        </div>
+      `;
+    }
+
+    window.openApplicationModal = function(id){
+      const raw = getRawRowById(id);
+      if (!raw) return;
+      const card = toCardShape(raw);
+
+      modalTitle.textContent = raw.title || 'Untitled role';
+
+      const bullet = arr => asArray(arr).map(x=>`• ${escapeHtml(x)}`).join('<br/>') || '—';
+      const aiFitRaw = toNum(raw.ai_fit_score ?? raw.AI_fit_score);
+      const aiAlignRaw = toNum(raw.ai_alignment_score ?? raw.AI_alignment_score);
+      
+      const fit = Math.max(0, Math.min(100, Number(aiFitRaw ?? 0)));
+      const align = Math.max(0, Math.min(100, Number(aiAlignRaw ?? 0)));
+
+      const slug = normaliseStatus(card.status);
+      const statusClass = STATUS_STYLE[slug] || STATUS_STYLE.default;
+      const statusLabelText = statusLabel(slug);
+      const statusBadgeColor = statusColor(slug);
+
+      modalBody.innerHTML = `
+  <div class="edit-modal-enhanced">
+    <div class="edit-modal-header">
+      <h3 class="edit-modal-title">Edit Application</h3>
+      <p class="edit-modal-subtitle">Update your application details and tracking information</p>
+    </div>
+
+    <form id="editForm" class="edit-form-enhanced">
+      <!-- Hidden Fields -->
+      <input type="hidden" name="application_id" value="${escapeHtml(raw.application_id || '')}"/>
+      <input type="hidden" name="canonical_job_url" value="${escapeHtml(raw.canonical_job_url || '')}"/>
+      <input type="hidden" name="__prev_status" value="${escapeHtml(prevStatus)}"/>
+
+      <div class="edit-form-sections">
+        <!-- Basic Information Section -->
+        <div class="edit-form-section">
+          <div class="edit-section-header">
+            <div class="edit-section-icon">💼</div>
+            <div>
+              <h4 class="edit-section-title">Basic Information</h4>
+              <p class="edit-section-description">Core details about this opportunity</p>
+            </div>
+          </div>
+          
+          <div class="edit-form-grid">
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">📋</span>Job Title</span>
+              </label>
+              <input name="title" class="edit-form-input" value="${escapeHtml(raw.title||'')}" placeholder="e.g. Senior Software Engineer"/>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">🏢</span>Company</span>
+              </label>
+              <input name="company_name" class="edit-form-input" value="${escapeHtml(raw.company_name||'')}" placeholder="e.g. Google, Microsoft"/>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">🔗</span>Source URL</span>
+              </label>
+              <input name="source_url" type="url" class="edit-form-input" value="${escapeHtml(raw.source_url||'')}" placeholder="https://..."/>
+              <div class="edit-field-help">Original job posting URL</div>
+            </div>
+
+            <div class="edit-form-field edit-status-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">📊</span>Status</span>
+              </label>
+              <select name="status" class="edit-form-select"></select>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">👔</span>Seniority</span>
+              </label>
+              <select name="seniority" class="edit-form-select">
+                <option value="">Select seniority...</option>
+                <option value="Entry Level" ${raw.seniority === 'Entry Level' ? 'selected' : ''}>Entry Level</option>
+                <option value="Junior" ${raw.seniority === 'Junior' ? 'selected' : ''}>Junior</option>
+                <option value="Mid-level" ${raw.seniority === 'Mid-level' ? 'selected' : ''}>Mid-level</option>
+                <option value="Senior" ${raw.seniority === 'Senior' ? 'selected' : ''}>Senior</option>
+                <option value="Lead" ${raw.seniority === 'Lead' ? 'selected' : ''}>Lead</option>
+                <option value="Principal" ${raw.seniority === 'Principal' ? 'selected' : ''}>Principal</option>
+                <option value="Director" ${raw.seniority === 'Director' ? 'selected' : ''}>Director</option>
+              </select>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">🎯</span>Role Type</span>
+              </label>
+              <select name="role_type" class="edit-form-select">
+                <option value="">Select role type...</option>
+                <option value="Full-time" ${raw.role_type === 'Full-time' ? 'selected' : ''}>Full-time</option>
+                <option value="Part-time" ${raw.role_type === 'Part-time' ? 'selected' : ''}>Part-time</option>
+                <option value="Contract" ${raw.role_type === 'Contract' ? 'selected' : ''}>Contract</option>
+                <option value="Internship" ${raw.role_type === 'Internship' ? 'selected' : ''}>Internship</option>
+                <option value="Graduate" ${raw.role_type === 'Graduate' ? 'selected' : ''}>Graduate</option>
+                <option value="Consulting" ${raw.role_type === 'Consulting' ? 'selected' : ''}>Consulting</option>
+                <option value="Remote" ${raw.role_type === 'Remote' ? 'selected' : ''}>Remote</option>
+              </select>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">🏭</span>Sector</span>
+              </label>
+              <input name="sector" class="edit-form-input" value="${escapeHtml(raw.sector||'')}" placeholder="e.g. Technology, Finance, Healthcare"/>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">📧</span>Contact Email</span>
+              </label>
+              <input name="contact_email" type="email" class="edit-form-input" value="${escapeHtml(raw.contact_email||'')}" placeholder="recruiter@company.com"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dates & Timeline Section -->
+        <div class="edit-form-section">
+          <div class="edit-section-header">
+            <div class="edit-section-icon">📅</div>
+            <div>
+              <h4 class="edit-section-title">Timeline & Dates</h4>
+              <p class="edit-section-description">Important dates and deadlines</p>
+            </div>
+          </div>
+
+          <div class="edit-form-grid">
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">📅</span>Applied Date</span>
+              </label>
+              <input name="applied_date" type="date" class="edit-form-input" value="${escapeHtml(raw.applied_date||'')}"/>
+              <div class="edit-field-help">Leave blank for saved applications</div>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">📝</span>Date Posted</span>
+              </label>
+              <input name="date_posted" type="date" class="edit-form-input" value="${escapeHtml(raw.date_posted||'')}"/>
+              <div class="edit-field-help">When the job was originally posted</div>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">⏰</span>Application Deadline</span>
+              </label>
+              <input name="date_deadline" type="date" class="edit-form-input" value="${escapeHtml(raw.date_deadline||'')}"/>
+              <div class="edit-field-help">Last day to apply</div>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">🚀</span>Start Date</span>
+              </label>
+              <input name="start_date" type="date" class="edit-form-input" value="${escapeHtml(raw.start_date||'')}"/>
+              <div class="edit-field-help">Expected role start date</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Location Section -->
+        <div class="edit-form-section">
+          <div class="edit-section-header">
+            <div class="edit-section-icon">📍</div>
+            <div>
+              <h4 class="edit-section-title">Location Details</h4>
+              <p class="edit-section-description">Geographic and workplace information</p>
+            </div>
+          </div>
+
+          <div class="edit-form-grid">
+            <div class="edit-form-field full-width">
+              <label class="edit-field-label">
+                <span><span class="field-icon">🌍</span>Locations</span>
+              </label>
+              <input name="locations" class="edit-form-input" value="${escapeHtml(listToComma(raw.locations))}" placeholder="e.g. London, Remote, New York"/>
+              <div class="edit-field-help">Separate multiple locations with commas</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Compensation Section -->
+        <div class="edit-form-section">
+          <div class="edit-section-header">
+            <div class="edit-section-icon">💰</div>
+            <div>
+              <h4 class="edit-section-title">Compensation</h4>
+              <p class="edit-section-description">Salary and benefits information</p>
+            </div>
+          </div>
+
+          <div class="edit-form-grid">
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">💵</span>Currency</span>
+              </label>
+              <select name="salary_currency" class="edit-form-select">
+                <option value="">Select currency</option>
+                <option value="£" ${raw.salary_currency === '£' ? 'selected' : ''}>£ GBP</option>
+                <option value="$" ${raw.salary_currency === '$' ? 'selected' : ''}>$ USD</option>
+                <option value="€" ${raw.salary_currency === '€' ? 'selected' : ''}>€ EUR</option>
+              </select>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">📈</span>Minimum Salary</span>
+              </label>
+              <input name="salary_min" type="number" class="edit-form-input" value="${escapeHtml(raw.salary_min||'')}" step="1000" placeholder="50000"/>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">📊</span>Maximum Salary</span>
+              </label>
+              <input name="salary_max" type="number" class="edit-form-input" value="${escapeHtml(raw.salary_max||'')}" step="1000" placeholder="70000"/>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">📅</span>Period</span>
+              </label>
+              <select name="salary_period" class="edit-form-select">
+                <option value="">Select period</option>
+                <option value="per annum" ${raw.salary_period === 'per annum' ? 'selected' : ''}>Per Annum</option>
+                <option value="per month" ${raw.salary_period === 'per month' ? 'selected' : ''}>Per Month</option>
+                <option value="per hour" ${raw.salary_period === 'per hour' ? 'selected' : ''}>Per Hour</option>
+              </select>
+            </div>
+
+            <div class="edit-form-field full-width">
+              <label class="edit-field-label">
+                <span><span class="field-icon">💰</span>Raw Salary Text</span>
+              </label>
+              <input name="salary_raw" class="edit-form-input" value="${escapeHtml(raw.salary_raw||'')}" placeholder="e.g. £50,000 - £70,000 per annum + benefits"/>
+              <div class="edit-field-help">Original salary text as posted (overrides structured salary fields)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI Analysis & Ratings Section -->
+        <div class="edit-form-section">
+          <div class="edit-section-header">
+            <div class="edit-section-icon">🤖</div>
+            <div>
+              <h4 class="edit-section-title">AI Analysis & Personal Ratings</h4>
+              <p class="edit-section-description">Automated insights and your personal assessments</p>
+            </div>
+          </div>
+
+          <div class="edit-form-grid">
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">🎯</span>AI Fit Score</span>
+              </label>
+              <input name="ai_fit_score" type="number" class="edit-form-input" min="0" max="100" value="${escapeHtml(raw.ai_fit_score ?? '')}" placeholder="85"/>
+              <div class="edit-field-help">AI-calculated fit percentage (0-100)</div>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">🎨</span>AI Alignment Score</span>
+              </label>
+              <input name="ai_alignment_score" type="number" class="edit-form-input" min="0" max="100" value="${escapeHtml(raw.ai_alignment_score ?? '')}" placeholder="75"/>
+              <div class="edit-field-help">AI-calculated alignment percentage (0-100)</div>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">📄</span>AI Recommended CV</span>
+              </label>
+              <input name="ai_cv_filename" class="edit-form-input" value="${escapeHtml(raw.ai_cv_filename||'')}" placeholder="Tech_Resume_v3.pdf"/>
+              <div class="edit-field-help">AI-suggested CV file name</div>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">💭</span>CV Recommendation Reason</span>
+              </label>
+              <textarea name="ai_cv_reason" class="edit-form-textarea" rows="2" placeholder="Why this CV is recommended for this role...">${escapeHtml(raw.ai_cv_reason||'')}</textarea>
+              <div class="edit-field-help">AI explanation for CV choice</div>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">⚡</span>Application Effort</span>
+              </label>
+              <input name="application_effort_rating" type="number" class="edit-form-input" min="0" max="10" step="1" value="${escapeHtml(raw.application_effort_rating ?? '')}" placeholder="7"/>
+              <div class="edit-field-help">Your effort level (1-10 scale)</div>
+            </div>
+
+            <div class="edit-form-field">
+              <label class="edit-field-label">
+                <span><span class="field-icon">🎲</span>Success Chance</span>
+              </label>
+              <input name="application_chance_rating" type="number" class="edit-form-input" min="0" max="10" step="1" value="${escapeHtml(raw.application_chance_rating ?? '')}" placeholder="6"/>
+              <div class="edit-field-help">Your estimated success chance (1-10 scale)</div>
+            </div>
+
+            <div class="edit-form-field full-width">
+              <label class="edit-field-label">
+                <span><span class="field-icon">📄</span>CV Used</span>
+              </label>
+              <input name="CV_used" class="edit-form-input" value="${escapeHtml(raw.CV_used||'')}" placeholder="e.g. Tech_CV_v3.pdf, Software_Engineer_Resume.docx"/>
+              <div class="edit-field-help">Record which CV version you actually used</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Requirements & Analysis Section -->
+        <div class="edit-form-section">
+          <div class="edit-section-header">
+            <div class="edit-section-icon">📋</div>
+            <div>
+              <h4 class="edit-section-title">Requirements & Analysis</h4>
+              <p class="edit-section-description">Job requirements and fit analysis</p>
+            </div>
+          </div>
+
+          <div class="edit-form-grid">
+            <div class="edit-form-field full-width">
+              <label class="edit-field-label">
+                <span><span class="field-icon">⭐</span>Key Requirements</span>
+              </label>
+              <textarea name="key_requirements" class="edit-form-textarea" rows="3" placeholder="Essential requirements (one per line or separated by semicolons)">${escapeHtml(listToSemicolon(raw.key_requirements))}</textarea>
+              <div class="edit-field-help">Must-have requirements from the job posting</div>
+            </div>
+
+            <div class="edit-form-field full-width">
+              <label class="edit-field-label">
+                <span><span class="field-icon">📝</span>Other Requirements</span>
+              </label>
+              <textarea name="other_requirements" class="edit-form-textarea" rows="3" placeholder="Nice-to-have requirements (one per line or separated by semicolons)">${escapeHtml(listToSemicolon(raw.other_requirements))}</textarea>
+              <div class="edit-field-help">Preferred qualifications and nice-to-haves</div>
+            </div>
+
+            <div class="edit-form-field full-width">
+              <label class="edit-field-label">
+                <span><span class="field-icon">✅</span>Perfect Fits</span>
+              </label>
+              <textarea name="fits" class="edit-form-textarea" rows="2" placeholder="Your strengths that match this role (separated by semicolons)">${escapeHtml(listToSemicolon(raw.fits))}</textarea>
+              <div class="edit-field-help">Your strengths that align with this role</div>
+            </div>
+
+            <div class="edit-form-field full-width">
+              <label class="edit-field-label">
+                <span><span class="field-icon">⚠️</span>Areas to Address</span>
+              </label>
+              <textarea name="gaps" class="edit-form-textarea" rows="2" placeholder="Skills or experience gaps to work on (separated by semicolons)">${escapeHtml(listToSemicolon(raw.gaps))}</textarea>
+              <div class="edit-field-help">Skills or experience you need to develop</div>
+            </div>
+
+            <div class="edit-form-field full-width">
+              <label class="edit-field-label">
+                <span><span class="field-icon">🏷️</span>Keywords</span>
+              </label>
+              <input name="keywords" class="edit-form-input" value="${escapeHtml(listToComma(raw.keywords))}" placeholder="Python, React, Machine Learning, Agile"/>
+              <div class="edit-field-help">Relevant job keywords and skills (separate with commas)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Job Content Section -->
+        <div class="edit-form-section">
+          <div class="edit-section-header">
+            <div class="edit-section-icon">📝</div>
+            <div>
+              <h4 class="edit-section-title">Job Content</h4>
+              <p class="edit-section-description">Summary and full job description</p>
+            </div>
+          </div>
+
+          <div class="edit-form-grid">
+            <div class="edit-form-field full-width">
+              <label class="edit-field-label">
+                <span><span class="field-icon">📄</span>Job Summary</span>
+              </label>
+              <textarea name="job_summary" class="edit-form-textarea" rows="3" placeholder="Brief overview of the role and key responsibilities...">${escapeHtml(raw.job_summary||'')}</textarea>
+              <div class="edit-field-help">Concise summary of what this job involves</div>
+            </div>
+
+            <div class="edit-form-field full-width">
+              <label class="edit-field-label">
+                <span><span class="field-icon">📋</span>Full Job Description</span>
+              </label>
+              <textarea name="job_description" class="edit-form-textarea large" rows="6" placeholder="Complete job posting including requirements, benefits, etc...">${escapeHtml(raw.job_description||'')}</textarea>
+              <div class="edit-field-help">Complete job posting for future reference</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+
+    <div class="edit-modal-actions">
+      <button class="edit-btn-enhanced edit-btn-primary" type="submit" form="editForm">
+        <span class="edit-btn-icon">💾</span>
+        <span>Save Changes</span>
+      </button>
+      <button class="edit-btn-enhanced edit-btn-secondary" type="button" id="cancelEdit">
+        <span class="edit-btn-icon">✕</span>
+        <span>Cancel</span>
+      </button>
+    </div>
+  </div>
+`;
+
+      // Add the toggle function for job description
+      window.toggleDescription = function(button) {
+        const content = button.nextElementSibling;
+        const icon = button.querySelector('.toggle-icon');
+        const isVisible = content.style.display !== 'none';
+        
+        content.style.display = isVisible ? 'none' : 'block';
+        icon.textContent = isVisible ? '▼' : '▲';
+      };
+
+      document.getElementById('editBtn').onclick = () => openEditModal(id);
+      modal.classList.add('show');
+      modal.setAttribute('aria-hidden', 'false');
+    };
+
+    // Add the enhanced CSS styles - add this to your existing CSS
+    const enhancedModalStyles = `
+    <style>
+    .enhanced-modal-container {
+      padding: 0;
+      max-width: none;
+    }
+
+    .modal-header-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 2px solid var(--gray-100);
+      gap: 1rem;
+    }
+
+    .company-info {
+      flex: 1;
+    }
+
+    .company-name {
+      font-size: 1.8rem;
+      font-weight: 900;
+      color: var(--gray-900);
+      margin: 0 0 0.5rem 0;
+      line-height: 1.2;
+    }
+
+    .role-title {
+      font-size: 1.2rem;
+      color: var(--gray-600);
+      font-weight: 600;
+      line-height: 1.3;
+    }
+
+    .status-container {
+      flex-shrink: 0;
+      margin-top: 0.25rem;
+    }
+
+    .modal-header-section .application-status {
+      position: static;
+      top: auto;
+      right: auto;
+      margin: 0;
+      padding: 0.5rem 1rem;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .scores-showcase {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+      padding: 1.5rem;
+      background: linear-gradient(135deg, var(--gray-50), rgba(255,255,255,0.8));
+      border-radius: 16px;
+      border: 1px solid var(--gray-200);
+    }
+
+    .score-item {
+      text-align: center;
+    }
+
+    .score-item .score-label {
+      font-size: 0.9rem;
+      color: var(--gray-600);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+
+    .score-item .score-value {
+      font-size: 2.5rem;
+      font-weight: 900;
+      color: var(--gray-900);
+      line-height: 1;
+      margin-bottom: 0.75rem;
+    }
+
+    .score-item .score-bar {
+      height: 8px;
+      background: var(--gray-200);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .score-item .score-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 1s ease-out;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .info-item {
+      background: rgba(255,255,255,0.7);
+      border: 1px solid var(--gray-200);
+      border-radius: 12px;
+      padding: 1rem;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .info-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .info-item.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .info-label {
+      font-size: 0.75rem;
+      color: var(--gray-500);
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+
+    .info-value {
+      font-size: 1rem;
+      color: var(--gray-900);
+      font-weight: 600;
+      line-height: 1.3;
+    }
+
+    .source-link {
+      color: var(--primary-600);
+      text-decoration: none;
+      font-weight: 700;
+      transition: color 0.2s ease;
+    }
+
+    .source-link:hover {
+      color: var(--primary-700);
+      text-decoration: underline;
+    }
+
+    .analysis-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .analysis-column {
+      background: rgba(255,255,255,0.8);
+      border: 1px solid var(--gray-200);
+      border-radius: 16px;
+      padding: 1.5rem;
+    }
+
+    .analysis-title {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--gray-900);
+      margin: 0 0 1rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .analysis-content {
+      color: var(--gray-700);
+      line-height: 1.6;
+      font-size: 0.95rem;
+    }
+
+    .fits-content {
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.05), rgba(255,255,255,0.8));
+      padding: 1rem;
+      border-radius: 8px;
+      border-left: 4px solid var(--success-500);
+    }
+
+    .gaps-content {
+      background: linear-gradient(135deg, rgba(245, 101, 101, 0.05), rgba(255,255,255,0.8));
+      padding: 1rem;
+      border-radius: 8px;
+      border-left: 4px solid var(--warning-500);
+    }
+
+    .summary-section, .keywords-section, .cv-section {
+      margin-bottom: 2rem;
+    }
+
+    .section-title {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--gray-900);
+      margin: 0 0 1rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .summary-content {
+      background: linear-gradient(135deg, var(--primary-50), rgba(255,255,255,0.9));
+      border: 1px solid var(--primary-200);
+      border-radius: 12px;
+      padding: 1.5rem;
+      color: var(--gray-700);
+      line-height: 1.6;
+      font-size: 1rem;
+    }
+
+    .keywords-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .keyword-tag {
+      background: var(--primary-500);
+      color: white;
+      padding: 0.4rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: transform 0.2s ease;
+    }
+
+    .keyword-tag:hover {
+      transform: translateY(-1px);
+    }
+
+    .no-keywords {
+      color: var(--gray-500);
+      font-style: italic;
+    }
+
+    .cv-section {
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(255,255,255,0.9));
+      border: 1px solid var(--primary-200);
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+
+    .cv-filename {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--primary-700);
+      margin-bottom: 0.5rem;
+    }
+
+    .cv-reason {
+      color: var(--gray-600);
+      line-height: 1.5;
+    }
+
+    .description-section {
+      margin-bottom: 2rem;
+    }
+
+    .description-toggle {
+      width: 100%;
+      background: var(--gray-50);
+      border: 1px solid var(--gray-200);
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .description-toggle:hover {
+      background: var(--gray-100);
+      transform: translateY(-1px);
+    }
+
+    .toggle-icon {
+      font-size: 0.9rem;
+      color: var(--gray-500);
+      transition: transform 0.2s ease;
+    }
+
+    .description-content {
+      background: rgba(255,255,255,0.8);
+      border: 1px solid var(--gray-200);
+      border-top: none;
+      border-radius: 0 0 12px 12px;
+      padding: 1.5rem;
+      color: var(--gray-700);
+      line-height: 1.6;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 1rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--gray-200);
+      flex-wrap: wrap;
+    }
+
+    .modal-actions .btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border-radius: 12px;
+      font-weight: 700;
+      transition: all 0.2s ease;
+    }
+
+    .modal-actions .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    @media (max-width: 768px) {
+      .modal-header-section {
+        flex-direction: column;
+        gap: 1rem;
+      }
+      
+      .status-container {
+        align-self: flex-start;
+      }
+      
+      .scores-showcase {
+        grid-template-columns: 1fr;
+      }
+      
+      .analysis-section {
+        grid-template-columns: 1fr;
+      }
+      
+      .info-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .keywords-container {
+        justify-content: flex-start;
+      }
+      
+      .modal-actions {
+        flex-direction: column;
+      }
+      
+      .modal-actions .btn {
+        justify-content: center;
+      }
+    }
+    </style>
+    `;
+
+    // Add the styles to the document head
+    if (!document.getElementById('enhanced-modal-styles')) {
+      const styleSheet = document.createElement('style');
+      styleSheet.id = 'enhanced-modal-styles';
+      styleSheet.textContent = enhancedModalStyles.replace(/<\/?style>/g, '');
+      document.head.appendChild(styleSheet);
+    }
+
+    function openEditModal(id){
+      const raw = getRawRowById(id);
+      if (!raw){ toast('Could not load item'); return; }
+
+      const card = toCardShape(raw);
+      const prevStatus = raw.status || (card.status==='applied' ? 'Applied' : 'Saved');
+
+      modalTitle.textContent = `Edit Application`;
+      modalBody.innerHTML = `
+        <div class="edit-modal-enhanced">
+          <div class="edit-modal-header">
+            <h3 class="edit-modal-title">Edit Application</h3>
+            <p class="edit-modal-subtitle">Update your application details and tracking information</p>
+          </div>
+
+          <form id="editForm" class="edit-form-enhanced">
+            <!-- Hidden Fields -->
+            <input type="hidden" name="application_id" value="${escapeHtml(raw.application_id || '')}"/>
+            <input type="hidden" name="canonical_job_url" value="${escapeHtml(raw.canonical_job_url || '')}"/>
+            <input type="hidden" name="source_url" value="${escapeHtml(raw.source_url || '')}"/>
+            <input type="hidden" name="__prev_status" value="${escapeHtml(prevStatus)}"/>
+
+            <div class="edit-form-sections">
+              <!-- Basic Information Section -->
+              <div class="edit-form-section">
+                <div class="edit-section-header">
+                  <div class="edit-section-icon">💼</div>
+                  <div>
+                    <h4 class="edit-section-title">Basic Information</h4>
+                    <p class="edit-section-description">Core details about this opportunity</p>
+                  </div>
+                </div>
+                
+                <div class="edit-form-grid">
+                  <div class="edit-form-field">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">📋</span>Job Title</span>
+                    </label>
+                    <input name="title" class="edit-form-input" value="${escapeHtml(raw.title||'')}" placeholder="e.g. Senior Software Engineer"/>
+                  </div>
+
+                  <div class="edit-form-field">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">🏢</span>Company</span>
+                    </label>
+                    <input name="company_name" class="edit-form-input" value="${escapeHtml(raw.company_name||'')}" placeholder="e.g. Google, Microsoft"/>
+                  </div>
+
+                  <div class="edit-form-field edit-status-field">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">📊</span>Status</span>
+                    </label>
+                    <select name="status" class="edit-form-select"></select>
+                  </div>
+
+                  <div class="edit-form-field">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">📅</span>Applied Date</span>
+                    </label>
+                    <input name="applied_date" type="date" class="edit-form-input" value="${escapeHtml(raw.applied_date||'')}"/>
+                    <div class="edit-field-help">Leave blank for saved applications</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Location & Details Section -->
+              <div class="edit-form-section">
+                <div class="edit-section-header">
+                  <div class="edit-section-icon">📍</div>
+                  <div>
+                    <h4 class="edit-section-title">Location & Details</h4>
+                    <p class="edit-section-description">Geographic and workplace information</p>
+                  </div>
+                </div>
+
+                <div class="edit-form-grid">
+                  <div class="edit-form-field full-width">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">🌍</span>Locations</span>
+                    </label>
+                    <input name="locations" class="edit-form-input" value="${escapeHtml(listToComma(raw.locations))}" placeholder="e.g. London, Remote, New York"/>
+                    <div class="edit-field-help">Separate multiple locations with commas</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Compensation Section -->
+              <div class="edit-form-section">
+                <div class="edit-section-header">
+                  <div class="edit-section-icon">💰</div>
+                  <div>
+                    <h4 class="edit-section-title">Compensation</h4>
+                    <p class="edit-section-description">Salary and benefits information</p>
+                  </div>
+                </div>
+
+                <div class="edit-form-grid">
+                  <div class="edit-form-field">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">💵</span>Currency</span>
+                    </label>
+                    <select name="salary_currency" class="edit-form-select">
+                      <option value="">Select currency</option>
+                      <option value="£" ${raw.salary_currency === '£' ? 'selected' : ''}>£ GBP</option>
+                      <option value="$" ${raw.salary_currency === '$' ? 'selected' : ''}>$ USD</option>
+                      <option value="€" ${raw.salary_currency === '€' ? 'selected' : ''}>€ EUR</option>
+                    </select>
+                  </div>
+
+                  <div class="edit-form-field">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">📈</span>Minimum Salary</span>
+                    </label>
+                    <input name="salary_min" type="number" class="edit-form-input" value="${escapeHtml(raw.salary_min||'')}" step="1000" placeholder="50000"/>
+                  </div>
+
+                  <div class="edit-form-field">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">📊</span>Maximum Salary</span>
+                    </label>
+                    <input name="salary_max" type="number" class="edit-form-input" value="${escapeHtml(raw.salary_max||'')}" step="1000" placeholder="70000"/>
+                  </div>
+
+                  <div class="edit-form-field">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">📅</span>Period</span>
+                    </label>
+                    <select name="salary_period" class="edit-form-select">
+                      <option value="">Select period</option>
+                      <option value="per annum" ${raw.salary_period === 'per annum' ? 'selected' : ''}>Per Annum</option>
+                      <option value="per month" ${raw.salary_period === 'per month' ? 'selected' : ''}>Per Month</option>
+                      <option value="per hour" ${raw.salary_period === 'per hour' ? 'selected' : ''}>Per Hour</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- AI Analysis & Ratings Section -->
+              <div class="edit-form-section">
+                <div class="edit-section-header">
+                  <div class="edit-section-icon">🤖</div>
+                  <div>
+                    <h4 class="edit-section-title">AI Analysis & Personal Ratings</h4>
+                    <p class="edit-section-description">Automated insights and your personal assessments</p>
+                  </div>
+                </div>
+
+                <div class="edit-form-grid">
+                  <div class="edit-form-field">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">🎯</span>AI Fit Score</span>
+                    </label>
+                    <input name="ai_fit_score" type="number" class="edit-form-input" min="0" max="100" value="${escapeHtml(raw.ai_fit_score ?? 0)}" placeholder="85"/>
+                    <div class="edit-field-help">AI-calculated fit percentage (0-100)</div>
+                  </div>
+
+                  <div class="edit-form-field">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">🎨</span>AI Alignment Score</span>
+                    </label>
+                    <input name="ai_alignment_score" type="number" class="edit-form-input" min="0" max="100" value="${escapeHtml(raw.ai_alignment_score ?? 0)}" placeholder="75"/>
+                    <div class="edit-field-help">AI-calculated alignment percentage (0-100)</div>
+                  </div>
+
+                  <div class="edit-form-field">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">⚡</span>Application Effort</span>
+                    </label>
+                    <input name="application_effort_rating" type="number" class="edit-form-input" min="0" max="10" step="1" value="${escapeHtml(raw.application_effort_rating ?? '')}" placeholder="7"/>
+                    <div class="edit-field-help">Your effort level (1-10 scale)</div>
+                  </div>
+
+                  <div class="edit-form-field">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">🎲</span>Success Chance</span>
+                    </label>
+                    <input name="application_chance_rating" type="number" class="edit-form-input" min="0" max="10" step="1" value="${escapeHtml(raw.application_chance_rating ?? '')}" placeholder="6"/>
+                    <div class="edit-field-help">Your estimated success chance (1-10 scale)</div>
+                  </div>
+
+                  <div class="edit-form-field full-width">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">📄</span>CV Used</span>
+                    </label>
+                    <input name="CV_used" class="edit-form-input" value="${escapeHtml(raw.CV_used||'')}" placeholder="e.g. Tech_CV_v3.pdf, Software_Engineer_Resume.docx"/>
+                    <div class="edit-field-help">Optional: Record which CV version you used</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Analysis & Keywords Section -->
+              <div class="edit-form-section">
+                <div class="edit-section-header">
+                  <div class="edit-section-icon">🔍</div>
+                  <div>
+                    <h4 class="edit-section-title">Job Analysis</h4>
+                    <p class="edit-section-description">Skills, fit analysis, and keywords</p>
+                  </div>
+                </div>
+
+                <div class="edit-form-grid">
+                  <div class="edit-form-field full-width">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">✅</span>Perfect Fits</span>
+                    </label>
+                    <input name="fits" class="edit-form-input" value="${escapeHtml(listToSemicolon(raw.fits))}" placeholder="Strong Python skills; 5+ years experience; Team leadership"/>
+                    <div class="edit-field-help">Your strengths that match this role (separate with semicolons)</div>
+                  </div>
+
+                  <div class="edit-form-field full-width">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">⚠️</span>Areas to Address</span>
+                    </label>
+                    <input name="gaps" class="edit-form-input" value="${escapeHtml(listToSemicolon(raw.gaps))}" placeholder="Need AWS experience; Limited machine learning knowledge"/>
+                    <div class="edit-field-help">Skills or experience gaps to work on (separate with semicolons)</div>
+                  </div>
+
+                  <div class="edit-form-field full-width">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">🏷️</span>Keywords</span>
+                    </label>
+                    <input name="keywords" class="edit-form-input" value="${escapeHtml(listToComma(raw.keywords))}" placeholder="Python, React, Machine Learning, Agile"/>
+                    <div class="edit-field-help">Relevant job keywords and skills (separate with commas)</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Job Content Section -->
+              <div class="edit-form-section">
+                <div class="edit-section-header">
+                  <div class="edit-section-icon">📝</div>
+                  <div>
+                    <h4 class="edit-section-title">Job Content</h4>
+                    <p class="edit-section-description">Summary and full job description</p>
+                  </div>
+                </div>
+
+                <div class="edit-form-grid">
+                  <div class="edit-form-field full-width">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">📄</span>Job Summary</span>
+                    </label>
+                    <textarea name="job_summary" class="edit-form-textarea" rows="3" placeholder="Brief overview of the role and key responsibilities...">${escapeHtml(raw.job_summary||'')}</textarea>
+                    <div class="edit-field-help">Concise summary of what this job involves</div>
+                  </div>
+
+                  <div class="edit-form-field full-width">
+                    <label class="edit-field-label">
+                      <span><span class="field-icon">📋</span>Full Job Description</span>
+                    </label>
+                    <textarea name="job_description" class="edit-form-textarea large" rows="6" placeholder="Complete job posting including requirements, benefits, etc...">${escapeHtml(raw.job_description||'')}</textarea>
+                    <div class="edit-field-help">Complete job posting for future reference</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </form>
+
+          <div class="edit-modal-actions">
+            <button class="edit-btn-enhanced edit-btn-primary" type="submit" form="editForm">
+              <span class="edit-btn-icon">💾</span>
+              <span>Save Changes</span>
+            </button>
+            <button class="edit-btn-enhanced edit-btn-secondary" type="button" id="cancelEdit">
+              <span class="edit-btn-icon">✕</span>
+              <span>Cancel</span>
+            </button>
+          </div>
+        </div>
+      `;
+
+      // Populate status dropdown
+      const statusEl = document.querySelector('#editForm select[name="status"]');
+      renderStatusSelect(statusEl, normaliseStatus(prevStatus));
+
+      // Wire up event handlers
+      document.getElementById('cancelEdit').onclick = closeModal;
+
+      // Enhanced form submission with loading states
+      document.getElementById('editForm').onsubmit = async (e)=>{
+        e.preventDefault();
+        const submitBtn = document.querySelector('.edit-btn-primary');
+        const originalText = submitBtn.innerHTML;
+        
+        try {
+          // Show loading state
+          submitBtn.innerHTML = '<span class="edit-btn-icon">⏳</span><span>Saving...</span>';
+          submitBtn.disabled = true;
+
+          const fd = new FormData(e.target);
+          const applicationId = fd.get('application_id') || '';
+          const existing = getRawRowById(applicationId) || {};
+
+          const prevStatusRaw = fd.get('__prev_status') || '';
+          const prevSlug = normaliseStatus(prevStatusRaw);
+          const statusSlug = normaliseStatus(fd.get('status') || 'saved');
+          const statusChanged = prevSlug !== statusSlug;
+
+          const updates = {
+            application_id: applicationId,
+            
+            // Basic Information
+            title: fd.get('title') || '',
+            company_name: fd.get('company_name') || '',
+            source_url: fd.get('source_url') || '',
+            status: apiOutgoingStatus(statusSlug),
+            seniority: fd.get('seniority') || null,
+            role_type: fd.get('role_type') || null,
+            sector: fd.get('sector') || null,
+            contact_email: fd.get('contact_email') || null,
+            
+            // Dates
+            applied_date: fd.get('applied_date') || existing.applied_date || (statusSlug==='applied' ? londonTodayISO() : null),
+            date_posted: fd.get('date_posted') || null,
+            date_deadline: fd.get('date_deadline') || null,
+            start_date: fd.get('start_date') || null,
+            
+            // Location
+            locations: toArraySmart(fd.get('locations')),
+            
+            // Compensation
+            salary_min: fd.get('salary_min') || null,
+            salary_max: fd.get('salary_max') || null,
+            salary_currency: fd.get('salary_currency') || null,
+            salary_period: fd.get('salary_period') || null,
+            salary_raw: fd.get('salary_raw') || null,
+            
+            // AI Analysis
+            ai_fit_score: fd.get('ai_fit_score') || null,
+            ai_alignment_score: fd.get('ai_alignment_score') || null,
+            ai_cv_filename: fd.get('ai_cv_filename') || null,
+            ai_cv_reason: fd.get('ai_cv_reason') || null,
+            application_effort_rating: fd.get('application_effort_rating') || null,
+            application_chance_rating: fd.get('application_chance_rating') || null,
+            CV_used: fd.get('CV_used') || null,
+            
+            // Requirements & Analysis
+            key_requirements: toArraySmart(fd.get('key_requirements')),
+            other_requirements: toArraySmart(fd.get('other_requirements')),
+            fits: toArraySmart(fd.get('fits')),
+            gaps: toArraySmart(fd.get('gaps')),
+            keywords: toArraySmart(fd.get('keywords')),
+            
+            // Job Content
+            job_summary: fd.get('job_summary') || '',
+            job_description: fd.get('job_description') || ''
+          };
+
+          if (statusChanged) {
+            updates.status_update_date = londonTodayISO();
+          }
+
+          if (!updates.application_id) throw new Error('Missing application_id');
+
+          const merged = cleanRowForDB({ ...existing, ...updates });
+          await sbUpsertOnId(merged);
+          
+          // Success state
+          submitBtn.innerHTML = '<span class="edit-btn-icon">✅</span><span>Saved!</span>';
+          setTimeout(() => {
+            toast('Changes saved successfully!');
+            closeModal();
+          }, 800);
+          
+          await refreshData(true);
+        } catch(err) {
+          console.error(err);
+          submitBtn.innerHTML = '<span class="edit-btn-icon">❌</span><span>Failed</span>';
+          setTimeout(() => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+          }, 2000);
+          toast('Failed to save changes');
+        }
+      };
+
+
+      modal.classList.add('show');
+      modal.setAttribute('aria-hidden','false');
+    }
+    function closeModal(){ modal.classList.remove('show'); modal.setAttribute('aria-hidden','true'); }
+    modalOverlay.onclick = closeModal; modalClose.onclick = closeModal; document.addEventListener('keydown',(e)=>{ if (e.key==='Escape' && modal.classList.contains('show')) closeModal(); });
+
+    // subtle modal pop
+    const modalContent = document.querySelector('#applicationModal .modal-content');
+    document.addEventListener('click', (e)=>{
+      if (modal.classList.contains('show') && modalContent){
+        modalContent.style.transform = 'scale(1.0)';
+        modalContent.style.transition = 'transform 180ms ease';
+        requestAnimationFrame(()=> modalContent.style.transform = 'scale(1.0)'); // noop but keeps API hookable
+      }
+    });
+
+    /* ######################## END: APPLICATIONS RENDER (JS) ############### */
+
+    /* ############################################################
+       BEGIN: SAVED RENDER (JS)
+    ############################################################ */
+    // ====== Saved page
+    savedSort.onchange = renderSaved;
+    function renderSaved(){
+      let arr = appsLive.saved.map(toCardShape);
+
+      const sr = searchState.saved.results;
+      if (sr && sr.hasQuery) {
+        const { matches, others } = splitBySearchMatch(arr, sr);
+        const allowedIds = new Set(arr.map(item => item.id));
+        const rankedMatches = (matches || []).filter(item => allowedIds.has(item.id));
+        rankedMatches.forEach((m, i) => {
+          if (!m.searchMeta) m.searchMeta = { hasMatch: true };
+          m.searchMeta.rank = i;
+        });
+
+        const sort = savedSort.value;
+        let othersSorted = [...(others || [])];
+        if (sort === 'date-desc') {
+          othersSorted.sort((a,b)=> new Date(b.appliedDate||'2000-01-01') - new Date(a.appliedDate||'2000-01-01'));
+        } else if (sort === 'fit-desc') {
+          othersSorted.sort((a,b)=> (b.fitScore||0)-(a.fitScore||0));
+        } else if (sort === 'company') {
+          othersSorted.sort((a,b)=> (a.company||'').localeCompare(b.company||''));
+        }
+
+        arr = [...rankedMatches, ...othersSorted];
+
+        updateSearchInfo('saved', sr.totalFound, sr.originalCount);
+        scrollGridToTop(savedGrid);
+      } else {
+        hideSearchInfo('saved');
+        const s = savedSort.value;
+        if (s==='date-desc') {
+          arr.sort((a,b)=> new Date(b.appliedDate||'2000-01-01') - new Date(a.appliedDate||'2000-01-01'));
+        } else if (s==='fit-desc') {
+          arr.sort((a,b)=> (b.fitScore||0)-(a.fitScore||0));
+        } else if (s==='company') {
+          arr.sort((a,b)=> (a.company||'').localeCompare(b.company||''));
+        } else if (s==='relevance') {
+          // nothing to do without a query
+        }
+      }
+
+      const noResults = document.getElementById('savedNoResults');
+      if (arr.length === 0) {
+        savedGrid.innerHTML = '';
+        if (noResults) noResults.style.display = 'block';
+      } else {
+        if (noResults) noResults.style.display = 'none';
+        savedGrid.innerHTML = arr.map(app => {
+          const html = cardHTML(app, true);
+          return app.searchMeta?.hasMatch ? html.replace('class="application-card', 'class="application-card lift-once') : html;
+        }).join('');
+      }
+    }
+    window.markSavedApplied = function(id){
+      openRateApplyModal(id);
+    };
+
+    window.requestDelete = function(id, sourceHint){
+      // Try Applications first
+      let app = applicationsList.find(a=>a.id===id);
+      if (!app && (sourceHint && String(sourceHint).toLowerCase() === 'saved')){
+        app = appsLive.saved.map(toCardShape).find(a=>a.id===id);
+      }
+      if (!app){
+        app = (appsLive.applied.map(toCardShape).find(a=>a.id===id)
+          || appsLive.saved.map(toCardShape).find(a=>a.id===id));
+      }
+      if (!app){ toast('Could not find that item in the UI'); return; }
+      openDeleteConfirm(app);
+    };
+
+    /* ######################## END: SAVED RENDER (JS) ############### */
+
+    /* ############################################################
+       BEGIN: SEARCH EVENT HANDLERS
+    ############################################################ */
+
+    // Search utility functions
+    function updateSearchInfo(page, found, total) {
+      const info = document.getElementById(`${page}SearchInfo`);
+      const count = document.getElementById(`${page}ResultsCount`);
+
+      if (info && count) {
+        count.textContent = `Found ${found} of ${total} ${page}`;
+        info.style.display = 'flex';
+      }
+    }
+
+    function hideSearchInfo(page) {
+      const info = document.getElementById(`${page}SearchInfo`);
+      if (info) info.style.display = 'none';
+    }
+
+    function clearSearch(page) {
+      const input = document.getElementById(`${page}Search`);
+      if (input) {
+        input.value = '';
+        searchState[page] = { query: '', results: null };
+
+        if (page === 'applications') {
+          renderApplications();
+        } else if (page === 'saved') {
+          renderSaved();
+        }
+      }
+    }
+
+    // Enhanced cardHTML function to highlight search matches
+    function highlightMatches(text, matches, field) {
+      if (!matches || !matches.length) return escapeHtml(text);
+
+      let highlighted = escapeHtml(text);
+      const fieldMatches = matches.filter(m => m.field === field);
+
+      fieldMatches.forEach(match => {
+        const regex = new RegExp(`(${escapeRegex(match.match)})`, 'gi');
+        highlighted = highlighted.replace(regex, '<span class="search-match">$1</span>');
+      });
+
+      return highlighted;
+    }
+
+    function escapeRegex(string) {
+      return string.replace(/[.*+?^${}()|[\\]\\\\]/g, '\$&');
+    }
+
+    // Applications search setup
+    const applicationsSearchInput = document.getElementById('applicationsSearch');
+    const applicationsClearBtn = document.getElementById('applicationsClearSearch');
+
+    if (applicationsSearchInput) {
+      let searchTimeout;
+
+      applicationsSearchInput.addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        const query = e.target.value.trim();
+
+        searchTimeout = setTimeout(() => {
+          searchState.applications.query = query;
+
+          if (query.length === 0) {
+            searchState.applications.results = null;
+          } else {
+            const results = applicationsSearcher.search(applicationsList, query);
+            searchState.applications.results = results;
+          }
+
+          renderApplications();
+        }, 300); // Debounce for better performance
+      });
+
+      applicationsSearchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          clearSearch('applications');
+        }
+      });
+    }
+
+    if (applicationsClearBtn) {
+      applicationsClearBtn.addEventListener('click', () => clearSearch('applications'));
+    }
+
+    // Saved search setup
+    const savedSearchInput = document.getElementById('savedSearch');
+    const savedClearBtn = document.getElementById('savedClearSearch');
+
+    if (savedSearchInput) {
+      let searchTimeout;
+
+      savedSearchInput.addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        const query = e.target.value.trim();
+
+        searchTimeout = setTimeout(() => {
+          searchState.saved.query = query;
+
+          if (query.length === 0) {
+            searchState.saved.results = null;
+          } else {
+            const savedApps = appsLive.saved.map(toCardShape);
+            const results = savedSearcher.search(savedApps, query);
+            searchState.saved.results = results;
+          }
+
+          renderSaved();
+        }, 300);
+      });
+
+      savedSearchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          clearSearch('saved');
+        }
+      });
+    }
+
+    if (savedClearBtn) {
+      savedClearBtn.addEventListener('click', () => clearSearch('saved'));
+    }
+
+    /* ######################## END: SEARCH EVENT HANDLERS ############### */
+
+    /* ############################################################
+       BEGIN: ANALYTICS LOGIC (JS)
+    ############################################################ */
+    // ====== Analytics page
+    analyticsRange.onchange = renderAnalytics;
+
+    function destroyChart(c){ if (c) c.destroy(); }
+
+// Replace the existing renderAnalytics function and related code with this enhanced version
+
+// Updated status sets for better classification
+const APPLIED_LIKE = new Set(['applied', 'oa', 'hirevue', 'interview', 'offer', 'rejected', 'withdrew', 'on-hold', 'role-closed', 'ghosted']);
+const RESPONDED_SET = new Set(['oa', 'hirevue', 'interview', 'offer', 'rejected', 'on-hold', 'role-closed']); // Excludes 'applied' and 'ghosted'
+const REJECTION_SET = new Set(['rejected', 'ghosted']);
+const NON_REJECTION_SET = new Set(['applied', 'oa', 'hirevue', 'interview', 'offer', 'withdrew', 'on-hold', 'role-closed']);
+
+// Enhanced range dates function with weekly support
+function rangeDates(rangeValue, dataDates){
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  if (rangeValue === 'all'){
+    const minDate = dataDates.length ? new Date(Math.min(...dataDates)) : new Date(today - 29*86400000);
+    minDate.setHours(0,0,0,0);
+    return { start: minDate, end: today };
+  }
+
+  if (rangeValue === '7') {
+    const start = new Date(today - 6*86400000);
+    start.setHours(0,0,0,0);
+    return { start, end: today };
+  }
+
+  const days = Number(rangeValue);
+  const start = new Date(today - (days-1)*86400000);
+  start.setHours(0,0,0,0);
+  return { start, end: today };
+}
+
+// Normalize sector and role type for consistency
+function normalizeSector(sector) {
+  if (!sector || !String(sector).trim()) return 'Other';
+  const normalized = String(sector).trim();
+  
+  // Capitalize first letter of each word
+  return normalized.split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
+function normalizeRoleType(roleType) {
+  if (!roleType || !String(roleType).trim()) return 'Other';
+  const normalized = String(roleType).trim();
+  
+  // Handle common variations
+  const variations = {
+    'internship': 'Internship',
+    'consulting': 'Consulting',
+    'graduate': 'Graduate',
+    'junior': 'Junior',
+    'senior': 'Senior',
+    'entry level': 'Entry Level',
+    'full-time': 'Full-time',
+    'part-time': 'Part-time',
+    'contract': 'Contract',
+    'freelance': 'Freelance'
+  };
+  
+  const lower = normalized.toLowerCase();
+  if (variations[lower]) return variations[lower];
+  
+  // Capitalize first letter of each word
+  return normalized.split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
+// Main analytics rendering function
+function renderAnalytics(){
+  const selectedRange = analyticsRange.value;
+
+  // Use ALL rows from Supabase, not just "applied" + "saved"
+  const allData = Array.isArray(rowsAll) ? rowsAll : [];
+
+  // Build the date universe from an effective date (applied_date || status_update_date || created_at)
+  const allDates = allData
+    .map(effectiveDate)
+    .filter(Boolean)
+    .map(parseISO)
+    .filter(Boolean);
+
+  const { start, end } = rangeDates(selectedRange, allDates);
+  const rangeLabel = selectedRange === 'all' ? 'all time'
+                    : selectedRange === '7' ? 'last 7 days'
+                    : `last ${selectedRange} days`;
+
+  // Everything in the selected timeframe
+  const rowsInRange = allData.filter(r => inRange(effectiveDate(r), start, end));
+
+  // ---- Enhanced KPIs ----
+  const totalApps = rowsInRange.filter(r => APPLIED_LIKE.has(normaliseStatus(r.status))).length;
+  const totalResponses = rowsInRange.filter(r => RESPONDED_SET.has(normaliseStatus(r.status))).length;
+  const daysSpan = Math.max(1, Math.round(daysBetween(start, end) + 1));
+  const avgPerDay = totalApps / daysSpan;
+
+  // Applications in a single day (max)
+  const dayCounts = {};
+  rowsInRange.forEach(r => {
+    if (!APPLIED_LIKE.has(normaliseStatus(r.status))) return;
+    const d = parseISO(r.applied_date || effectiveDate(r));
+    if (!d) return;
+    const k = dateKey(d);
+    dayCounts[k] = (dayCounts[k] || 0) + 1;
+  });
+  const maxAppsInDay = Math.max(0, ...Object.values(dayCounts));
+
+  // Previous period for trends
+  const prevEnd = new Date(start.getTime() - 86400000);
+  const prevStart = new Date(prevEnd.getTime() - (daysSpan - 1) * 86400000);
+  const rowsPrev = allData.filter(r => inRange(effectiveDate(r), prevStart, prevEnd));
+  
+  const prevTotalApps = rowsPrev.filter(r => APPLIED_LIKE.has(normaliseStatus(r.status))).length;
+  const prevTotalResponses = rowsPrev.filter(r => RESPONDED_SET.has(normaliseStatus(r.status))).length;
+  const prevAvgPerDay = prevTotalApps / daysSpan;
+
+  function setTrend(el, delta, unit='%'){
+    let cls='trend-neutral', arrow='—';
+    if (delta > 0.01){ cls='trend-up'; arrow='↗'; }
+    else if (delta < -0.01){ cls='trend-down'; arrow='↘'; }
+    const val = Math.abs(delta).toFixed(unit==='%'?0:1);
+    const sign = delta > 0 ? '+' : delta < 0 ? '-' : '';
+    el.textContent = `${arrow} ${sign}${val}${unit}`;
+    el.className = `kpi-trend ${cls}`;
+  }
+
+  // Write Enhanced KPIs
+  kpiTotalApps.textContent = String(totalApps);
+  kpiTotalResponses.textContent = String(totalResponses);
+  kpiAvgPerDay.textContent = avgPerDay.toFixed(2);
+  kpiAvgRespTime.textContent = String(maxAppsInDay);
+  
+  const respRate = totalApps ? (totalResponses / totalApps) * 100 : 0;
+  kpiResponsesSubtitle.textContent = `${respRate.toFixed(0)}% response rate`;
+  kpiAvgPerDaySubtitle.textContent = `Over ${daysSpan} days (${rangeLabel})`;
+  
+  // Update KPI labels
+  document.querySelector('.kpi:nth-child(4) .kpi-label').textContent = 'Max apps in one day';
+  document.querySelector('.kpi:nth-child(4) .kpi-subtitle').textContent = 'Peak daily applications';
+
+  setTrend(kpiTrendApps, prevTotalApps ? ((totalApps - prevTotalApps)/prevTotalApps)*100 : 0);
+  setTrend(kpiTrendResponses, prevTotalResponses ? ((totalResponses - prevTotalResponses)/prevTotalResponses)*100 : 0);
+  setTrend(kpiTrendAvgPerDay, prevAvgPerDay ? ((avgPerDay - prevAvgPerDay)/prevAvgPerDay)*100 : 0);
+  
+  // Max apps trend
+  const prevDayCounts = {};
+  rowsPrev.forEach(r => {
+    if (!APPLIED_LIKE.has(normaliseStatus(r.status))) return;
+    const d = parseISO(r.applied_date || effectiveDate(r));
+    if (!d) return;
+    const k = dateKey(d);
+    prevDayCounts[k] = (prevDayCounts[k] || 0) + 1;
+  });
+  const prevMaxAppsInDay = Math.max(0, ...Object.values(prevDayCounts));
+  const maxAppsDelta = prevMaxAppsInDay ? ((maxAppsInDay - prevMaxAppsInDay) / prevMaxAppsInDay) * 100 : 0;
+  setTrend(kpiTrendRespTime, maxAppsDelta);
+
+  // ---- Enhanced Datasets for charts ----
+
+  // 1) Line: daily applications with better styling
+  const lineLabels = Object.keys(dayCounts).sort();
+  const lineData = lineLabels.map(k => dayCounts[k]);
+
+  // 2) Fixed Pie: status distribution
+  const statusCounts = {};
+  rowsInRange.forEach(r => {
+    const s = normaliseStatus(r.status);
+    if (APPLIED_LIKE.has(s)) { // Only count actual applications
+      statusCounts[s] = (statusCounts[s] || 0) + 1;
+    }
+  });
+  
+  const pieSlugLabels = Object.keys(statusCounts).sort();
+  const pieData = pieSlugLabels.map(k => statusCounts[k]);
+  const pieColors = pieSlugLabels.map(k => STATUS_COLORS_ENHANCED[k] || STATUS_COLORS_ENHANCED.default);
+  const pieLabels = pieSlugLabels.map(statusLabel);
+
+  // 3) Bar: per normalized sector with "Other" grouping
+  const sectorCounts = {};
+  rowsInRange.forEach(r => {
+    if (!APPLIED_LIKE.has(normaliseStatus(r.status))) return;
+    const normalized = normalizeSector(r.sector);
+    sectorCounts[normalized] = (sectorCounts[normalized] || 0) + 1;
+  });
+  
+  // Get top sectors and group rest as "Other"
+  const sortedSectors = Object.entries(sectorCounts)
+    .sort(([,a], [,b]) => b - a);
+  
+  const topSectors = sortedSectors.slice(0, 10);
+  const otherCount = sortedSectors.slice(10).reduce((sum, [,count]) => sum + count, 0);
+  
+  if (otherCount > 0) {
+    topSectors.push(['Other', otherCount]);
+  }
+  
+  const sectorLabels = topSectors.map(([label]) => label);
+  const sectorData = topSectors.map(([,count]) => count);
+
+  // 4) Bar: per normalized role type
+  const roleCounts = {};
+  rowsInRange.forEach(r => {
+    if (!APPLIED_LIKE.has(normaliseStatus(r.status))) return;
+    const normalized = normalizeRoleType(r.role_type);
+    roleCounts[normalized] = (roleCounts[normalized] || 0) + 1;
+  });
+  
+  const sortedRoles = Object.entries(roleCounts)
+    .sort(([,a], [,b]) => b - a);
+  
+  const topRoles = sortedRoles.slice(0, 10);
+  const otherRoleCount = sortedRoles.slice(10).reduce((sum, [,count]) => sum + count, 0);
+  
+  if (otherRoleCount > 0) {
+    topRoles.push(['Other', otherRoleCount]);
+  }
+  
+  const roleLabels = topRoles.map(([label]) => label);
+  const roleData = topRoles.map(([,count]) => count);
+
+  // 5) NEW: Keywords analysis
+  const keywordCounts = {};
+  rowsInRange.forEach(r => {
+    if (!APPLIED_LIKE.has(normaliseStatus(r.status))) return;
+    const keywords = normalizeListField(r.keywords);
+    keywords.forEach(keyword => {
+      const normalized = keyword.trim();
+      if (normalized) {
+        keywordCounts[normalized] = (keywordCounts[normalized] || 0) + 1;
+      }
+    });
+  });
+  
+  const topKeywords = Object.entries(keywordCounts)
+    .sort(([,a], [,b]) => b - a)
+    .slice(0, 15);
+  
+  const keywordLabels = topKeywords.map(([keyword]) => keyword);
+  const keywordData = topKeywords.map(([,count]) => count);
+
+  // 6) NEW: Sector Success Rate (Non-rejection vs Rejection)
+  const sectorSuccessData = {};
+  rowsInRange.forEach(r => {
+    if (!APPLIED_LIKE.has(normaliseStatus(r.status))) return;
+    const sector = normalizeSector(r.sector);
+    if (!sectorSuccessData[sector]) {
+      sectorSuccessData[sector] = { nonRejection: 0, rejection: 0 };
+    }
+    
+    const status = normaliseStatus(r.status);
+    if (REJECTION_SET.has(status)) {
+      sectorSuccessData[sector].rejection++;
+    } else if (NON_REJECTION_SET.has(status)) {
+      sectorSuccessData[sector].nonRejection++;
+    }
+  });
+  
+  const sectorSuccessLabels = Object.keys(sectorSuccessData)
+    .filter(sector => (sectorSuccessData[sector].nonRejection + sectorSuccessData[sector].rejection) >= 2) // Only sectors with 2+ applications
+    .sort((a, b) => {
+      const totalA = sectorSuccessData[a].nonRejection + sectorSuccessData[a].rejection;
+      const totalB = sectorSuccessData[b].nonRejection + sectorSuccessData[b].rejection;
+      return totalB - totalA;
+    })
+    .slice(0, 8);
+  
+  const nonRejectionData = sectorSuccessLabels.map(sector => sectorSuccessData[sector].nonRejection);
+  const rejectionData = sectorSuccessLabels.map(sector => sectorSuccessData[sector].rejection);
+
+  // ---- Render Enhanced Charts ----
+  destroyChart(chartAppsLine);
+  destroyChart(chartStatusPie);
+  destroyChart(chartSectorBar);
+  destroyChart(chartRoleTypeBar);
+
+  // Applications over time - bars (per-day) + line (cumulative)
+  destroyChart(chartAppsLine);
+
+  // Build a complete date range (inclusive) so we show 0 bars on days with no apps
+  function buildDateRangeInclusive(startDate, endDate) {
+    const out = [];
+    const d = new Date(startDate);
+    d.setHours(0,0,0,0);
+    const last = new Date(endDate);
+    last.setHours(0,0,0,0);
+    while (d <= last) {
+      out.push(new Date(d));
+      d.setDate(d.getDate() + 1);
+    }
+    return out;
+  }
+
+  const dateList = buildDateRangeInclusive(start, end);
+  const labelISO = dateList.map(d => d.toISOString().slice(0,10));
+
+  // Daily counts (fill gaps with 0)
+  const dailyCounts = labelISO.map(k => dayCounts[k] || 0);
+
+  // Cumulative total
+  const cumulativeCounts = dailyCounts.reduce((acc, val, i) => {
+    const prev = i > 0 ? acc[i - 1] : 0;
+    acc.push(prev + (Number(val) || 0));
+    return acc;
+  }, []);
+
+  // Pretty x-axis labels
+  const xLabels = dateList.map(d =>
+    selectedRange === '7'
+      ? d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' })
+      : d.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })
+  );
+
+  // Make sure the subtitle is correct (if the HTML wasn’t changed)
+  (() => {
+    const appsSubtitleEl = document.querySelector('#chartAppsLine')
+      ?.closest('.chart-container')
+      ?.querySelector('.chart-subtitle');
+    if (appsSubtitleEl) {
+      appsSubtitleEl.textContent = 'Cumulative total (line) + daily (bars)';
+    }
+  })();
+
+  chartAppsLine = new Chart(document.getElementById('chartAppsLine').getContext('2d'), {
+    type: 'bar', // base type can be bar; we mix datasets below
+    data: {
+      labels: xLabels,
+      datasets: [
+        // Bars: per-day applications
+        {
+          type: 'bar',
+          label: 'Applications per day',
+          data: dailyCounts,
+          backgroundColor: 'rgba(79, 172, 254, 0.35)', // #4facfe with transparency
+          borderColor: '#4facfe',
+          borderWidth: 1,
+          borderRadius: 6,
+          borderSkipped: false,
+          order: 1
+        },
+        // Line: cumulative total
+        {
+          type: 'line',
+          label: 'Cumulative total',
+          data: cumulativeCounts,
+          tension: 0.35,
+          borderColor: '#667eea',
+          backgroundColor: 'rgba(102, 126, 234, 0.15)',
+          borderWidth: 3,
+          pointBackgroundColor: '#667eea',
+          pointBorderColor: 'white',
+          pointBorderWidth: 2,
+          pointRadius: 3,
+          pointHoverRadius: 6,
+          fill: false,
+          order: 0,
+          yAxisID: 'y'
+        }
+      ]
+    },
+    options: {
+      ...chartDefaults,
+      // Show legend so users can distinguish bars vs line
+      plugins: {
+        ...chartDefaults.plugins,
+        legend: {
+          position: 'bottom',
+          labels: {
+            usePointStyle: true,
+            padding: 16,
+            font: { family: 'Inter', size: 12, weight: '600' }
+          }
+        },
+        tooltip: {
+          ...chartDefaults.plugins.tooltip,
+          callbacks: {
+            // Keep default title; show nice labels per dataset
+            label: function(ctx) {
+              const val = ctx.parsed.y;
+              return `${ctx.dataset.label}: ${val}`;
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(0,0,0,0.05)' },
+          ticks: {
+            font: { family: 'Inter', weight: '500' },
+            stepSize: 1
+          }
+        },
+        x: {
+          grid: { display: false },
+          ticks: {
+            font: { family: 'Inter', weight: '500' },
+            maxTicksLimit: selectedRange === '7' ? 7 : 10
+          }
+        }
+      }
+    }
+  });
+
+  // Fixed status pie chart
+  chartStatusPie = new Chart(document.getElementById('chartStatusPie').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: pieLabels,
+      datasets: [{
+        data: pieData,
+        backgroundColor: pieColors,
+        borderWidth: 0,
+        hoverOffset: 10
+      }]
+    },
+    options: {
+      ...chartDefaults,
+      cutout: '60%',
+      plugins: {
+        ...chartDefaults.plugins,
+        legend: {
+          position: 'bottom',
+          labels: {
+            usePointStyle: true,
+            padding: 15,
+            font: { family: 'Inter', size: 11, weight: '600' },
+            generateLabels: function(chart) {
+              const data = chart.data;
+              if (data.labels.length && data.datasets.length) {
+                return data.labels.map((label, i) => ({
+                  text: `${label} (${data.datasets[0].data[i]})`,
+                  fillStyle: data.datasets[0].backgroundColor[i],
+                  strokeStyle: data.datasets[0].backgroundColor[i],
+                  pointStyle: 'circle'
+                }));
+              }
+              return [];
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // Enhanced sector bar chart
+  chartSectorBar = new Chart(document.getElementById('chartSectorBar').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: sectorLabels,
+      datasets: [{
+        label: 'Applications',
+        data: sectorData,
+        backgroundColor: '#667eea',
+        borderRadius: 8,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      ...chartDefaults,
+      plugins: { 
+        ...chartDefaults.plugins, 
+        legend: { display: false },
+        tooltip: {
+          ...chartDefaults.plugins.tooltip,
+          callbacks: {
+            label: function(context) {
+              return `${context.parsed.y} applications`;
+            }
+          }
+        }
+      },
+      scales: {
+        y: { 
+          beginAtZero: true, 
+          grid: { color: 'rgba(0,0,0,0.05)' },
+          ticks: { stepSize: 1 }
+        },
+        x: { 
+          grid: { display: false },
+          ticks: {
+            maxRotation: 45,
+            font: { size: 10 }
+          }
+        }
+      }
+    }
+  });
+
+  // Enhanced role type bar chart
+  chartRoleTypeBar = new Chart(document.getElementById('chartRoleTypeBar').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: roleLabels,
+      datasets: [{
+        label: 'Applications',
+        data: roleData,
+        backgroundColor: '#4facfe',
+        borderRadius: 8
+      }]
+    },
+    options: {
+      ...chartDefaults,
+      indexAxis: 'y',
+      plugins: { 
+        ...chartDefaults.plugins, 
+        legend: { display: false },
+        tooltip: {
+          ...chartDefaults.plugins.tooltip,
+          callbacks: {
+            label: function(context) {
+              return `${context.parsed.x} applications`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { 
+          beginAtZero: true, 
+          grid: { color: 'rgba(0,0,0,0.05)' },
+          ticks: { stepSize: 1 }
+        },
+        y: { 
+          grid: { display: false },
+          ticks: { font: { size: 11 } }
+        }
+      }
+    }
+  });
+
+  // Render new charts if containers exist
+  renderNewAnalyticsCharts(keywordLabels, keywordData, sectorSuccessLabels, nonRejectionData, rejectionData);
+}
+
+// New function to render additional charts
+function renderNewAnalyticsCharts(keywordLabels, keywordData, sectorLabels, nonRejectionData, rejectionData) {
+  // Keywords chart
+  const keywordsCanvas = document.getElementById('chartKeywords');
+  if (keywordsCanvas) {
+    const existingChart = Chart.getChart(keywordsCanvas);
+    if (existingChart) existingChart.destroy();
+    
+    new Chart(keywordsCanvas.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: keywordLabels,
+        datasets: [{
+          label: 'Frequency',
+          data: keywordData,
+          backgroundColor: '#38ef7d',
+          borderRadius: 6
+        }]
+      },
+      options: {
+        ...chartDefaults,
+        indexAxis: 'y',
+        plugins: { 
+          ...chartDefaults.plugins, 
+          legend: { display: false }
+        },
+        scales: {
+          x: { 
+            beginAtZero: true, 
+            grid: { color: 'rgba(0,0,0,0.05)' },
+            ticks: { stepSize: 1 }
+          },
+          y: { 
+            grid: { display: false },
+            ticks: { font: { size: 10 } }
+          }
+        }
+      }
+    });
+  }
+
+  // Sector success rate chart
+  const sectorSuccessCanvas = document.getElementById('chartSectorSuccess');
+  if (sectorSuccessCanvas) {
+    const existingChart = Chart.getChart(sectorSuccessCanvas);
+    if (existingChart) existingChart.destroy();
+    
+    new Chart(sectorSuccessCanvas.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: sectorLabels,
+        datasets: [
+          {
+            label: 'Non-Rejection',
+            data: nonRejectionData,
+            backgroundColor: '#38ef7d',
+            borderRadius: 4
+          },
+          {
+            label: 'Rejection',
+            data: rejectionData,
+            backgroundColor: '#f5576c',
+            borderRadius: 4
+          }
+        ]
+      },
+      options: {
+        ...chartDefaults,
+        responsive: true,
+        scales: {
+          x: { 
+            stacked: true,
+            grid: { display: false },
+            ticks: { 
+              maxRotation: 45,
+              font: { size: 10 }
+            }
+          },
+          y: { 
+            stacked: true,
+            beginAtZero: true,
+            grid: { color: 'rgba(0,0,0,0.05)' },
+            ticks: { stepSize: 1 }
+          }
+        },
+        plugins: {
+          ...chartDefaults.plugins,
+          tooltip: {
+            ...chartDefaults.plugins.tooltip,
+            callbacks: {
+              afterLabel: function(context) {
+                const datasetIndex = context.datasetIndex;
+                const dataIndex = context.dataIndex;
+                const nonRej = nonRejectionData[dataIndex] || 0;
+                const rej = rejectionData[dataIndex] || 0;
+                const total = nonRej + rej;
+                const successRate = total > 0 ? ((nonRej / total) * 100).toFixed(1) : 0;
+                return datasetIndex === 0 ? `Success Rate: ${successRate}%` : '';
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+}
+
+    /* ######################## END: ANALYTICS LOGIC (JS) ############### */
+
+    /* ############################################################
+       BEGIN: ADD FORM (JS)
+    ############################################################ */
+    // ====== Add application page
+    // Enhanced Add application form functionality
+    class EnhancedMultiInputField {
+      constructor(container, fieldName) {
+        this.container = container;
+        this.fieldName = fieldName;
+        this.tags = [];
+        this.input = container.querySelector('.enhanced-tag-input');
+        this.setupEventListeners();
+      }
+
+      setupEventListeners() {
+        this.input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            this.addTag();
+          } else if (e.key === 'Backspace' && this.input.value === '' && this.tags.length > 0) {
+            this.removeTag(this.tags.length - 1);
+          }
+        });
+
+        this.input.addEventListener('blur', () => {
+          if (this.input.value.trim()) {
+            this.addTag();
+          }
+        });
+      }
+
+      addTag() {
+        const value = this.input.value.trim();
+        if (value && !this.tags.includes(value)) {
+          this.tags.push(value);
+          this.render();
+          this.input.value = '';
+        }
+      }
+
+      removeTag(index) {
+        this.tags.splice(index, 1);
+        this.render();
+      }
+
+      render() {
+        const existingTags = this.container.querySelectorAll('.enhanced-input-tag');
+        existingTags.forEach(tag => tag.remove());
+
+        this.tags.forEach((tag, index) => {
+          const tagElement = document.createElement('div');
+          tagElement.className = 'enhanced-input-tag';
+          tagElement.innerHTML = `
+            <span>${escapeHtml(tag)}</span>
+            <button type="button" class="enhanced-remove-tag" data-index="${index}">×</button>
+          `;
+          const removeBtn = tagElement.querySelector('.enhanced-remove-tag');
+          removeBtn.addEventListener('click', () => this.removeTag(index));
+          this.container.insertBefore(tagElement, this.input);
+        });
+      }
+
+      getValue() {
+        return this.tags;
+      }
+
+      setValue(values) {
+        this.tags = Array.isArray(values) ? values : [];
+        this.render();
+      }
+    }
+
+    // Initialize enhanced multi-input fields
+    const enhancedMultiFields = {};
+
+    // Initialize enhanced form when Add page is active
+    function initEnhancedAddForm() {
+      if (document.getElementById('enhancedAddForm') && !initEnhancedAddForm._initialized) {
+        // Initialize multi-input fields
+        enhancedMultiFields.locations = new EnhancedMultiInputField(
+          document.getElementById('locationsContainer'), 'locations'
+        );
+        enhancedMultiFields.keywords = new EnhancedMultiInputField(
+          document.getElementById('keywordsContainer'), 'keywords'
+        );
+        enhancedMultiFields.fits = new EnhancedMultiInputField(
+          document.getElementById('fitsContainer'), 'fits'
+        );
+        enhancedMultiFields.gaps = new EnhancedMultiInputField(
+          document.getElementById('gapsContainer'), 'gaps'
+        );
+
+        // Range input handlers
+        const effortRange = document.getElementById('effortRange');
+        const effortValue = document.getElementById('effortValue');
+        const chanceRange = document.getElementById('chanceRange');
+        const chanceValue = document.getElementById('chanceValue');
+
+        if (effortRange && effortValue) {
+          effortRange.addEventListener('input', () => {
+            effortValue.textContent = effortRange.value;
+          });
+        }
+
+        if (chanceRange && chanceValue) {
+          chanceRange.addEventListener('input', () => {
+            chanceValue.textContent = chanceRange.value;
+          });
+        }
+
+        // Salary display update
+        function updateSalaryDisplay() {
+          const currency = document.querySelector('[name="salary_currency"]').value;
+          const min = document.querySelector('[name="salary_min"]').value;
+          const max = document.querySelector('[name="salary_max"]').value;
+          const period = document.querySelector('[name="salary_period"]').value;
+
+          const display = document.getElementById('salaryDisplay');
+
+          if (min || max) {
+            let range = '';
+            if (min && max) {
+              range = `${currency}${parseInt(min).toLocaleString()} - ${currency}${parseInt(max).toLocaleString()}`;
+            } else if (min) {
+              range = `From ${currency}${parseInt(min).toLocaleString()}`;
+            } else {
+              range = `Up to ${currency}${parseInt(max).toLocaleString()}`;
+            }
+
+            display.textContent = `${range} ${period || ''}`.trim();
+          } else {
+            display.textContent = 'Salary range will appear here';
+          }
+        }
+
+        // Add event listeners to salary fields
+        ['salary_currency', 'salary_min', 'salary_max', 'salary_period'].forEach(fieldName => {
+          const field = document.querySelector(`[name="${fieldName}"]`);
+          if (field) {
+            field.addEventListener('input', updateSalaryDisplay);
+          }
+        });
+
+        // Enhanced form submission
+        const enhancedForm = document.getElementById('enhancedAddForm');
+        enhancedForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+
+          try {
+            const formData = new FormData(e.target);
+
+            // Add multi-input field data using the same format as original form
+            Object.entries(enhancedMultiFields).forEach(([fieldName, field]) => {
+              const values = field.getValue();
+              if (values.length > 0) {
+                if (fieldName === 'locations' || fieldName === 'keywords') {
+                  formData.set(fieldName, values.join(','));
+                } else {
+                  formData.set(fieldName, values.join(';'));
+                }
+              }
+            });
+
+            // Build payload for Supabase using existing logic
+            const statusSlug = normaliseStatus(formData.get('status') || 'saved');
+            const status = apiOutgoingStatus(statusSlug);
+
+            const payload = cleanRowForDB({
+              source_url: formData.get('source_url') || '',
+              canonical_job_url: canonicalize(formData.get('source_url') || ''),
+              title: formData.get('title') || '',
+              company_name: formData.get('company_name') || '',
+              seniority: '', role_type: '', sector: '', contact_email: '',
+              date_posted: '', date_deadline: '', start_date: '',
+              salary_min: formData.get('salary_min'),
+              salary_max: formData.get('salary_max'),
+              salary_currency: formData.get('salary_currency') || null,
+              salary_period: formData.get('salary_period') || null,
+              salary_raw: '',
+              locations: toArraySmart(formData.get('locations')),
+              ai_fit_score: null,
+              ai_alignment_score: null,
+              ai_cv_filename: '', ai_cv_reason: '',
+              key_requirements: [],
+              other_requirements: [],
+              fits: toArraySmart(formData.get('fits')),
+              gaps: toArraySmart(formData.get('gaps')),
+              job_summary: formData.get('job_summary') || '',
+              keywords: toArraySmart(formData.get('keywords')),
+              job_description: formData.get('job_description') || '',
+              status,
+              applied_date: statusSlug === 'applied' ? (formData.get('applied_date') || londonTodayISO()) : null,
+              application_effort_rating: formData.get('application_effort_rating'),
+              application_chance_rating: formData.get('application_chance_rating'),
+              CV_used: formData.get('CV_used') || null,
+              status_update_date: londonTodayISO(),
+            });
+
+            await sbUpsertOnUnique(payload);
+            toast('Application saved successfully!');
+
+            // Clear form after successful submission
+            enhancedForm.reset();
+            Object.values(enhancedMultiFields).forEach(field => field.setValue([]));
+            if (effortValue) effortValue.textContent = '5';
+            if (chanceValue) chanceValue.textContent = '5';
+            updateSalaryDisplay();
+
+            await refreshData(true);
+          } catch(e) { 
+            console.error(e); 
+            toast('Failed to save application'); 
+          }
+        });
+
+        // Clear form functionality
+        const clearButton = document.getElementById('clearEnhancedForm');
+        if (clearButton) {
+          clearButton.addEventListener('click', () => {
+            if (confirm('Are you sure you want to clear all form data?')) {
+              enhancedForm.reset();
+              Object.values(enhancedMultiFields).forEach(field => field.setValue([]));
+              if (effortValue) effortValue.textContent = '5';
+              if (chanceValue) chanceValue.textContent = '5';
+              updateSalaryDisplay();
+              toast('Form cleared');
+            }
+          });
+        }
+
+        initEnhancedAddForm._initialized = true;
+      }
+    }
+
+    // Update the existing tab switching logic to initialize enhanced form
+    const originalSwitchTab = switchTab;
+    switchTab = function(name) {
+      originalSwitchTab(name);
+      if (name === 'add') {
+        initEnhancedAddForm();
+      }
+    };
+
+    if (document.getElementById('addPage')?.classList.contains('active')) {
+      initEnhancedAddForm();
+    }
+
+    /* ######################## END: ADD FORM (JS) ############### */
+
+    /* ############################################################
+       BEGIN: ADD DEADLINE & EDIT FUNCTIONALITY (JS)
+    ############################################################ */
+    const addDeadlineForm = document.getElementById('addDeadlineForm');
+    const clearDeadlineForm = document.getElementById('clearDeadlineForm');
+    const timingTypeRadios = document.querySelectorAll('input[name="timing_type"]');
+    const windowFields = document.getElementById('windowFields');
+    const eventFields = document.getElementById('eventFields');
+
+    const editDeadlineModal = document.getElementById('editDeadlineModal');
+    const editDeadlineOverlay = document.getElementById('editDeadlineOverlay');
+    const editDeadlineClose = document.getElementById('editDeadlineClose');
+    const editDeadlineForm = document.getElementById('editDeadlineForm');
+    const cancelEditDeadline = document.getElementById('cancelEditDeadline');
+    const editTimingTypeRadios = document.querySelectorAll('input[name="edit_timing_type"]');
+    const editWindowFields = document.getElementById('editWindowFields');
+    const editEventFields = document.getElementById('editEventFields');
+
+    function initAddDeadlinePage(){
+      if (!addDeadlinePage) return;
+      if (!initAddDeadlinePage._initialized){
+        setupTimingTypeToggle();
+        setupFormSubmission();
+        setupFormClear();
+        setupEditModal();
+        initAddDeadlinePage._initialized = true;
+      }
+
+      const defaultMode = Array.from(timingTypeRadios).find(r => r.checked)?.value || 'window';
+      setAddTimingVisibility(defaultMode);
+    }
+
+    function setupTimingTypeToggle(){
+      if (timingTypeRadios.length){
+        timingTypeRadios.forEach(radio => {
+          radio.addEventListener('change', () => setAddTimingVisibility(radio.value));
+        });
+      }
+
+      if (editTimingTypeRadios.length){
+        editTimingTypeRadios.forEach(radio => {
+          radio.addEventListener('change', () => setEditTimingVisibility(radio.value));
+        });
+      }
+
+      const initialEditMode = Array.from(editTimingTypeRadios).find(r => r.checked)?.value;
+      if (initialEditMode) setEditTimingVisibility(initialEditMode);
+    }
+
+    function setAddTimingVisibility(mode){
+      if (!windowFields || !eventFields) return;
+      const windowDate = document.getElementById('add_dl_window_date');
+      const windowTime = document.getElementById('add_dl_window_time');
+      const eventDate = document.getElementById('add_dl_event_date');
+      const eventStart = document.getElementById('add_dl_event_start_time');
+
+      if (mode === 'window'){
+        windowFields.style.display = 'grid';
+        eventFields.style.display = 'none';
+        if (windowDate) windowDate.required = true;
+        if (windowTime) windowTime.required = true;
+        if (eventDate) eventDate.required = false;
+        if (eventStart) eventStart.required = false;
+      } else {
+        windowFields.style.display = 'none';
+        eventFields.style.display = 'grid';
+        if (windowDate) windowDate.required = false;
+        if (windowTime) windowTime.required = false;
+        if (eventDate) eventDate.required = true;
+        if (eventStart) eventStart.required = true;
+      }
+    }
+
+    function setEditTimingVisibility(mode){
+      if (!editWindowFields || !editEventFields) return;
+      const windowDate = document.getElementById('edit_dl_window_date');
+      const windowTime = document.getElementById('edit_dl_window_time');
+      const eventDate = document.getElementById('edit_dl_event_date');
+      const eventStart = document.getElementById('edit_dl_event_start_time');
+
+      if (mode === 'window'){
+        editWindowFields.style.display = 'grid';
+        editEventFields.style.display = 'none';
+        if (windowDate) windowDate.required = true;
+        if (windowTime) windowTime.required = true;
+        if (eventDate) eventDate.required = false;
+        if (eventStart) eventStart.required = false;
+      } else {
+        editWindowFields.style.display = 'none';
+        editEventFields.style.display = 'grid';
+        if (windowDate) windowDate.required = false;
+        if (windowTime) windowTime.required = false;
+        if (eventDate) eventDate.required = true;
+        if (eventStart) eventStart.required = true;
+      }
+    }
+
+    function setupFormSubmission(){
+      if (addDeadlineForm && !addDeadlineForm._wired){
+        addDeadlineForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          await handleDeadlineSubmission(e.target, false);
+        });
+        addDeadlineForm._wired = true;
+      }
+
+      if (editDeadlineForm && !editDeadlineForm._wired){
+        editDeadlineForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          await handleDeadlineSubmission(e.target, true);
+        });
+        editDeadlineForm._wired = true;
+      }
+    }
+
+    async function handleDeadlineSubmission(form, isEdit){
+      const formData = new FormData(form);
+      const timingField = isEdit ? 'edit_timing_type' : 'timing_type';
+      const isWindow = (formData.get(timingField) || 'window') === 'window';
+      const findDeadline = (id) => {
+        const numeric = Number(id);
+        return dl_state.all.find(d => {
+          if (Number.isFinite(numeric)){
+            return Number(d.id) === numeric;
+          }
+          return String(d.id) === String(id);
+        });
+      };
+      const existing = isEdit ? findDeadline(formData.get('id')) : null;
+
+      const trimmed = (name) => {
+        const value = formData.get(name);
+        return value == null ? '' : String(value).trim();
+      };
+      const optional = (name) => {
+        const value = trimmed(name);
+        return value ? value : null;
+      };
+
+      const existingHasConflict = existing?.has_conflict ?? existing?.hasConflict;
+
+      const payload = {
+        company: trimmed('company'),
+        role: trimmed('role'),
+        type: trimmed('type'),
+        is_window: isWindow,
+        priority: Number.parseInt(formData.get('priority'), 10) || (existing?.priority ?? 2),
+        location: optional('location'),
+        meeting_url: optional('meeting_url'),
+        notes: optional('notes'),
+        timezone: existing?.timezone || 'Europe/London',
+        status: existing?.status || 'open',
+        complete: Boolean(existing?.complete ?? false),
+        has_conflict: Boolean(existingHasConflict ?? false)
+      };
+
+      if (isWindow){
+        const date = trimmed('window_date');
+        const time = trimmed('window_time') || '23:59';
+        if (date && time){
+          const timezone = payload.timezone;
+          const localDateTime = dayjs.tz(`${date} ${time}`, 'YYYY-MM-DD HH:mm', timezone);
+          payload.start_at = localDateTime.toISOString();
+          payload.end_at = null;
+        } else {
+          throw new Error('Date and time are required for window-type deadlines');
+        }
+      } else {
+        const date = trimmed('event_date');
+        const startTime = trimmed('event_start_time');
+        const endTime = trimmed('event_end_time');
+        const timezone = trimmed('timezone') || payload.timezone;
+
+        if (date && startTime){
+          const startDateTime = dayjs.tz(`${date} ${startTime}`, 'YYYY-MM-DD HH:mm', timezone);
+          payload.start_at = startDateTime.toISOString();
+
+          if (endTime){
+            const endDateTime = dayjs.tz(`${date} ${endTime}`, 'YYYY-MM-DD HH:mm', timezone);
+            payload.end_at = endDateTime.toISOString();
+          } else {
+            const defaultEnd = startDateTime.add(1, 'hour');
+            payload.end_at = defaultEnd.toISOString();
+          }
+          payload.timezone = timezone;
+        } else {
+          throw new Error('Date and start time are required for event-type deadlines');
+        }
+      }
+
+      console.log('Form data:', Object.fromEntries(formData.entries()));
+      console.log('Payload being sent to database:', payload);
+      console.log('Is edit mode:', isEdit);
+      console.log('Existing deadline:', existing);
+
+      let submitBtn = form.querySelector('button[type="submit"]');
+      const originalText = submitBtn ? submitBtn.innerHTML : '';
+
+      try {
+        if (submitBtn){
+          submitBtn.innerHTML = '<span class="btn-icon">⏳</span><span>Saving...</span>';
+          submitBtn.disabled = true;
+        }
+
+        if (isEdit){
+          const id = Number(formData.get('id'));
+          console.log('Edit mode - ID from form:', formData.get('id'), 'Converted to number:', id);
+          if (!Number.isFinite(id)){
+            throw new Error('Invalid deadline ID');
+          }
+          payload.updated_at = new Date().toISOString();
+          console.log('About to update deadline with ID:', id, 'Payload:', payload);
+
+          const { error, data } = await db
+            .from(DEADLINES_TABLE)
+            .update(payload)
+            .eq('id', id)
+            .select();
+
+          console.log('Update result:', { error, data });
+
+          if (error) throw error;
+
+          toast('Deadline updated successfully!');
+          closeEditDeadlineModal();
+        } else {
+          payload.created_at = new Date().toISOString();
+          payload.updated_at = payload.created_at;
+
+          const { error, data } = await db
+            .from(DEADLINES_TABLE)
+            .insert(payload)
+            .select();
+
+          console.log('Insert result:', { error, data });
+
+          if (error) throw error;
+
+          toast('Deadline created successfully!');
+          form.reset();
+          const defaultRadio = document.querySelector('input[name="timing_type"][value="window"]');
+          if (defaultRadio) defaultRadio.checked = true;
+          setAddTimingVisibility('window');
+        }
+
+        await dl_fetch();
+        dl_populateCompanies();
+        dl_applyFilters();
+        dl_updateKPIs();
+        dl_render();
+      } catch (error) {
+        console.error('Error saving deadline:', error);
+        toast(`Failed to save deadline: ${error.message}`);
+      } finally {
+        if (submitBtn){
+          submitBtn.innerHTML = originalText || '<span class="btn-icon">✅</span><span>Save</span>';
+          submitBtn.disabled = false;
+        }
+      }
+    }
+
+    function setupFormClear(){
+      if (clearDeadlineForm && !clearDeadlineForm._wired){
+        clearDeadlineForm.addEventListener('click', () => {
+          if (!addDeadlineForm) return;
+          addDeadlineForm.reset();
+          const defaultRadio = document.querySelector('input[name="timing_type"][value="window"]');
+          if (defaultRadio) defaultRadio.checked = true;
+          setAddTimingVisibility('window');
+          toast('Form cleared');
+        });
+        clearDeadlineForm._wired = true;
+      }
+    }
+
+    function setupEditModal(){
+      if (editDeadlineOverlay){
+        editDeadlineOverlay.addEventListener('click', closeEditDeadlineModal);
+      }
+      if (editDeadlineClose){
+        editDeadlineClose.addEventListener('click', closeEditDeadlineModal);
+      }
+      if (cancelEditDeadline){
+        cancelEditDeadline.addEventListener('click', closeEditDeadlineModal);
+      }
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && editDeadlineModal?.classList.contains('show')){
+          closeEditDeadlineModal();
+        }
+      });
+    }
+
+    function openEditDeadlineModal(deadlineId){
+      console.log('Looking for deadline ID:', deadlineId, typeof deadlineId);
+      console.log('Available deadlines:', dl_state.all.map(d => ({ id: d.id, type: typeof d.id })));
+      
+      const deadline = dl_state.all.find(d => String(d.id) === String(deadlineId));
+      
+      console.log('Found deadline:', deadline);
+
+      if (!deadline){
+        toast('Deadline not found');
+        return;
+      }
+
+      const idField = document.getElementById('edit_dl_id');
+      if (idField) idField.value = deadline.id;
+      const companyField = document.getElementById('edit_dl_company');
+      if (companyField) companyField.value = deadline.company || '';
+      const roleField = document.getElementById('edit_dl_role');
+      if (roleField) roleField.value = deadline.role || '';
+      const typeField = document.getElementById('edit_dl_type');
+      if (typeField) typeField.value = deadline.type || '';
+      const priorityField = document.getElementById('edit_dl_priority');
+      if (priorityField) priorityField.value = String(deadline.priority ?? 2);
+      const locationField = document.getElementById('edit_dl_location');
+      if (locationField) locationField.value = deadline.location || '';
+      const meetingField = document.getElementById('edit_dl_meeting_url');
+      if (meetingField) meetingField.value = deadline.meetingUrl || '';
+      const notesField = document.getElementById('edit_dl_notes');
+      if (notesField) notesField.value = deadline.notes || '';
+
+      const windowRadio = document.querySelector('input[name="edit_timing_type"][value="window"]');
+      const eventRadio = document.querySelector('input[name="edit_timing_type"][value="event"]');
+
+      if (deadline.isWindow){
+        if (windowRadio) windowRadio.checked = true;
+        setEditTimingVisibility('window');
+        const zone = deadline.timezone || 'Europe/London';
+        const dueDate = deadline.dueBy ? dayjs(deadline.dueBy).tz(zone) : null;
+        const windowDate = document.getElementById('edit_dl_window_date');
+        const windowTime = document.getElementById('edit_dl_window_time');
+        if (dueDate?.isValid()){
+          if (windowDate) windowDate.value = dueDate.format('YYYY-MM-DD');
+          if (windowTime) windowTime.value = dueDate.format('HH:mm');
+        } else {
+          if (windowDate) windowDate.value = '';
+          if (windowTime) windowTime.value = '';
+        }
+      } else {
+        if (eventRadio) eventRadio.checked = true;
+        setEditTimingVisibility('event');
+        const zone = deadline.timezone || 'Europe/London';
+        const startAt = deadline.startAt ? dayjs(deadline.startAt).tz(zone) : null;
+        const endAt = deadline.endAt ? dayjs(deadline.endAt).tz(zone) : null;
+        const eventDate = document.getElementById('edit_dl_event_date');
+        const eventStart = document.getElementById('edit_dl_event_start_time');
+        const eventEnd = document.getElementById('edit_dl_event_end_time');
+        const timezoneField = document.getElementById('edit_dl_timezone');
+
+        if (startAt?.isValid()){
+          if (eventDate) eventDate.value = startAt.format('YYYY-MM-DD');
+          if (eventStart) eventStart.value = startAt.format('HH:mm');
+        } else {
+          if (eventDate) eventDate.value = '';
+          if (eventStart) eventStart.value = '';
+        }
+        if (endAt?.isValid()){
+          if (eventEnd) eventEnd.value = endAt.format('HH:mm');
+        } else if (eventEnd) {
+          eventEnd.value = '';
+        }
+        if (timezoneField) timezoneField.value = zone;
+      }
+
+      editDeadlineModal?.classList.add('show');
+      editDeadlineModal?.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeEditDeadlineModal(){
+      editDeadlineModal?.classList.remove('show');
+      editDeadlineModal?.setAttribute('aria-hidden', 'true');
+      if (editDeadlineForm) editDeadlineForm.reset();
+    }
+
+    async function deleteDeadline(deadlineId){
+      const deadline = dl_state.all.find(d => String(d.id) === String(deadlineId));
+      if (!deadline){
+        toast('Deadline not found');
+        return;
+      }
+
+      if (!confirm(`Are you sure you want to delete the deadline for ${deadline.company} - ${deadline.role}?`)){
+        return;
+      }
+
+      try {
+        const idNumber = Number(deadlineId);
+        const eqValue = Number.isFinite(idNumber) ? idNumber : deadlineId;
+        const { error } = await db
+          .from(DEADLINES_TABLE)
+          .delete()
+          .eq('id', eqValue);
+
+        if (error) throw error;
+
+        toast('Deadline deleted successfully');
+        await initDeadlinesPage();
+      } catch (error) {
+        console.error('Error deleting deadline:', error);
+        toast('Failed to delete deadline');
+      }
+    }
+
+    // Expose modal helpers globally before inline handlers execute.
+    window.openEditDeadlineModal = openEditDeadlineModal;
+    window.closeEditDeadlineModal = closeEditDeadlineModal;
+    window.deleteDeadline = deleteDeadline;
+
+    if (addDeadlinePage?.classList.contains('active')){
+      initAddDeadlinePage();
+    }
+
+    /* ######################## END: ADD DEADLINE & EDIT FUNCTIONALITY (JS) ############### */
+
+    /* ############################################################
+       BEGIN: INIT (JS)
+    ############################################################ */
+    // ====== Init renders
+    (async ()=>{ await refreshData(); startPolling(); })();
+
+    // KPI hover micro-interactions
+    document.querySelectorAll('.kpi').forEach(kpi => {
+      kpi.addEventListener('mouseenter', () => {
+        kpi.style.transform = 'translateY(-8px) scale(1.02)';
+      });
+      kpi.addEventListener('mouseleave', () => {
+        kpi.style.transform = 'translateY(0) scale(1)';
+      });
+    });
+
+    // ====== Analyse button disables loading skeleton on first view
+    document.addEventListener('DOMContentLoaded',()=>{
+      currentEnv = envSelect.value;
+    });
+    /* ######################## END: INIT (JS) ############### */
