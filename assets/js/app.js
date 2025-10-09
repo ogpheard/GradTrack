@@ -2550,7 +2550,7 @@
       return `
         <div class="application-card ${isHighlighted ? 'search-highlight' : ''}"
              style="--status-color:${accent}"
-             onclick="openApplicationModal('${app.id}')">
+             onclick="console.log('🔴 Card clicked! ID:', '${app.id}'); openApplicationModal('${app.id}')">
 
           <div class="application-status ${cls}">${escapeHtml(lab)}</div>
 
@@ -2575,8 +2575,17 @@
     }
 
     window.openApplicationModal = function(id){
+      console.log('🔵 openApplicationModal called with id:', id);
+      console.log('🔵 typeof openEditModal:', typeof openEditModal);
+      console.log('🔵 modal element exists:', !!modal);
+
       // Simply delegate to openEditModal since clicking a card should open it for editing/viewing
-      openEditModal(id);
+      try {
+        openEditModal(id);
+      } catch (error) {
+        console.error('❌ Error in openApplicationModal:', error);
+        toast('Error opening application: ' + error.message);
+      }
     };
     // Add the enhanced CSS styles - add this to your existing CSS
     const enhancedModalStyles = `
@@ -2953,11 +2962,18 @@
     }
 
     function openEditModal(id){
+      console.log('🟢 openEditModal called with id:', id);
       const raw = getRawRowById(id);
-      if (!raw){ toast('Could not load item'); return; }
+      console.log('🟢 raw data:', raw);
+      if (!raw){
+        console.error('❌ Could not find raw data for id:', id);
+        toast('Could not load item');
+        return;
+      }
 
       const card = toCardShape(raw);
       const prevStatus = raw.status || (card.status==='applied' ? 'Applied' : 'Saved');
+      console.log('🟢 Opening modal for:', card.title);
 
       modalTitle.textContent = `Edit Application`;
       modalBody.innerHTML = `
