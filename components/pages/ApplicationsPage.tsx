@@ -12,7 +12,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, X } from "lucide-react";
+import { Search, X, Loader2 } from "lucide-react";
+import { useApplications } from "@/lib/hooks/useApplications";
 
 // Types
 interface Application {
@@ -206,7 +207,9 @@ export function ApplicationsPage({ environment }: ApplicationsPageProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortFilter, setSortFilter] = useState<SortOption>("date-desc");
-  const [applications] = useState<Application[]>(MOCK_APPLICATIONS);
+
+  // Fetch real data from Supabase
+  const { applications, loading, error } = useApplications(environment as 'test' | 'prod');
 
   // Filter and sort applications
   const filteredAndSortedApplications = useMemo(() => {
@@ -269,8 +272,29 @@ export function ApplicationsPage({ environment }: ApplicationsPageProps) {
 
   return (
     <div className="w-full max-w-7xl mx-auto p-6 space-y-6">
-      {/* Smart Search Bar */}
-      <div className="relative">
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-3 text-muted-foreground">Loading applications...</span>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <Card className="bg-destructive/10 border-destructive/20">
+          <CardContent className="pt-6">
+            <p className="text-destructive font-semibold">Error loading applications</p>
+            <p className="text-sm text-muted-foreground mt-1">{error}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Content */}
+      {!loading && !error && (
+        <>
+          {/* Smart Search Bar */}
+          <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
         <Input
           type="text"
@@ -437,6 +461,9 @@ export function ApplicationsPage({ environment }: ApplicationsPageProps) {
             </Card>
           ))}
         </div>
+      )}
+
+        </>
       )}
 
       {/* Environment indicator (for development) */}
