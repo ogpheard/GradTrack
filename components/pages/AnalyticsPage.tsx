@@ -22,6 +22,8 @@ import {
   Tooltip,
   Legend,
   Filler,
+  BarController,
+  LineController,
 } from "chart.js";
 import { Bar, Line, Pie, Chart } from "react-chartjs-2";
 import { TrendingUp, TrendingDown, FileText, Mail, BarChart3, Clock } from "lucide-react";
@@ -37,7 +39,9 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  Filler
+  Filler,
+  BarController,
+  LineController
 );
 
 // Types
